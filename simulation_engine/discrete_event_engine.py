@@ -9,248 +9,182 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.distribution import SampleDistribution
-from core.agent import create_agent, GenericAgent
-from core.automaton import create_automaton
+from core.distribution import Distributions
+from core.agent import Agents
+from core.automaton import Automata
+from core.environment import Environments
+from core.event import Event
+from core.metrics import MetricsCollector
+from simulation_engine.event_scheduler import EventScheduler
 
 @dataclass(order=True)
-class Event:
+class SimEvent:
     time: float
     event_type: str
     agent_id: str = field(compare=False)
     target_id: str = field(compare=False)
 
+
 class DiscreteEventSimulator:
-    def __init__(self, agents_config, automata_config, distributions_config, world_config):
+    def __init__(self, agents_config, automata_config, distributions_config, 
+                 environments_config, events_config, metrics_config):
+        """
+        Initialize the discrete event simulator.
+        
+        Args:
+            agents_config: agents.json dict
+            automata_config: automata.json dict
+            distributions_config: distributions.json dict
+            environments_config: environments.json dict
+            events_config: events.json dict
+            metrics_config: metrics.json dict
+        """
         self.agents_config = agents_config
         self.automata_config = automata_config
-        self.world_config = world_config
+        self.distributions_config = distributions_config
+        self.environments_config = environments_config
+        self.events_config = events_config
+        self.metrics_config = metrics_config
         
-        self.sampler = SampleDistribution(distributions_config)
+        # Initialize core components
+        self.distributions = Distributions(distributions_config)
+        self.automata = Automata(automata_config, self.distributions)
+        self.agents = Agents(agents_config, self.distributions, self.automata)
+        self.environments = Environments(environments_config, self.agents)
+        self.event_scheduler = EventScheduler(events_config, self.distributions)
+        self.metrics_collector = MetricsCollector(metrics_config)
         
-        self.population = {}
-        self.malicious_agents = {}
-        self.transactions = []
+        # Simulation state
         self.event_queue = []
         self.current_time = 0.0
+        self.transactions = []
+        self.max_time = 10000.0  # Default, can be overridden
     
-    def _create_agent(self, agent_type: str, agent_id: str) -> GenericAgent:
-        """Create an agent using the generic factory."""
-        return create_agent(agent_type, agent_id, self.agents_config, 
-                           self.automata_config, self.sampler)
-    
-    def _create_population(self):
-        """Create all agents based on world_config."""
-        agent_counts = self.world_config.get('agents', {})
-        
-        for agent_type, count in agent_counts.items():
-            id_prefix = self.agents_config.get(agent_type, {}).get('id_prefix', f"{agent_type}_")
-            
-            for i in range(count):
-                agent_id = f"{id_prefix}{i+1:06d}"
-                agent = self._create_agent(agent_type, agent_id)
-                self.population[agent_id] = agent
-                
-                if agent_type == 'malicious':
-                    self.malicious_agents[agent_id] = agent
-    
-    def schedule_contact_attempt(self, malicious_id: str, citizen_id: str, delay: float):
-        """Schedule a contact attempt event."""
-        event = Event(
-            time=self.current_time + delay,
-            event_type='CONTACT_ATTEMPT',
-            agent_id=malicious_id,
-            target_id=citizen_id
+    def _create_event(self, signal: str, origin_agent_id: str, target_agent_id: str,
+                      delay: float = 0.0, env_id: Optional[str] = None,
+                      payload: Optional[Dict] = None) -> Event:
+        """Create a new event with the current time."""
+        return Event(
+            signal=signal,
+            origin_agent_id=origin_agent_id,
+            target_agent_id=target_agent_id,
+            scheduled_for=self.current_time + delay,
+            env_id=env_id,
+            payload=payload
         )
-        heapq.heappush(self.event_queue, event)
     
-    def schedule_recruitment_attempt(self, malicious_id: str, citizen_id: str, delay: float):
-        """Schedule a recruitment attempt event."""
-        event = Event(
-            time=self.current_time + delay,
-            event_type='RECRUITMENT_ATTEMPT',
-            agent_id=malicious_id,
-            target_id=citizen_id
+    def _schedule_event(self, event: Event) -> None:
+        """Add an event to the simulation event queue."""
+        sim_event = SimEvent(
+            time=event.scheduled_for,
+            event_type=event.signal,
+            agent_id=event.target_agent_id,
+            target_id=event.origin_agent_id
         )
-        heapq.heappush(self.event_queue, event)
+        heapq.heappush(self.event_queue, sim_event)
     
-    def get_random_citizen(self):
-        """Get a random citizen from the population."""
-        citizens = [c for c in self.population.values() if c.type == 'citizen']
-        return random.choice(citizens) if citizens else None
-
-    def handle_contact_attempt(self, event: Event):
-        """Handle a contact attempt event."""
-        malicious = self.population.get(event.agent_id)
-        citizen = self.population.get(event.target_id)
+    def _process_static_events(self) -> None:
+        """Process static events from the event scheduler."""
+        due_events = self.event_scheduler.get_due_events(self.current_time, self.agents)
         
-        if not malicious or not citizen:
+        for agent, signal in due_events:
+            # Create self-event for the agent
+            event = self._create_event(signal, agent.id, agent.id, delay=0.0)
+            agent.receive_event(event)
+    
+    def _process_agent_events(self) -> None:
+        """Process events from all agents."""
+        for agent in self.agents.get_all_agents():
+            # Process events according to agent's batch size
+            agent.process_events()
+    
+    def _handle_event(self, event: SimEvent) -> None:
+        """
+        Handle a simulation event by routing it to the appropriate agent.
+        """
+        target_agent = self.agents.get_by_id(event.agent_id)
+        if not target_agent:
             return
         
-        # Schedule next contact for this malicious agent
-        next_citizen = self.get_random_citizen()
-        if next_citizen:
-            dist_config = self.sampler.get_distribution('ig_tiktok_daily_contact')
-            delay = self.sampler.sample(dist_config) if dist_config else 1.0
-            self.schedule_contact_attempt(malicious.id, next_citizen.id, delay)
+        # Create domain event from simulation event
+        domain_event = Event(
+            signal=event.event_type,
+            origin_agent_id=event.target_id,
+            target_agent_id=event.agent_id,
+            scheduled_for=event.time
+        )
         
-        # Process current contact - CITIZEN decides
-        if malicious.state == 'idle' and citizen.state == 'idle':
-            local_view = {'age': citizen.get_attribute('age', 0)}
-            intention = citizen.step(local_view)
-            
-            if intention == 'CONTACT_ACCEPTED':
-                citizen.update_state('contacted')
-                malicious.update_state('recruiting')
-                citizen.attributes['last_contact_time'] = self.current_time
-                self.schedule_recruitment_attempt(malicious.id, citizen.id, 1.0)
-
-    def handle_recruitment_attempt(self, event: Event):
-        """Handle a recruitment attempt event."""
-        malicious = self.population.get(event.agent_id)
-        citizen = self.population.get(event.target_id)
-        
-        if not malicious or not citizen:
-            return
-        
-        if malicious.state == 'recruiting' and citizen.state == 'contacted':
-            local_view = {'age': citizen.get_attribute('age', 0)}
-            
-            # Get the recruitment automaton (second one) from cache
-            automata_names = citizen.automaton_names
-            if len(automata_names) >= 2:
-                recruitment_automaton = citizen.get_automaton(automata_names[1], self.automata_config, self.sampler)
-                intention = recruitment_automaton.step(local_view)
-            else:
-                intention = citizen.step(local_view)
-            
-            if intention == 'ACCEPT_RECRUITMENT':
-                citizen.update_state('active')
-                citizen.attributes['mule_count'] = citizen.attributes.get('mule_count', 0) + 1
-                malicious.update_state('idle')
-                
-                self.transactions.append({
-                    'time': self.current_time,
-                    'malicious_id': malicious.id,
-                    'citizen_id': citizen.id,
-                    'amount': citizen.get_attribute('income', 0) * 0.1
-                })
-            else:
-                malicious.update_state('idle')
-
-    def initialize_events(self):
-        """Schedule initial contact attempts - one per malicious agent."""
-        dist_config = self.sampler.get_distribution('ig_tiktok_daily_contact')
-        
-        for malicious in self.malicious_agents.values():
-            target = self.get_random_citizen()
-            if target:
-                delay = self.sampler.sample(dist_config) if dist_config else 1.0
-                self.schedule_contact_attempt(malicious.id, target.id, delay)
+        # Deliver event to target agent
+        target_agent.receive_event(domain_event)
     
-    def run_simulation(self):
-        """Run discrete event simulation."""
-        num_citizens = self.world_config.get('agents', {}).get('citizen', 0)
-        num_malicious = self.world_config.get('agents', {}).get('malicious', 0)
-        max_time = self.world_config.get('max_time', 10000.0)
-        
+    def initialize(self) -> None:
+        """Initialize the simulation."""
         print("\n" + "="*60)
-        print(f"🌱 Creating {num_citizens} citizens and {num_malicious} malicious agents...")
-        self._create_population()
+        print("🌱 Initializing simulation...")
         
-        print(f"⚙️ Initializing events...")
-        self.initialize_events()
+        # Initialize event scheduler
+        self.event_scheduler.initialize(self.current_time)
         
-        print(f"⏰ Running simulation until time {max_time}...")
+        # Process initial static events
+        self._process_static_events()
+        
+        print(f"   Agents created: {self.agents.total_count}")
+        print(f"   Environments created: {self.environments.total_count}")
+        print(f"   Automata loaded: {len(self.automata)}")
+        print(f"   Distributions loaded: {len(self.distributions)}")
+    
+    def run_simulation(self, max_time: float = 10000.0) -> None:
+        """
+        Run the discrete event simulation.
+        
+        Args:
+            max_time: Maximum simulation time
+        """
+        self.max_time = max_time
+        
+        self.initialize()
+        
+        print(f"⏰ Running simulation until time {self.max_time}...")
         events_processed = 0
         
-        while self.event_queue and self.current_time <= max_time:
-            event = heapq.heappop(self.event_queue)
-            self.current_time = event.time
+        while self.event_queue and self.current_time <= self.max_time:
+            # Pop next event from queue
+            sim_event = heapq.heappop(self.event_queue)
+            self.current_time = sim_event.time
             
-            if event.event_type == 'CONTACT_ATTEMPT':
-                self.handle_contact_attempt(event)
-            elif event.event_type == 'RECRUITMENT_ATTEMPT':
-                self.handle_recruitment_attempt(event)
-            
+            # Handle the event
+            self._handle_event(sim_event)
             events_processed += 1
             
+            # Process static events periodically
+            self._process_static_events()
+            
+            # Process agent event queues
+            self._process_agent_events()
+            
+            # Progress indicator
             if events_processed % 1000 == 0:
                 print(f"   Time: {self.current_time:.1f}, Events: {events_processed}")
         
         print(f"✅ Simulation complete. {events_processed} events processed.")
-        return self.get_statistics()
+        
+        # Compute and print metrics
+        self._compute_and_print_metrics()
     
-    def get_statistics(self):
-        """Calculate simulation statistics."""
-        citizens = [a for a in self.population.values() if a.type == 'citizen']
+    def _compute_and_print_metrics(self) -> None:
+        """Compute all metrics and print report."""
+        # Set global metrics
+        citizens = self.agents.get_by_type('citizen')
         active_citizens = [c for c in citizens if c.state == 'active']
         
-        # Helper functions
-        def get_age(citizen):
-            age = citizen.get_attribute('age')
-            return age if age is not None else 0
+        self.metrics_collector.set_global_metric('total_citizens', len(citizens))
+        self.metrics_collector.set_global_metric('active_mules', len(active_citizens))
+        self.metrics_collector.set_global_metric('total_transactions', len(self.transactions))
         
-        def get_education(citizen):
-            edu = citizen.get_attribute('education')
-            return edu if edu is not None else 0.5
+        # Compute all metrics
+        metrics = self.metrics_collector.compute_metrics(
+            self.agents, self.environments, self.transactions
+        )
         
-        EDU_THRESHOLD = 0.5
-        
-        young_low_edu = [c for c in citizens if get_age(c) <= 30 and get_education(c) < EDU_THRESHOLD]
-        young_high_edu = [c for c in citizens if get_age(c) <= 30 and get_education(c) >= EDU_THRESHOLD]
-        old_low_edu = [c for c in citizens if get_age(c) > 30 and get_education(c) < EDU_THRESHOLD]
-        old_high_edu = [c for c in citizens if get_age(c) > 30 and get_education(c) >= EDU_THRESHOLD]
-        
-        young_low_rate = len([c for c in young_low_edu if c.state == 'active']) / len(young_low_edu) if young_low_edu else 0
-        young_high_rate = len([c for c in young_high_edu if c.state == 'active']) / len(young_high_edu) if young_high_edu else 0
-        old_low_rate = len([c for c in old_low_edu if c.state == 'active']) / len(old_low_edu) if old_low_edu else 0
-        old_high_rate = len([c for c in old_high_edu if c.state == 'active']) / len(old_high_edu) if old_high_edu else 0
-        
-        stats = {
-            'total_citizens': len(citizens),
-            'active_mules': len(active_citizens),
-            'activation_rate': len(active_citizens) / len(citizens) if citizens else 0,
-            'total_transactions': len(self.transactions),
-            'avg_mule_count': np.mean([c.get_attribute('mule_count', 0) for c in citizens]) if citizens else 0,
-            'final_time': self.current_time,
-            'events_processed': len(self.event_queue) + len(self.transactions) * 2,
-            'education_threshold': EDU_THRESHOLD
-        }
-        
-        stats['by_profile'] = {
-            'young_low_education': young_low_rate,
-            'young_high_education': young_high_rate,
-            'old_low_education': old_low_rate,
-            'old_high_education': old_high_rate,
-        }
-        
-        stats['avg_education_young'] = np.mean([get_education(c) for c in citizens if get_age(c) <= 30]) if citizens else 0
-        stats['avg_education_old'] = np.mean([get_education(c) for c in citizens if get_age(c) > 30]) if citizens else 0
-        
-        return stats
-
-    def print_report(self, stats):
-        """Print simulation report."""
-        print("\n" + "="*60)
-        print("📊 DISCRETE EVENT SIMULATION REPORT")
-        print("="*60)
-        
-        print(f"\n⏰ TIME:")
-        print(f"   Final time: {stats['final_time']:.2f}")
-        print(f"   Events processed: {stats['events_processed']}")
-        
-        print(f"\n👥 POPULATION:")
-        print(f"   Total citizens: {stats['total_citizens']}")
-        print(f"   Active mules: {stats['active_mules']}")
-        print(f"   Activation rate: {stats['activation_rate']:.2%}")
-        
-        print(f"\n💰 TRANSACTIONS:")
-        print(f"   Total: {stats['total_transactions']}")
-        print(f"   Average per mule: {stats['avg_mule_count']:.2f}")
-        
-        print(f"\n📈 ACTIVATION RATE BY PROFILE:")
-        for profile, rate in stats['by_profile'].items():
-            print(f"   {profile}: {rate:.2%}")
-        
-        print("\n" + "="*60)
+        # Print report
+        self.metrics_collector.print_report(metrics)

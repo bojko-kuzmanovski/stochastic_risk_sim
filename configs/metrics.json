@@ -1,0 +1,18 @@
+{
+  "contacts_accepted": {
+    "automaton": "victim_first_contact_acceptance",
+    "terminal_state": "CONTACT_ACCEPTED"
+  },
+  "contacts_rejected": {
+    "automaton": "victim_first_contact_acceptance",
+    "terminal_state": "CONTACT_REJECTED"
+  },
+  "recruitments_accepted": {
+    "automaton": "victim_mule_transition",
+    "terminal_state": "ACCEPT_RECRUITMENT"
+  },
+  "recruitments_rejected": {
+    "automaton": "victim_mule_transition",
+    "terminal_state": "RECRUITMENT_REJECT"
+  }
+}
