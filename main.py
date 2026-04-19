@@ -19,10 +19,7 @@ def main():
     with open(script_dir / 'distributions.json', 'r') as f:
         distributions_config = json.load(f)
     
-    with open(script_dir / 'world.json', 'r') as f:
-        world_config = json.load(f)
-    
-    sim = DiscreteEventSimulator(agents_config, automata_config, distributions_config, world_config)
+    sim = DiscreteEventSimulator(agents_config, automata_config, distributions_config)
     stats = sim.run_simulation()
     sim.print_report(stats)
 

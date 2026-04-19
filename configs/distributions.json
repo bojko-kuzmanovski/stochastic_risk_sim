@@ -1,4 +1,14 @@
 {
+  "event_processing_rate": {
+    "family": "exponential",
+    "params": { "rate": 0.2 },
+    "truncation": { "min": 1.5, "max": 10.0 }
+  },
+  "event_processing_batch_size": {
+    "family": "poisson",
+    "params": { "lambda": 7 },
+    "truncation": { "min": 3, "max": 20 }
+  },
   "age": {
     "family": "gamma",
     "params": { "shape": 5.0, "scale": 5.0 },
@@ -16,46 +26,57 @@
   },
   "ig_tiktok_daily_contact": {
     "family": "poisson",
-    "params": { "lambda": 50 }
+    "params": { "lambda": 50 },
+    "truncation": { "min": 0, "max": 1000 }
   },
   "ig_tiktok_first_contact": {
     "family": "beta",
-    "params": { "alpha": 2, "beta": 11 }
+    "params": { "alpha": 2, "beta": 11 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "ig_tiktok_mule_transition": {
     "family": "beta",
-    "params": { "alpha": 1, "beta": 44 }
+    "params": { "alpha": 1, "beta": 44 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "wa_telegram_first_contact": {
     "family": "beta",
-    "params": { "alpha": 25, "beta": 75 }
+    "params": { "alpha": 25, "beta": 75 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "wa_telegram_mule_transition": {
     "family": "beta",
-    "params": { "alpha": 45, "beta": 55 }
+    "params": { "alpha": 45, "beta": 55 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "job_fake_entry_first_contact": {
     "family": "beta",
-    "params": { "alpha": 6, "beta": 44 }
+    "params": { "alpha": 6, "beta": 44 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "job_fake_mule_transition": {
     "family": "beta",
-    "params": { "alpha": 65, "beta": 35 }
+    "params": { "alpha": 65, "beta": 35 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "romance_entry_first_contact": {
     "family": "beta",
-    "params": { "alpha": 3, "beta": 47 }
+    "params": { "alpha": 3, "beta": 47 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "romance_mule_transition": {
     "family": "beta",
-    "params": { "alpha": 85, "beta": 15 }
+    "params": { "alpha": 85, "beta": 15 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "gaming_entry_first_contact": {
     "family": "beta",
-    "params": { "alpha": 18, "beta": 82 }
+    "params": { "alpha": 18, "beta": 82 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   },
   "gaming_mule_transition": {
     "family": "beta",
-    "params": { "alpha": 25, "beta": 75 }
+    "params": { "alpha": 25, "beta": 75 },
+    "truncation": { "min": 0.0, "max": 1.0 }
   }
 }

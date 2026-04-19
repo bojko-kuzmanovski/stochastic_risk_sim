@@ -1,8 +1,19 @@
 {
   "citizen": {
+    "quantity": 10000,
     "id_prefix": "citizen_",
 
     "params": {
+      "event_processing_rate": {
+        "type": "probabilistic",
+        "distribution": "event_processing_rate"
+      },
+
+      "event_processing_batch_size": {
+        "type": "probabilistic",
+        "distribution": "event_processing_batch_size"
+      },
+
       "age": {
         "type": "probabilistic",
         "distribution": "age"
@@ -29,8 +40,19 @@
   },
 
   "malicious": {
+    "quantity": 10,
     "id_prefix": "malicious_",
 
-    "params": {}
+    "params": {
+      "event_processing_rate": {
+        "type": "probabilistic",
+        "distribution": "event_processing_rate"
+      },
+
+      "event_processing_batch_size": {
+        "type": "probabilistic",
+        "distribution": "event_processing_batch_size"
+      }
+    }
   }
 }
