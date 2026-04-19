@@ -11,8 +11,6 @@
       "education": {
         "type": "probabilistic",
         "distribution": "education",
-        "transform": "binary_threshold",
-        "threshold": 0.5,
         "refs": {
           "alpha": "2.0 + 0.05 * age",
           "beta": "2.0"

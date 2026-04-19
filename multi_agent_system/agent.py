@@ -117,17 +117,12 @@ def generate_agent_attributes(agent_config: Dict[str, Any], sampler,
                 else:
                     value = sampler.sample(dist_config)
                 
-                # Apply transform if specified (generic, not hardcoded)
-                transform = param_spec.get('transform')
-                if transform == 'binary_threshold':
-                    threshold = param_spec.get('threshold', 0.5)
-                    value = 1 if value > threshold else 0
-                # Add other transforms here as needed, but keep generic
-                
+                # No transformations - value stays as sampled from distribution
                 attributes[param_name] = value
             else:
                 attributes[param_name] = 0.0
         else:
+            # Deterministic or constant
             attributes[param_name] = param_spec.get('value', 0.0)
     
     return attributes

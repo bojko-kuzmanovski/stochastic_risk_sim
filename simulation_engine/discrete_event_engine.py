@@ -184,51 +184,53 @@ class DiscreteEventSimulator:
         return self.get_statistics()
     
     def get_statistics(self):
-      """Calculate simulation statistics."""
-      citizens = [a for a in self.population.values() if a.type == 'citizen']
-      active_citizens = [c for c in citizens if c.state == 'active']
-      
-      # Helper to get age from citizen
-      def get_age(citizen):
-          age = citizen.get_attribute('age')
-          if age is None:
-              # Try direct attribute access
-              age = getattr(citizen, 'age', None)
-          if age is None:
-              # Try from attributes dict
-              age = citizen.attributes.get('age', 0)
-          return age if age is not None else 0
-      
-      # Helper to get education from citizen
-      def get_education(citizen):
-          edu = citizen.get_attribute('education')
-          if edu is None:
-              edu = citizen.attributes.get('education', 0)
-          return edu if edu is not None else 0
-      
-      young_vulnerable = [c for c in citizens if get_age(c) <= 30 and get_education(c) == 0]
-      young_resistant = [c for c in citizens if get_age(c) <= 30 and get_education(c) == 1]
-      old_vulnerable = [c for c in citizens if get_age(c) > 30 and get_education(c) == 0]
-      old_resistant = [c for c in citizens if get_age(c) > 30 and get_education(c) == 1]
-      
-      stats = {
-          'total_citizens': len(citizens),
-          'active_mules': len(active_citizens),
-          'activation_rate': len(active_citizens) / len(citizens) if citizens else 0,
-          'total_transactions': len(self.transactions),
-          'avg_mule_count': np.mean([c.get_attribute('mule_count', 0) for c in citizens]) if citizens else 0,
-          'final_time': self.current_time,
-          'events_processed': len(self.event_queue) + len(self.transactions) * 2
-      }
-      
-      stats['by_profile'] = {
-          'young_vulnerable': len([c for c in young_vulnerable if c.state == 'active']) / len(young_vulnerable) if young_vulnerable else 0,
-          'young_resistant': len([c for c in young_resistant if c.state == 'active']) / len(young_resistant) if young_resistant else 0,
-          'old_vulnerable': len([c for c in old_vulnerable if c.state == 'active']) / len(old_vulnerable) if old_vulnerable else 0,
-          'old_resistant': len([c for c in old_resistant if c.state == 'active']) / len(old_resistant) if old_resistant else 0,
-      }
-      
-      return stats
+        """Calculate simulation statistics."""
+        citizens = [a for a in self.population.values() if a.type == 'citizen']
+        active_citizens = [c for c in citizens if c.state == 'active']
+        
+        # Helper functions
+        def get_age(citizen):
+            age = citizen.get_attribute('age')
+            return age if age is not None else 0
+        
+        def get_education(citizen):
+            edu = citizen.get_attribute('education')
+            return edu if edu is not None else 0.5
+        
+        EDU_THRESHOLD = 0.5
+        
+        young_low_edu = [c for c in citizens if get_age(c) <= 30 and get_education(c) < EDU_THRESHOLD]
+        young_high_edu = [c for c in citizens if get_age(c) <= 30 and get_education(c) >= EDU_THRESHOLD]
+        old_low_edu = [c for c in citizens if get_age(c) > 30 and get_education(c) < EDU_THRESHOLD]
+        old_high_edu = [c for c in citizens if get_age(c) > 30 and get_education(c) >= EDU_THRESHOLD]
+        
+        young_low_rate = len([c for c in young_low_edu if c.state == 'active']) / len(young_low_edu) if young_low_edu else 0
+        young_high_rate = len([c for c in young_high_edu if c.state == 'active']) / len(young_high_edu) if young_high_edu else 0
+        old_low_rate = len([c for c in old_low_edu if c.state == 'active']) / len(old_low_edu) if old_low_edu else 0
+        old_high_rate = len([c for c in old_high_edu if c.state == 'active']) / len(old_high_edu) if old_high_edu else 0
+        
+        stats = {
+            'total_citizens': len(citizens),
+            'active_mules': len(active_citizens),
+            'activation_rate': len(active_citizens) / len(citizens) if citizens else 0,
+            'total_transactions': len(self.transactions),
+            'avg_mule_count': np.mean([c.get_attribute('mule_count', 0) for c in citizens]) if citizens else 0,
+            'final_time': self.current_time,
+            'events_processed': len(self.event_queue) + len(self.transactions) * 2,
+            'education_threshold': EDU_THRESHOLD
+        }
+        
+        stats['by_profile'] = {
+            'young_low_education': young_low_rate,
+            'young_high_education': young_high_rate,
+            'old_low_education': old_low_rate,
+            'old_high_education': old_high_rate,
+        }
+        
+        stats['avg_education_young'] = np.mean([get_education(c) for c in citizens if get_age(c) <= 30]) if citizens else 0
+        stats['avg_education_old'] = np.mean([get_education(c) for c in citizens if get_age(c) > 30]) if citizens else 0
+        
+        return stats
 
     def print_report(self, stats):
         """Print simulation report."""
