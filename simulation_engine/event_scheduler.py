@@ -35,38 +35,17 @@ class EventScheduler:
         else:
             return 1.0
     
-    def initialize(self, current_time: float, agents) -> List[tuple]:
+    def initialize(self, current_time: float, agents) -> None:
         """
-        Initialize all static events and return initial events to schedule.
-        
-        Args:
-            current_time: Current simulation time
-            agents: Agents instance to get target agents
-        
-        Returns:
-            List of tuples (agent, signal) for events that should fire immediately
+        Initialize all static events. Sets next execution times.
+        Returns None (no immediate events).
         """
-        initial_events = []
-        
         for signal, config in self._config.items():
             periodicity = config.get('periodicity', {})
             interval = self._get_interval(periodicity)
             
-            # Set next execution time
             self._next_execution[signal] = current_time + interval
             self._last_execution[signal] = current_time
-            
-            # Get target agents for initial events (fire immediately at time 0)
-            agent_type = config.get('agent_type', '*')
-            if agent_type == '*':
-                target_agents = agents.get_all_agents()
-            else:
-                target_agents = agents.get_by_type(agent_type)
-            
-            for agent in target_agents:
-                initial_events.append((agent, signal))
-        
-        return initial_events
     
     def get_due_events(self, current_time: float, agents) -> List[tuple]:
         """
@@ -98,6 +77,12 @@ class EventScheduler:
                 self._last_execution[signal] = current_time
         
         return due_events
+
+    def get_next_event_time(self) -> Optional[float]:
+        """Get the earliest scheduled static event time."""
+        if not self._next_execution:
+            return None
+        return min(self._next_execution.values())
     
     def __repr__(self) -> str:
         return f"EventScheduler(events={list(self._config.keys())})"

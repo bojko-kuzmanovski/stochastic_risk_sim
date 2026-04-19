@@ -4,6 +4,7 @@ import time
 
 from core.event import Event
 
+
 class Agent:
     """
     Generic agent that can represent any agent type from config.
@@ -60,7 +61,7 @@ class Agent:
         def __repr__(self) -> str:
             return f"EventQueue(size={len(self._queue)})"
     
-    def __init__(self, agent_type: str, config: Dict[str, Any], distributions, automata, index: int):
+    def __init__(self, agent_type: str, config: Dict[str, Any], distributions, automata, metrics_collector, agents, index: int):
         """
         Initialize an agent from configuration.
         
@@ -69,12 +70,16 @@ class Agent:
             config: Agent configuration dict
             distributions: Distributions instance for sampling
             automata: Automata instance for event processing
+            metrics_collector: MetricsCollector instance for recording results
+            agents: Agents registry for finding other agents
             index: Unique index for this agent instance
         """
         self._type = agent_type
         self._config = config
         self._distributions = distributions
         self._automata = automata
+        self._metrics_collector = metrics_collector
+        self._agents = agents
         self._id = f"{config['id_prefix']}{index+1:06d}"
         self._attributes: Dict[str, Any] = {}
         self._state: str = 'idle'
@@ -151,16 +156,7 @@ class Agent:
         self._event_queue.push(event)
     
     def process_events(self, max_events: Optional[int] = None) -> int:
-        """
-        Process events from the queue.
-        
-        Args:
-            max_events: Maximum number of events to process in this call.
-                       If None, uses the agent's event_processing_batch_size attribute.
-        
-        Returns:
-            Number of events successfully processed.
-        """
+        """Process events from the queue and generate response events."""
         if max_events is None:
             max_events = int(self.get_attribute('event_processing_batch_size', 1))
         
@@ -168,21 +164,35 @@ class Agent:
         current_time = time.time()
         
         while processed < max_events and not self._event_queue.is_empty():
-            # Peek at next event without removing it
             next_event = self._event_queue.peek()
             
-            # Check if it's time to execute this event
             if next_event.scheduled_for > current_time:
                 break
             
-            # Pop the event (remove from queue)
             event = self._event_queue.pop()
             
-            # Execute the automaton corresponding to event.signal
+            # Execute the automaton
             result = self._automata.step(event.signal, event.to_context())
             
-            # TODO: Handle result - could generate new events or update state
-            # For now, just increment processed counter
+            # Record the result in metrics collector
+            if result and self._metrics_collector:
+                self._metrics_collector.record_automaton_result(event.signal, result)
+            
+            # Create new event from result (if it's a success signal that needs to be sent back)
+            if result and result not in ['CONTACT_REJECTED', 'RECRUITMENT_REJECT']:
+                # The target is the agent who sent the original event
+                target_agent = self._agents.get_by_id(event.origin_agent_id)
+                
+                if target_agent:
+                    new_event = Event(
+                        signal=result,
+                        origin_agent_id=self._id,
+                        target_agent_id=target_agent.id,
+                        scheduled_for=current_time + 0.1,
+                        env_id=event.env_id,
+                        payload=event.payload
+                    )
+                    target_agent.receive_event(new_event)
             
             processed += 1
         
@@ -245,7 +255,7 @@ class Agents:
     Factory that creates all agents from configuration.
     """
     
-    def __init__(self, agents_config: Dict[str, Any], distributions, automata):
+    def __init__(self, agents_config: Dict[str, Any], distributions, automata, metrics_collector):
         """
         Initialize and create all agents from configuration.
         
@@ -253,10 +263,12 @@ class Agents:
             agents_config: Full agents.json dict with quantity for each agent type
             distributions: Distributions instance for sampling
             automata: Automata instance for event processing
+            metrics_collector: MetricsCollector instance for recording results
         """
         self._config = agents_config
         self._distributions = distributions
         self._automata = automata
+        self._metrics_collector = metrics_collector
         self._agents: Dict[str, Agent] = {}  # id -> Agent
         self._by_type: Dict[str, List[Agent]] = {}  # type -> List[Agent]
         
@@ -274,7 +286,7 @@ class Agents:
             
             agents_list = []
             for i in range(quantity):
-                agent = Agent(agent_type, config, self._distributions, self._automata, i)
+                agent = Agent(agent_type, config, self._distributions, self._automata, self._metrics_collector, self, i)
                 agents_list.append(agent)
                 self._agents[agent.id] = agent
             

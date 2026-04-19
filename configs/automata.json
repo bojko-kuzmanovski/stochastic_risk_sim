@@ -7,8 +7,10 @@
       "alpha": "6 - 0.05 * age",
       "beta": "10 + 0.1 * age"
     },
-    "output_success": "CONTACT_ACCEPTED_IG",
-    "output_failure": "CONTACT_REJECTED"
+    "output_success": "attacker_recruitment_router_ig",
+    "output_failure": "CONTACT_REJECTED",
+    "is_semantic_success": false,
+    "is_semantic_failure": true
   },
   "victim_mule_ig": {
     "params": ["age"],
@@ -19,7 +21,9 @@
       "beta": "40 + 0.3 * age"
     },
     "output_success": "ACCEPT_RECRUITMENT_IG",
-    "output_failure": "RECRUITMENT_REJECT"
+    "output_failure": "RECRUITMENT_REJECT",
+    "is_semantic_success": true,
+    "is_semantic_failure": true
   },
   "victim_contact_wa": {
     "params": ["age"],
@@ -29,8 +33,10 @@
       "alpha": "4 - 0.03 * age",
       "beta": "12 + 0.15 * age"
     },
-    "output_success": "CONTACT_ACCEPTED_WA",
-    "output_failure": "CONTACT_REJECTED"
+    "output_success": "attacker_recruitment_router_wa",
+    "output_failure": "CONTACT_REJECTED",
+    "is_semantic_success": false,
+    "is_semantic_failure": true
   },
   "victim_mule_wa": {
     "params": ["age"],
@@ -41,7 +47,9 @@
       "beta": "12 + 0.1 * age"
     },
     "output_success": "ACCEPT_RECRUITMENT_WA",
-    "output_failure": "RECRUITMENT_REJECT"
+    "output_failure": "RECRUITMENT_REJECT",
+    "is_semantic_success": true,
+    "is_semantic_failure": true
   },
   "victim_contact_job": {
     "params": ["age"],
@@ -51,8 +59,10 @@
       "alpha": "3 - 0.02 * age",
       "beta": "25 + 0.2 * age"
     },
-    "output_success": "CONTACT_ACCEPTED_JOB",
-    "output_failure": "CONTACT_REJECTED"
+    "output_success": "attacker_recruitment_router_job",
+    "output_failure": "CONTACT_REJECTED",
+    "is_semantic_success": false,
+    "is_semantic_failure": true
   },
   "victim_mule_job": {
     "params": ["age"],
@@ -63,7 +73,9 @@
       "beta": "8 + 0.05 * age"
     },
     "output_success": "ACCEPT_RECRUITMENT_JOB",
-    "output_failure": "RECRUITMENT_REJECT"
+    "output_failure": "RECRUITMENT_REJECT",
+    "is_semantic_success": true,
+    "is_semantic_failure": true
   },
   "victim_contact_romance": {
     "params": ["age"],
@@ -73,8 +85,10 @@
       "alpha": "2 - 0.01 * age",
       "beta": "30 + 0.25 * age"
     },
-    "output_success": "CONTACT_ACCEPTED_ROMANCE",
-    "output_failure": "CONTACT_REJECTED"
+    "output_success": "attacker_recruitment_router_romance",
+    "output_failure": "CONTACT_REJECTED",
+    "is_semantic_success": false,
+    "is_semantic_failure": true
   },
   "victim_mule_romance": {
     "params": ["age"],
@@ -85,7 +99,9 @@
       "beta": "5 + 0.02 * age"
     },
     "output_success": "ACCEPT_RECRUITMENT_ROMANCE",
-    "output_failure": "RECRUITMENT_REJECT"
+    "output_failure": "RECRUITMENT_REJECT",
+    "is_semantic_success": true,
+    "is_semantic_failure": true
   },
   "victim_contact_gaming": {
     "params": ["age"],
@@ -95,8 +111,10 @@
       "alpha": "5 - 0.04 * age",
       "beta": "20 + 0.2 * age"
     },
-    "output_success": "CONTACT_ACCEPTED_GAMING",
-    "output_failure": "CONTACT_REJECTED"
+    "output_success": "attacker_recruitment_router_gaming",
+    "output_failure": "CONTACT_REJECTED",
+    "is_semantic_success": false,
+    "is_semantic_failure": true
   },
   "victim_mule_gaming": {
     "params": ["age"],
@@ -107,9 +125,11 @@
       "beta": "20 + 0.15 * age"
     },
     "output_success": "ACCEPT_RECRUITMENT_GAMING",
-    "output_failure": "RECRUITMENT_REJECT"
+    "output_failure": "RECRUITMENT_REJECT",
+    "is_semantic_success": true,
+    "is_semantic_failure": true
   },
-  "attacker_select_channel": {
+  "attacker_select_channel_ig": {
     "params": [],
     "states": {
       "initial": "IDLE",
@@ -120,15 +140,92 @@
         "from": "IDLE",
         "to": "CHOSEN",
         "rule": {
-          "type": "probabilistic",
-          "distribution": "channel_selection"
+          "type": "deterministic"
         },
-        "emit_intent": "CHANNEL_SELECTED"
+        "emit_intent": "attacker_fishing_ig"
       }
-    ]
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
   },
-  "attacker_fishing_generic": {
-    "params": ["channel"],
+  "attacker_select_channel_wa": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["CHOSEN"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "CHOSEN",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "attacker_fishing_wa"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_select_channel_job": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["CHOSEN"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "CHOSEN",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "attacker_fishing_job"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_select_channel_romance": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["CHOSEN"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "CHOSEN",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "attacker_fishing_romance"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_select_channel_gaming": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["CHOSEN"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "CHOSEN",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "attacker_fishing_gaming"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_fishing_ig": {
+    "params": [],
     "states": {
       "initial": "FISHING",
       "final": ["CONTACT_SENT"]
@@ -144,13 +241,197 @@
             "lambda": 50
           }
         },
-        "emit_intent": "ATTEMPT_CONTACT"
+        "emit_intent": "victim_contact_ig"
       }
-    ]
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
   },
-  "attacker_recruitment_router": {
-    "params": ["accepted_signal"],
-    "type": "deterministic",
-    "output_success": "PROCEED_RECRUITMENT"
+  "attacker_fishing_wa": {
+    "params": [],
+    "states": {
+      "initial": "FISHING",
+      "final": ["CONTACT_SENT"]
+    },
+    "transitions": [
+      {
+        "from": "FISHING",
+        "to": "CONTACT_SENT",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "poisson_contact_rate",
+          "inputs": {
+            "lambda": 50
+          }
+        },
+        "emit_intent": "victim_contact_wa"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_fishing_job": {
+    "params": [],
+    "states": {
+      "initial": "FISHING",
+      "final": ["CONTACT_SENT"]
+    },
+    "transitions": [
+      {
+        "from": "FISHING",
+        "to": "CONTACT_SENT",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "poisson_contact_rate",
+          "inputs": {
+            "lambda": 50
+          }
+        },
+        "emit_intent": "victim_contact_job"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_fishing_romance": {
+    "params": [],
+    "states": {
+      "initial": "FISHING",
+      "final": ["CONTACT_SENT"]
+    },
+    "transitions": [
+      {
+        "from": "FISHING",
+        "to": "CONTACT_SENT",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "poisson_contact_rate",
+          "inputs": {
+            "lambda": 50
+          }
+        },
+        "emit_intent": "victim_contact_romance"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_fishing_gaming": {
+    "params": [],
+    "states": {
+      "initial": "FISHING",
+      "final": ["CONTACT_SENT"]
+    },
+    "transitions": [
+      {
+        "from": "FISHING",
+        "to": "CONTACT_SENT",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "poisson_contact_rate",
+          "inputs": {
+            "lambda": 50
+          }
+        },
+        "emit_intent": "victim_contact_gaming"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_recruitment_router_ig": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["ROUTED"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "ROUTED",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "victim_mule_ig"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_recruitment_router_wa": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["ROUTED"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "ROUTED",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "victim_mule_wa"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_recruitment_router_job": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["ROUTED"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "ROUTED",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "victim_mule_job"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_recruitment_router_romance": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["ROUTED"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "ROUTED",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "victim_mule_romance"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
+  },
+  "attacker_recruitment_router_gaming": {
+    "params": [],
+    "states": {
+      "initial": "IDLE",
+      "final": ["ROUTED"]
+    },
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "ROUTED",
+        "rule": {
+          "type": "deterministic"
+        },
+        "emit_intent": "victim_mule_gaming"
+      }
+    ],
+    "is_semantic_success": false,
+    "is_semantic_failure": false
   }
 }

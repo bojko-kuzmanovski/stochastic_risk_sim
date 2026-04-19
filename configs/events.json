@@ -1,23 +1,37 @@
 {
-  "attacker_fishing_generic": {
-    "agent_type": "malicious",
-    "periodicity": {
-      "type": "deterministic",
-      "interval": 1.0
-    }
-  },
-  "attacker_select_channel": {
+  "attacker_select_channel_ig": {
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
       "interval": 10.0
     }
   },
-  "attacker_recruitment_router": {
+  "attacker_select_channel_wa": {
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 5.0
+      "interval": 10.0
+    }
+  },
+  "attacker_select_channel_job": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 10.0
+    }
+  },
+  "attacker_select_channel_romance": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 10.0
+    }
+  },
+  "attacker_select_channel_gaming": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 10.0
     }
   },
   "victim_contact_ig": {
@@ -53,6 +67,41 @@
     "periodicity": {
       "type": "probabilistic",
       "distribution": "event_processing_rate"
+    }
+  },
+  "attacker_recruitment_router_ig": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 5.0
+    }
+  },
+  "attacker_recruitment_router_wa": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 5.0
+    }
+  },
+  "attacker_recruitment_router_job": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 5.0
+    }
+  },
+  "attacker_recruitment_router_romance": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 5.0
+    }
+  },
+  "attacker_recruitment_router_gaming": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 5.0
     }
   }
 }

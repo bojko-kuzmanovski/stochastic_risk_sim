@@ -1,6 +1,6 @@
 {
   "citizen": {
-    "quantity": 10000,
+    "quantity": 1000,
     "id_prefix": "citizen_",
     "params": {
       "event_processing_rate": {
@@ -31,10 +31,22 @@
           "sigma": "1.0"
         }
       }
-    }
+    },
+    "automata": [
+      "victim_contact_ig",
+      "victim_mule_ig",
+      "victim_contact_wa",
+      "victim_mule_wa",
+      "victim_contact_job",
+      "victim_mule_job",
+      "victim_contact_romance",
+      "victim_mule_romance",
+      "victim_contact_gaming",
+      "victim_mule_gaming"
+    ]
   },
   "malicious": {
-    "quantity": 10,
+    "quantity": 5,
     "id_prefix": "malicious_",
     "params": {
       "event_processing_rate": {
@@ -45,6 +57,11 @@
         "type": "probabilistic",
         "distribution": "event_processing_batch_size"
       }
-    }
+    },
+    "automata": [
+      "attacker_select_channel",
+      "attacker_fishing_generic",
+      "attacker_recruitment_router"
+    ]
   }
 }

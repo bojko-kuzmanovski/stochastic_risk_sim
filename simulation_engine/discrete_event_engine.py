@@ -5,6 +5,7 @@ import heapq
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from pathlib import Path
+from tqdm import tqdm
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -34,12 +35,12 @@ class DiscreteEventSimulator:
         self.events_config = events_config
         self.metrics_config = metrics_config
         
+        self.metrics_collector = MetricsCollector(metrics_config)
         self.distributions = Distributions(distributions_config)
         self.automata = Automata(automata_config, self.distributions)
-        self.agents = Agents(agents_config, self.distributions, self.automata)
+        self.agents = Agents(agents_config, self.distributions, self.automata, self.metrics_collector)
         self.environments = Environments(environments_config, self.agents)
         self.event_scheduler = EventScheduler(events_config, self.distributions)
-        self.metrics_collector = MetricsCollector(metrics_config)
         
         self.event_queue = []
         self.current_time = 0.0
@@ -71,6 +72,7 @@ class DiscreteEventSimulator:
             payload = agent.attributes.copy() if agent.attributes else {}
             event = self._create_event(signal, agent.id, agent.id, delay=0.0, payload=payload)
             agent.receive_event(event)
+            self._schedule_event(event)
     
     def _process_agent_events(self) -> None:
         """Process events from all agents."""
@@ -92,36 +94,45 @@ class DiscreteEventSimulator:
         print("\n" + "="*60)
         print("🌱 Initializing simulation...")
         
-        # Initialize event scheduler (DO NOT return immediate events)
         self.event_scheduler.initialize(self.current_time, self.agents)
-        
-        # DO NOT schedule initial events here - let them occur periodically
-        # The old code that looped over initial_events should be REMOVED
-        
-        # Process static events (check if any are due at time 0)
-        self._process_static_events()
         
         print(f"   Agents created: {self.agents.total_count}")
         print(f"   Environments created: {self.environments.total_count}")
         print(f"   Automata loaded: {len(self.automata)}")
         print(f"   Distributions loaded: {len(self.distributions)}")
-        print(f"   Initial event queue size: {len(self.event_queue)}")
         
         print(f"⏰ Running simulation until time {self.max_time}...")
         events_processed = 0
         
-        while self.event_queue and self.current_time <= self.max_time:
-            sim_event = heapq.heappop(self.event_queue)
-            self.current_time = sim_event.time
-            
-            self._handle_event(sim_event)
-            events_processed += 1
-            
+        # Create progress bar
+        pbar = tqdm(total=self.max_time, desc="", unit="s", bar_format="⏳ {l_bar}{bar}| {n:.2f}/{total:.2f}s [{elapsed}<{remaining}, {rate_fmt}]", ncols=80)
+        last_time = self.current_time
+
+        while self.current_time <= self.max_time:
+            self._process_static_events()
             self._process_agent_events()
             
-            if events_processed % 1000 == 0:
-                print(f"   Time: {self.current_time:.1f}, Events: {events_processed}")
-        
+            if self.event_queue:
+                sim_event = heapq.heappop(self.event_queue)
+                self.current_time = sim_event.time
+                self._handle_event(sim_event)
+                events_processed += 1
+                
+                if self.current_time - last_time >= 0.1:
+                    pbar.n = self.current_time
+                    pbar.refresh()
+                    last_time = self.current_time
+                    pbar.set_postfix({"events": events_processed})
+            else:
+                next_event_time = self.event_scheduler.get_next_event_time()
+                if next_event_time is None or next_event_time > self.max_time:
+                    break
+                jump = next_event_time - self.current_time
+                pbar.n = next_event_time
+                pbar.refresh()
+                self.current_time = next_event_time
+
+        pbar.close()
         print(f"✅ Simulation complete. {events_processed} events processed.")
         self._compute_and_print_metrics()
     

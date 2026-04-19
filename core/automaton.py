@@ -2,7 +2,6 @@ from typing import Dict, Any, Optional, List
 import random
 import math
 
-
 class Automaton:
     """
     Single automaton that defines behavior for a specific signal.
@@ -105,10 +104,10 @@ class Automaton:
                 if rule.get('type') == 'probabilistic':
                     dist_name = rule.get('distribution')
                     if dist_name:
-                        # Evaluate inputs for the rule
-                        inputs = rule.get('inputs', {})
+                        # Evaluate refs for the rule
+                        refs = rule.get('refs', {})
                         bound_params = {}
-                        for param_name, value in inputs.items():
+                        for param_name, value in refs.items():
                             if isinstance(value, str):
                                 # Evaluate formula string
                                 bound_params[param_name] = self._evaluate_formula(value, context)
