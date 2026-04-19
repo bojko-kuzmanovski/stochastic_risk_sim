@@ -1,6 +1,6 @@
 import random
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 
 
 class Distribution:
@@ -15,16 +15,42 @@ class Distribution:
         self._np_rng = np.random.RandomState(seed if seed is not None else None)
         
         self.family = self._validate_family(config.get('family'))
+        
+        # Store categorical data BEFORE validation
+        self._labels = config.get('labels', [])
+        self._probabilities = config.get('probabilities', [])
+        
         self.params = self._validate_params(config.get('params', {}))
         self.truncation = self._validate_truncation(config.get('truncation'))
     
     def _validate_family(self, family: Any) -> str:
-        allowed = ["gamma", "beta", "lognormal", "poisson", "exponential"]
+        allowed = ["gamma", "beta", "lognormal", "poisson", "exponential", "categorical"]
         if not family or family not in allowed:
             raise ValueError(f"Distribution '{self.name}' has invalid family '{family}'. Must be one of {allowed}")
         return family
     
-    def _validate_params(self, params: Any) -> Dict[str, float]:
+    def _validate_params(self, params: Any) -> Dict[str, Any]:
+        """Validate parameters - can be dict with numbers or arrays for categorical."""
+        if self.family == 'categorical':
+            # For categorical, params can be a dict with 'probabilities' array
+            if isinstance(params, dict):
+                validated = {}
+                for key, value in params.items():
+                    if key == 'probabilities':
+                        # Probabilities can be a list of numbers
+                        if isinstance(value, list):
+                            validated[key] = [float(v) for v in value]
+                        else:
+                            raise ValueError(f"Distribution '{self.name}' probabilities must be a list")
+                    elif isinstance(value, (int, float)):
+                        validated[key] = float(value)
+                    else:
+                        raise ValueError(f"Distribution '{self.name}' param '{key}' must be a number or list")
+                return validated
+            else:
+                raise ValueError(f"Distribution '{self.name}' params must be an object")
+        
+        # For non-categorical distributions
         if not isinstance(params, dict):
             raise ValueError(f"Distribution '{self.name}' params must be an object")
         
@@ -40,6 +66,10 @@ class Distribution:
         return validated
     
     def _validate_truncation(self, truncation: Any) -> Dict[str, float]:
+        # Truncation is optional for categorical distributions
+        if self.family == 'categorical':
+            return {'min': 0, 'max': len(self._labels) - 1} if self._labels else {'min': 0, 'max': 0}
+        
         if not truncation:
             raise ValueError(f"Distribution '{self.name}' missing required 'truncation'")
         
@@ -65,9 +95,45 @@ class Distribution:
             return bound_params[param_name]
         return self.params.get(param_name, default)
     
+    def _sample_categorical(self) -> Union[float, str]:
+        """Sample from a categorical distribution."""
+        # Get probabilities from params or from config
+        probs = self.params.get('probabilities', [])
+        if not probs and self._probabilities:
+            probs = self._probabilities
+        
+        if not probs:
+            return 0.0
+        
+        # Normalize probabilities
+        total = sum(probs)
+        if total <= 0:
+            return 0.0
+        normalized = [p / total for p in probs]
+        
+        if self._labels:
+            # Return label string
+            idx = self._np_rng.choice(len(self._labels), p=normalized)
+            return self._labels[idx]
+        else:
+            # Return index
+            return float(self._np_rng.choice(len(probs), p=normalized))
+    
     def sample(self, bound_params: Optional[Dict[str, float]] = None) -> float:
         try:
-            if self.family == 'gamma':
+            if self.family == 'categorical':
+                value = self._sample_categorical()
+                # Convert to float if it's a number, otherwise return as is
+                if isinstance(value, (int, float)):
+                    return float(value)
+                # For string labels, return as float index (for compatibility)
+                if isinstance(value, str):
+                    if value in self._labels:
+                        return float(self._labels.index(value))
+                    return 0.0
+                return float(value)
+            
+            elif self.family == 'gamma':
                 shape = self._get_param('shape', bound_params, 5.0)
                 scale = self._get_param('scale', bound_params, 5.0)
                 value = self._np_rng.gamma(shape, scale)
@@ -101,14 +167,16 @@ class Distribution:
         
         except Exception as e:
             print(f"Error sampling from {self.family}: {e}")
-            return self.truncation['min']
+            return self.truncation.get('min', 0.0)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             'name': self.name,
             'family': self.family,
             'params': self.params,
-            'truncation': self.truncation
+            'truncation': self.truncation,
+            'labels': self._labels,
+            'probabilities': self._probabilities
         }
     
     def __repr__(self) -> str:

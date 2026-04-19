@@ -1,18 +1,58 @@
 {
-  "PROCESS_EVENTS_CITIZEN": {
-    "agent_type": "citizen",
-    "periodicity": { "type": "deterministic", "interval": 1.0 }
-  },
-  "PROCESS_EVENTS_MALICIOUS": {
+  "attacker_fishing_generic": {
     "agent_type": "malicious",
-    "periodicity": { "type": "deterministic", "interval": 1.0 }
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 1.0
+    }
   },
-  "ENCOUNTER_ENVIRONMENT": {
-    "agent_type": "citizen",
-    "periodicity": { "type": "probabilistic", "distribution": "event_processing_rate" }
-  },
-  "TRY_NEW_CHANNEL": {
+  "attacker_select_channel": {
     "agent_type": "malicious",
-    "periodicity": { "type": "deterministic", "interval": 10.0 }
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 10.0
+    }
+  },
+  "attacker_recruitment_router": {
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "interval": 5.0
+    }
+  },
+  "victim_contact_ig": {
+    "agent_type": "citizen",
+    "periodicity": {
+      "type": "probabilistic",
+      "distribution": "event_processing_rate"
+    }
+  },
+  "victim_contact_wa": {
+    "agent_type": "citizen",
+    "periodicity": {
+      "type": "probabilistic",
+      "distribution": "event_processing_rate"
+    }
+  },
+  "victim_contact_job": {
+    "agent_type": "citizen",
+    "periodicity": {
+      "type": "probabilistic",
+      "distribution": "event_processing_rate"
+    }
+  },
+  "victim_contact_romance": {
+    "agent_type": "citizen",
+    "periodicity": {
+      "type": "probabilistic",
+      "distribution": "event_processing_rate"
+    }
+  },
+  "victim_contact_gaming": {
+    "agent_type": "citizen",
+    "periodicity": {
+      "type": "probabilistic",
+      "distribution": "event_processing_rate"
+    }
   }
 }

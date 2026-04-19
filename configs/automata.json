@@ -141,7 +141,7 @@
           "type": "probabilistic",
           "distribution": "poisson_contact_rate",
           "inputs": {
-            "lambda": "gamma.contact_pressure"
+            "lambda": 50
           }
         },
         "emit_intent": "ATTEMPT_CONTACT"

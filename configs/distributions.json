@@ -78,5 +78,13 @@
     "family": "poisson",
     "params": { "lambda": 50 },
     "truncation": { "min": 0, "max": 200 }
+  },
+  "channel_selection": {
+    "family": "categorical",
+    "params": {
+      "probabilities": [0.25, 0.25, 0.20, 0.15, 0.15]
+    },
+    "labels": ["ig", "wa", "job", "romance", "gaming"],
+    "truncation": { "min": 0, "max": 4 }
   }
 }

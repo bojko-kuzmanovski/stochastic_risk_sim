@@ -60,11 +60,18 @@ class Automaton:
     def _extract_context(self, event_context: Dict[str, Any]) -> Dict[str, Any]:
         """Extract required parameters from event context."""
         context = {}
+        
+        # First, extract from payload if present (agent attributes)
+        payload = event_context.get('payload', {})
+        
         for param_name in self._params:
-            if param_name in event_context:
+            # Check in payload first (agent attributes)
+            if param_name in payload:
+                context[param_name] = payload[param_name]
+            # Then check in main context
+            elif param_name in event_context:
                 context[param_name] = event_context[param_name]
-            elif param_name in event_context.get('payload', {}):
-                context[param_name] = event_context['payload'][param_name]
+        
         return context
     
     def _evaluate_formula(self, formula: str, context: Dict[str, Any]) -> float:
@@ -101,8 +108,13 @@ class Automaton:
                         # Evaluate inputs for the rule
                         inputs = rule.get('inputs', {})
                         bound_params = {}
-                        for param_name, formula in inputs.items():
-                            bound_params[param_name] = self._evaluate_formula(formula, context)
+                        for param_name, value in inputs.items():
+                            if isinstance(value, str):
+                                # Evaluate formula string
+                                bound_params[param_name] = self._evaluate_formula(value, context)
+                            else:
+                                # Use numeric value directly
+                                bound_params[param_name] = float(value)
                         
                         if bound_params:
                             self._distributions.sample(dist_name, bound_params)
