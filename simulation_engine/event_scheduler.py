@@ -1,6 +1,5 @@
 from typing import Dict, Any, Optional, List
 import time
-import random
 
 
 class EventScheduler:
@@ -13,18 +12,17 @@ class EventScheduler:
         Initialize event scheduler from configuration.
         
         Args:
-            events_config: Full events.json dict
+            events_config: Full events.json dict where keys are signal names
+                           and values contain 'agent_type' and 'periodicity'
             distributions: Distributions instance for sampling
         """
         self._config = events_config
         self._distributions = distributions
-        self._static_events = events_config.get('static_events', [])
         self._last_execution: Dict[str, float] = {}
         self._next_execution: Dict[str, float] = {}
     
-    def _get_interval(self, event_config: Dict[str, Any]) -> float:
+    def _get_interval(self, periodicity: Dict[str, Any]) -> float:
         """Calculate next interval based on periodicity configuration."""
-        periodicity = event_config.get('periodicity', {})
         interval_type = periodicity.get('type', 'deterministic')
         
         if interval_type == 'deterministic':
@@ -37,56 +35,44 @@ class EventScheduler:
         else:
             return 1.0
     
-    def _get_event_key(self, event_config: Dict[str, Any]) -> str:
-        """Generate unique key for an event."""
-        return f"{event_config.get('signal')}_{event_config.get('agent_type')}"
-    
     def initialize(self, current_time: float) -> None:
         """Initialize all static events with their first execution times."""
-        for event_config in self._static_events:
-            key = self._get_event_key(event_config)
-            interval = self._get_interval(event_config)
-            self._next_execution[key] = current_time + interval
-            self._last_execution[key] = current_time
+        for signal, config in self._config.items():
+            periodicity = config.get('periodicity', {})
+            interval = self._get_interval(periodicity)
+            self._next_execution[signal] = current_time + interval
+            self._last_execution[signal] = current_time
     
     def get_due_events(self, current_time: float, agents) -> List[tuple]:
         """
         Get all events that are due for execution.
         
         Returns:
-            List of tuples (agent, event_signal)
+            List of tuples (agent, signal)
         """
         due_events = []
         
-        for event_config in self._static_events:
-            key = self._get_event_key(event_config)
-            
+        for signal, config in self._config.items():
             # Check if event is due
-            if self._next_execution.get(key, float('inf')) <= current_time:
-                agent_type = event_config.get('agent_type')
-                signal = event_config.get('signal')
+            if self._next_execution.get(signal, float('inf')) <= current_time:
+                agent_type = config.get('agent_type', '*')
+                periodicity = config.get('periodicity', {})
                 
-                # Get all agents of this type
-                target_agents = agents.get_by_type(agent_type)
+                # Determine target agents
+                if agent_type == '*':
+                    target_agents = agents.get_all_agents()
+                else:
+                    target_agents = agents.get_by_type(agent_type)
                 
                 for agent in target_agents:
                     due_events.append((agent, signal))
                 
                 # Schedule next execution
-                interval = self._get_interval(event_config)
-                self._next_execution[key] = current_time + interval
-                self._last_execution[key] = current_time
+                interval = self._get_interval(periodicity)
+                self._next_execution[signal] = current_time + interval
+                self._last_execution[signal] = current_time
         
         return due_events
     
-    def should_add_event(self, agent, signal: str) -> bool:
-        """
-        Check if an event should be added to agent's queue.
-        Avoids duplicate events of the same signal.
-        """
-        # Check if agent already has pending event with same signal
-        # This requires access to agent's event queue
-        return True  # For now, always add
-    
     def __repr__(self) -> str:
-        return f"EventScheduler(events={len(self._static_events)})"
+        return f"EventScheduler(events={list(self._config.keys())})"

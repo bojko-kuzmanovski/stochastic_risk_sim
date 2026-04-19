@@ -1,65 +1,156 @@
 {
-  "victim_first_contact_acceptance": {
+  "victim_contact_ig": {
     "params": ["age"],
-    "trigger": "CONTACT_ATTEMPT",
     "type": "probabilistic",
-    "distribution": "ig_tiktok_first_contact",
+    "distribution": "beta_contact_ig",
     "refs": {
       "alpha": "6 - 0.05 * age",
       "beta": "10 + 0.1 * age"
     },
-    "output_success": "CONTACT_ACCEPTED",
+    "output_success": "CONTACT_ACCEPTED_IG",
     "output_failure": "CONTACT_REJECTED"
   },
-
-  "victim_mule_transition": {
+  "victim_mule_ig": {
     "params": ["age"],
-    "trigger": "RECRUITMENT_ATTEMPT",
     "type": "probabilistic",
-    "distribution": "ig_tiktok_mule_transition",
+    "distribution": "beta_mule_ig",
     "refs": {
       "alpha": "3 - 0.03 * age",
       "beta": "40 + 0.3 * age"
     },
-    "output_success": "ACCEPT_RECRUITMENT",
+    "output_success": "ACCEPT_RECRUITMENT_IG",
     "output_failure": "RECRUITMENT_REJECT"
   },
-
-  "attacker_mule_fishing": {
-    "params": {},
-    "gamma": {},
-
+  "victim_contact_wa": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_contact_wa",
+    "refs": {
+      "alpha": "4 - 0.03 * age",
+      "beta": "12 + 0.15 * age"
+    },
+    "output_success": "CONTACT_ACCEPTED_WA",
+    "output_failure": "CONTACT_REJECTED"
+  },
+  "victim_mule_wa": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_mule_wa",
+    "refs": {
+      "alpha": "8 - 0.06 * age",
+      "beta": "12 + 0.1 * age"
+    },
+    "output_success": "ACCEPT_RECRUITMENT_WA",
+    "output_failure": "RECRUITMENT_REJECT"
+  },
+  "victim_contact_job": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_contact_job",
+    "refs": {
+      "alpha": "3 - 0.02 * age",
+      "beta": "25 + 0.2 * age"
+    },
+    "output_success": "CONTACT_ACCEPTED_JOB",
+    "output_failure": "CONTACT_REJECTED"
+  },
+  "victim_mule_job": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_mule_job",
+    "refs": {
+      "alpha": "12 - 0.08 * age",
+      "beta": "8 + 0.05 * age"
+    },
+    "output_success": "ACCEPT_RECRUITMENT_JOB",
+    "output_failure": "RECRUITMENT_REJECT"
+  },
+  "victim_contact_romance": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_contact_romance",
+    "refs": {
+      "alpha": "2 - 0.01 * age",
+      "beta": "30 + 0.25 * age"
+    },
+    "output_success": "CONTACT_ACCEPTED_ROMANCE",
+    "output_failure": "CONTACT_REJECTED"
+  },
+  "victim_mule_romance": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_mule_romance",
+    "refs": {
+      "alpha": "15 - 0.1 * age",
+      "beta": "5 + 0.02 * age"
+    },
+    "output_success": "ACCEPT_RECRUITMENT_ROMANCE",
+    "output_failure": "RECRUITMENT_REJECT"
+  },
+  "victim_contact_gaming": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_contact_gaming",
+    "refs": {
+      "alpha": "5 - 0.04 * age",
+      "beta": "20 + 0.2 * age"
+    },
+    "output_success": "CONTACT_ACCEPTED_GAMING",
+    "output_failure": "CONTACT_REJECTED"
+  },
+  "victim_mule_gaming": {
+    "params": ["age"],
+    "type": "probabilistic",
+    "distribution": "beta_mule_gaming",
+    "refs": {
+      "alpha": "5 - 0.03 * age",
+      "beta": "20 + 0.15 * age"
+    },
+    "output_success": "ACCEPT_RECRUITMENT_GAMING",
+    "output_failure": "RECRUITMENT_REJECT"
+  },
+  "attacker_select_channel": {
+    "params": [],
     "states": {
       "initial": "IDLE",
-      "final": ["CONTACT_ATTEMPT"]
+      "final": ["CHOSEN"]
     },
-
     "transitions": [
       {
         "from": "IDLE",
-        "to": "CONTACT_ATTEMPT",
-
+        "to": "CHOSEN",
         "rule": {
           "type": "probabilistic",
-          "distribution": "ig_tiktok_daily_contact",
+          "distribution": "channel_selection"
+        },
+        "emit_intent": "CHANNEL_SELECTED"
+      }
+    ]
+  },
+  "attacker_fishing_generic": {
+    "params": ["channel"],
+    "states": {
+      "initial": "FISHING",
+      "final": ["CONTACT_SENT"]
+    },
+    "transitions": [
+      {
+        "from": "FISHING",
+        "to": "CONTACT_SENT",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "poisson_contact_rate",
           "inputs": {
-            "lambda": "gamma.daily_contact_pressure"
+            "lambda": "gamma.contact_pressure"
           }
         },
-
-        "emit_intent": "ATTEMPT_CONTACT_TARGET"
+        "emit_intent": "ATTEMPT_CONTACT"
       }
-    ],
-
-    "intents_fifo": []
+    ]
   },
-
-  "attacker_recruitment": {
-    "params": [],
-    "trigger": "CONTACT_ACCEPTED",
+  "attacker_recruitment_router": {
+    "params": ["accepted_signal"],
     "type": "deterministic",
-    "distribution": "",
-    "conditions": {},
-    "output_success": "RECRUITMENT_ATTEMPT"
+    "output_success": "PROCEED_RECRUITMENT"
   }
 }

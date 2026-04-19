@@ -1,20 +1,18 @@
 {
-  "static_events": [
-    {
-      "signal": "PROCESS_EVENTS",
-      "agent_type": "citizen",
-      "periodicity": {
-        "type": "deterministic",
-        "interval": 1.0
-      }
-    },
-    {
-      "signal": "PROCESS_EVENTS",
-      "agent_type": "malicious",
-      "periodicity": {
-        "type": "probabilistic",
-        "distribution": "event_processing_rate"
-      }
-    }
-  ]
+  "PROCESS_EVENTS_CITIZEN": {
+    "agent_type": "citizen",
+    "periodicity": { "type": "deterministic", "interval": 1.0 }
+  },
+  "PROCESS_EVENTS_MALICIOUS": {
+    "agent_type": "malicious",
+    "periodicity": { "type": "deterministic", "interval": 1.0 }
+  },
+  "ENCOUNTER_ENVIRONMENT": {
+    "agent_type": "citizen",
+    "periodicity": { "type": "probabilistic", "distribution": "event_processing_rate" }
+  },
+  "TRY_NEW_CHANNEL": {
+    "agent_type": "malicious",
+    "periodicity": { "type": "deterministic", "interval": 10.0 }
+  }
 }

@@ -16,9 +16,14 @@ class MetricsCollector:
                            and values contain 'automaton' and 'terminal_state'
         """
         self._config = metrics_config
+        self._values: Dict[str, Any] = {}
         
         # Storage for automaton terminal state counts
         self._automaton_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    
+    def set_global_metric(self, name: str, value: Any) -> None:
+        """Set a global metric value."""
+        self._values[name] = value
     
     def record_automaton_result(self, automaton_name: str, result: str) -> None:
         """
@@ -42,20 +47,16 @@ class MetricsCollector:
         Returns:
             Dictionary with all computed metrics
         """
-        results = {}
-        
-        # Global metrics (always computed, not from config)
-        results['total_citizens'] = len(agents.get_by_type('citizen'))
-        results['total_malicious'] = len(agents.get_by_type('malicious'))
-        results['total_environments'] = environments.total_count
-        
-        # Environment counts by type
-        for env_type, env_list in environments.get_all_by_type().items():
-            results[f'total_{env_type}_environments'] = len(env_list)
+        results = dict(self._values)  # Start with manually set metrics
         
         # Agent counts by type
         for agent_type in ['citizen', 'malicious']:
             results[f'total_{agent_type}'] = len(agents.get_by_type(agent_type))
+        
+        # Environment counts by type
+        results['total_environments'] = environments.total_count
+        for env_type, env_list in environments.get_all_by_type().items():
+            results[f'total_{env_type}_environments'] = len(env_list)
         
         # Active mules (specific to citizen)
         citizens = agents.get_by_type('citizen')

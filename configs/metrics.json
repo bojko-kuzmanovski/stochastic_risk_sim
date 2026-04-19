@@ -1,18 +1,70 @@
 {
-  "contacts_accepted": {
-    "automaton": "victim_first_contact_acceptance",
-    "terminal_state": "CONTACT_ACCEPTED"
+  "contact_accepted_ig": {
+    "automaton": "victim_contact_ig",
+    "terminal_state": "CONTACT_ACCEPTED_IG"
   },
-  "contacts_rejected": {
-    "automaton": "victim_first_contact_acceptance",
+  "contact_rejected_ig": {
+    "automaton": "victim_contact_ig",
     "terminal_state": "CONTACT_REJECTED"
   },
-  "recruitments_accepted": {
-    "automaton": "victim_mule_transition",
-    "terminal_state": "ACCEPT_RECRUITMENT"
+  "recruitment_accepted_ig": {
+    "automaton": "victim_mule_ig",
+    "terminal_state": "ACCEPT_RECRUITMENT_IG"
   },
-  "recruitments_rejected": {
-    "automaton": "victim_mule_transition",
+  "recruitment_rejected_ig": {
+    "automaton": "victim_mule_ig",
     "terminal_state": "RECRUITMENT_REJECT"
+  },
+  "contact_accepted_wa": {
+    "automaton": "victim_contact_wa",
+    "terminal_state": "CONTACT_ACCEPTED_WA"
+  },
+  "recruitment_accepted_wa": {
+    "automaton": "victim_mule_wa",
+    "terminal_state": "ACCEPT_RECRUITMENT_WA"
+  },
+  "contact_accepted_job": {
+    "automaton": "victim_contact_job",
+    "terminal_state": "CONTACT_ACCEPTED_JOB"
+  },
+  "recruitment_accepted_job": {
+    "automaton": "victim_mule_job",
+    "terminal_state": "ACCEPT_RECRUITMENT_JOB"
+  },
+  "contact_accepted_romance": {
+    "automaton": "victim_contact_romance",
+    "terminal_state": "CONTACT_ACCEPTED_ROMANCE"
+  },
+  "recruitment_accepted_romance": {
+    "automaton": "victim_mule_romance",
+    "terminal_state": "ACCEPT_RECRUITMENT_ROMANCE"
+  },
+  "contact_accepted_gaming": {
+    "automaton": "victim_contact_gaming",
+    "terminal_state": "CONTACT_ACCEPTED_GAMING"
+  },
+  "recruitment_accepted_gaming": {
+    "automaton": "victim_mule_gaming",
+    "terminal_state": "ACCEPT_RECRUITMENT_GAMING"
+  },
+  "channel_selected_ig": {
+    "automaton": "attacker_select_channel",
+    "terminal_state": "CHANNEL_SELECTED_IG"
+  },
+  "channel_selected_wa": {
+    "automaton": "attacker_select_channel",
+    "terminal_state": "CHANNEL_SELECTED_WA"
+  },
+  "channel_selected_job": {
+    "automaton": "attacker_select_channel",
+    "terminal_state": "CHANNEL_SELECTED_JOB"
+  },
+  "channel_selected_romance": {
+    "automaton": "attacker_select_channel",
+    "terminal_state": "CHANNEL_SELECTED_ROMANCE"
+  },
+  "channel_selected_gaming": {
+    "automaton": "attacker_select_channel",
+    "terminal_state": "CHANNEL_SELECTED_GAMING"
   }
 }

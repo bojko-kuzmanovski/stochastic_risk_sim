@@ -41,7 +41,7 @@ def main():
     )
     
     # Run simulation with hardcoded max time
-    sim.run_simulation(max_time=10000.0)
+    sim.run_simulation(max_time=20000.0)
 
 
 if __name__ == "__main__":

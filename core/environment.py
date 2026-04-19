@@ -63,12 +63,12 @@ class Application:
 class Environment:
     """
     Environment containing agents and their relationships.
-    Internal class - should not be used directly from outside.
+    All relationships are created dynamically during simulation.
     """
     
     def __init__(self, env_id: str, config: Dict[str, Any], agents):
         """
-        Initialize an environment from configuration.
+        Initialize an empty environment from configuration.
         
         Args:
             env_id: Unique identifier for this environment
@@ -81,7 +81,7 @@ class Environment:
         self._modules = config.get('modules', [])
         self._constraints = config.get('constraints', [])
         
-        # Internal data structures
+        # All structures start empty - relationships created dynamically
         self._context: List[str] = []
         self._profiles: Dict[str, Profile] = {}
         self._follows: Dict[Tuple[str, str], Follow] = {}
@@ -91,9 +91,8 @@ class Environment:
         self._group_channels: Dict[str, GroupChannel] = {}
         self._applications: Dict[str, Application] = {}
         
-        # Validate and build environment
+        # Validate constraints only - no building
         self._validate_constraints()
-        self._build()
     
     def _validate_constraints(self) -> None:
         """Validate that all constraints are satisfied."""
@@ -117,114 +116,109 @@ class Environment:
                 if "applications" in self._modules and "profile" not in self._modules:
                     raise ValueError(f"Environment '{self._id}': applications requires profile")
     
-    def _build(self) -> None:
-        """Build the environment structure based on modules."""
-        # Profile module
-        if "profile" in self._modules:
-            self._build_profiles()
+    # Public methods for dynamic relationship creation
+    
+    def add_profile(self, agent_id: str, is_private: bool = False) -> None:
+        """Add or update a profile for an agent."""
+        if agent_id not in self._agents:
+            raise ValueError(f"Agent '{agent_id}' not found in environment")
+        self._profiles[agent_id] = Profile(agent_id=agent_id, is_private=is_private)
+    
+    def add_follow(self, from_agent_id: str, to_agent_id: str, is_approved: bool = True) -> None:
+        """Add a follow relationship."""
+        if from_agent_id not in self._agents:
+            raise ValueError(f"From agent '{from_agent_id}' not found")
+        if to_agent_id not in self._agents:
+            raise ValueError(f"To agent '{to_agent_id}' not found")
+        if from_agent_id == to_agent_id:
+            raise ValueError("Cannot follow self")
         
-        # Follow module
-        if "follow" in self._modules:
-            self._build_follows()
+        key = (from_agent_id, to_agent_id)
+        self._follows[key] = Follow(
+            from_agent_id=from_agent_id,
+            to_agent_id=to_agent_id,
+            is_approved=is_approved
+        )
+    
+    def add_connection(self, agent_a: str, agent_b: str, is_approved: bool = True) -> None:
+        """Add an undirected connection between two agents."""
+        if agent_a not in self._agents:
+            raise ValueError(f"Agent '{agent_a}' not found")
+        if agent_b not in self._agents:
+            raise ValueError(f"Agent '{agent_b}' not found")
+        if agent_a == agent_b:
+            raise ValueError("Cannot connect to self")
         
-        # Connection module
-        if "connection" in self._modules:
-            self._build_connections()
+        key = tuple(sorted([agent_a, agent_b]))
+        self._connections[key] = Connection(
+            from_agent_id=agent_a,
+            to_agent_id=agent_b,
+            is_approved=is_approved
+        )
+    
+    def add_group(self, group_id: str, members: List[Dict]) -> None:
+        """Add a group with members."""
+        if group_id in self._groups:
+            raise ValueError(f"Group '{group_id}' already exists")
         
-        # Groups module
-        if "groups" in self._modules:
-            self._build_groups()
+        group_members = []
+        for member in members:
+            member_id = member.get('member_agent_id')
+            if member_id not in self._agents:
+                raise ValueError(f"Member agent '{member_id}' not found")
+            group_members.append(GroupMember(
+                member_agent_id=member_id,
+                is_admin=member.get('is_admin', False)
+            ))
         
-        # Direct channels module
-        if "direct_channels" in self._modules:
-            self._build_direct_channels()
+        self._groups[group_id] = Group(group_id=group_id, members=group_members)
+    
+    def add_direct_channel(self, channel_id: str, members: List[str]) -> None:
+        """Add a direct channel between exactly two agents."""
+        if len(members) != 2:
+            raise ValueError(f"Direct channel '{channel_id}' must have exactly 2 members")
+        if channel_id in self._direct_channels:
+            raise ValueError(f"Direct channel '{channel_id}' already exists")
         
-        # Group channels module
-        if "group_channels" in self._modules:
-            self._build_group_channels()
+        for member_id in members:
+            if member_id not in self._agents:
+                raise ValueError(f"Member agent '{member_id}' not found")
         
-        # Applications module
-        if "applications" in self._modules:
-            self._build_applications()
+        self._direct_channels[channel_id] = DirectChannel(
+            channel_id=channel_id,
+            members=members
+        )
     
-    def _build_profiles(self) -> None:
-        """Build profiles for all agents."""
-        for agent in self._agents.get_all_agents():
-            self._profiles[agent.id] = Profile(agent_id=agent.id, is_private=False)
+    def add_group_channel(self, channel_id: str, members: List[str]) -> None:
+        """Add a group channel."""
+        if channel_id in self._group_channels:
+            raise ValueError(f"Group channel '{channel_id}' already exists")
+        
+        for member_id in members:
+            if member_id not in self._agents:
+                raise ValueError(f"Member agent '{member_id}' not found")
+        
+        self._group_channels[channel_id] = GroupChannel(
+            channel_id=channel_id,
+            members=members
+        )
     
-    def _build_follows(self) -> None:
-        """Build follow relationships (simplified - random for now)."""
-        import random
-        agents = self._agents.get_all_agents()
-        for from_agent in agents:
-            for to_agent in agents:
-                if from_agent.id != to_agent.id and random.random() < 0.1:
-                    key = (from_agent.id, to_agent.id)
-                    self._follows[key] = Follow(
-                        from_agent_id=from_agent.id,
-                        to_agent_id=to_agent.id,
-                        is_approved=True
-                    )
-    
-    def _build_connections(self) -> None:
-        """Build connection relationships (simplified - random for now)."""
-        import random
-        agents = self._agents.get_all_agents()
-        for i, agent_a in enumerate(agents):
-            for agent_b in agents[i+1:]:
-                if random.random() < 0.05:
-                    key = tuple(sorted([agent_a.id, agent_b.id]))
-                    self._connections[key] = Connection(
-                        from_agent_id=agent_a.id,
-                        to_agent_id=agent_b.id,
-                        is_approved=True
-                    )
-    
-    def _build_groups(self) -> None:
-        """Build groups (simplified - one group with all agents)."""
-        import random
-        agents = self._agents.get_all_agents()
-        if agents:
-            group_id = f"{self._id}_default_group"
-            members = []
-            for i, agent in enumerate(agents):
-                members.append(GroupMember(
-                    member_agent_id=agent.id,
-                    is_admin=(i == 0)
-                ))
-            self._groups[group_id] = Group(group_id=group_id, members=members)
-    
-    def _build_direct_channels(self) -> None:
-        """Build direct channels between connected agents."""
-        channel_counter = 0
-        for (a, b), conn in self._connections.items():
-            if conn.is_approved:
-                channel_id = f"{self._id}_direct_channel_{channel_counter}"
-                self._direct_channels[channel_id] = DirectChannel(
-                    channel_id=channel_id,
-                    members=[a, b]
-                )
-                channel_counter += 1
-    
-    def _build_group_channels(self) -> None:
-        """Build group channels for each group."""
-        for group_id, group in self._groups.items():
-            channel_id = f"{self._id}_group_channel_{group_id}"
-            member_ids = [m.member_agent_id for m in group.members]
-            self._group_channels[channel_id] = GroupChannel(
-                channel_id=channel_id,
-                members=member_ids
-            )
-    
-    def _build_applications(self) -> None:
-        """Build applications (simplified - one application per agent)."""
-        for agent in self._agents.get_all_agents():
-            self._applications[agent.id] = Application(
-                publisher_agent_id=agent.id,
+    def add_application(self, publisher_id: str, applicant_id: str) -> None:
+        """Add an applicant to a publisher's application."""
+        if publisher_id not in self._applications:
+            # Create application if it doesn't exist
+            self._applications[publisher_id] = Application(
+                publisher_agent_id=publisher_id,
                 applicants=[]
             )
+        if applicant_id not in self._agents:
+            raise ValueError(f"Applicant '{applicant_id}' not found")
+        
+        app = self._applications[publisher_id]
+        if applicant_id not in app.applicants:
+            app.applicants.append(applicant_id)
     
-    # Public methods for agent interactions
+    # Public query methods
     
     def get_profile(self, agent_id: str) -> Optional[Profile]:
         """Get profile for an agent."""
@@ -271,17 +265,6 @@ class Environment:
         """Get members of a group channel."""
         channel = self._group_channels.get(channel_id)
         return channel.members if channel else []
-    
-    def add_application(self, publisher_id: str, applicant_id: str) -> None:
-        """Add an applicant to a publisher's application."""
-        if publisher_id not in self._applications:
-            raise ValueError(f"Publisher '{publisher_id}' not found")
-        if applicant_id not in self._agents:
-            raise ValueError(f"Applicant '{applicant_id}' not found")
-        
-        app = self._applications[publisher_id]
-        if applicant_id not in app.applicants:
-            app.applicants.append(applicant_id)
     
     def get_applicants(self, publisher_id: str) -> List[str]:
         """Get all applicants for a publisher."""
