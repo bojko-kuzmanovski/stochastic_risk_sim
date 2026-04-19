@@ -28,3 +28,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Ojo: separar schemas de validación de las instancias estocásticas.
+# AgentFactory(schema).create(world.json)

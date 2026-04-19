@@ -1,0 +1,71 @@
+{
+  "instagram": {
+    "id_prefix": "instagram_",
+    "params": {},
+    "modules": ["profile", "follow", "direct_channels"],
+    "constraints": [
+      "follow requires profile",
+      "direct_channels requires follow"
+    ]
+  },
+
+  "tiktok": {
+    "id_prefix": "tiktok_",
+    "params": {},
+    "modules": ["profile", "follow", "direct_channels"],
+    "constraints": [
+      "follow requires profile",
+      "direct_channels requires follow"
+    ]
+  },
+
+  "whatsapp": {
+    "id_prefix": "whatsapp_",
+    "params": {},
+    "modules": ["profile", "connection", "direct_channels", "group_channels"],
+    "constraints": [
+      "connection requires profile",
+      "direct_channels requires connection",
+      "group_channels requires connection"
+    ]
+  },
+
+  "telegram": {
+    "id_prefix": "telegram_",
+    "params": {},
+    "modules": ["profile", "connection", "direct_channels", "group_channels"],
+    "constraints": [
+      "connection requires profile"
+    ]
+  },
+
+  "job": {
+    "id_prefix": "job_",
+    "params": {},
+    "modules": ["profile", "applications"],
+    "constraints": [
+      "applications requires profile"
+    ]
+  },
+
+  "romance": {
+    "id_prefix": "romance_",
+    "params": {},
+    "modules": ["profile", "connection", "direct_channels"],
+    "constraints": [
+      "connection requires profile",
+      "direct_channels requires connection"
+    ]
+  },
+
+  "gaming": {
+    "id_prefix": "gaming_",
+    "params": {},
+    "modules": ["profile", "connection", "groups", "direct_channels", "group_channels"],
+    "constraints": [
+      "connection requires profile",
+      "direct_channels requires connection",
+      "group_channels requires connection"
+    ]
+  }
+}
