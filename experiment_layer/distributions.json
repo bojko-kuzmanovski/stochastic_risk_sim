@@ -18,21 +18,13 @@
     "family": "poisson",
     "params": { "lambda": 50 }
   },
-  "ig_tiktok_first_contact_lte_30": {
+  "ig_tiktok_first_contact": {
     "family": "beta",
-    "params": { "alpha": 9, "beta": 11 }
+    "params": { "alpha": 2, "beta": 11 }
   },
-  "ig_tiktok_first_contact_gt_30": {
+  "ig_tiktok_mule_transition": {
     "family": "beta",
-    "params": { "alpha": 3, "beta": 18 }
-  },
-  "ig_tiktok_mule_transition_lte_30": {
-    "family": "beta",
-    "params": { "alpha": 6, "beta": 44 }
-  },
-  "ig_tiktok_mule_transition_gt_30": {
-    "family": "beta",
-    "params": { "alpha": 2, "beta": 23 }
+    "params": { "alpha": 1, "beta": 44 }
   },
   "wa_telegram_first_contact": {
     "family": "beta",

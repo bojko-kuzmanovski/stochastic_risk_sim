@@ -25,7 +25,6 @@ class GenericAutomaton(Automaton):
         self.trigger = config.get('trigger')
         self.output_success = config.get('output_success')
         self.output_failure = config.get('output_failure')
-        self.distribution_selectors = config.get('distribution_selector', [])
         
         # For automata with state machines
         self.transitions = config.get('transitions', [])
@@ -36,15 +35,12 @@ class GenericAutomaton(Automaton):
     def step(self, local_view: Dict[str, Any]) -> str:
         """Execute one step of the automaton based on its type."""
         
-        # State machine style (has transitions)
         if self.transitions:
             return self._step_state_machine(local_view)
         
-        # Probabilistic style (has distribution_selector)
-        elif self.distribution_selectors:
+        elif self.config.get('distribution'):
             return self._step_probabilistic(local_view)
         
-        # Deterministic style
         else:
             return self._step_deterministic(local_view)
 
@@ -73,10 +69,34 @@ class GenericAutomaton(Automaton):
     def _step_probabilistic(self, local_view: Dict[str, Any]) -> str:
         """Handle probabilistic style automaton."""
         context = self._build_context(local_view)
-        probability = self._get_probability(context)
         
+        # Get distribution name
+        dist_name = self.config.get('distribution')
+        if not dist_name:
+            return self.output_failure
+        
+        # Calculate bound_params from refs using context
+        refs = self.config.get('refs', {})
+        bound_params = {}
+        for param_name, formula in refs.items():
+            # Evaluate formula with context (age, etc.)
+            bound_params[param_name] = self._evaluate(formula, context)
+        
+        # Get distribution config and sample
+        dist_config = self.sampler.get_distribution(dist_name)
+        if not dist_config:
+            return self.output_failure
+        
+        probability = self.sampler.sample(dist_config, bound_params)
         success = random.random() < probability
+        
         return self.output_success if success else self.output_failure
+
+    def _evaluate(self, formula: str, context: Dict[str, Any]) -> float:
+        """Evaluate a formula string with given context."""
+        import math
+        allowed = {"__builtins__": {k: getattr(math, k) for k in dir(math) if not k.startswith('_')}}
+        return float(eval(formula, allowed, context))
 
     def _step_deterministic(self, local_view: Dict[str, Any]) -> str:
         """Handle deterministic style automaton."""
@@ -89,29 +109,6 @@ class GenericAutomaton(Automaton):
             if param_name in local_view:
                 context[param_name] = local_view[param_name]
         return context
-
-    def _get_probability(self, context: Dict[str, Any]) -> float:
-        """Get probability from distribution selector based on context."""
-        for selector in self.distribution_selectors:
-            when = selector.get('when', {})
-            match = True
-            
-            for key, condition in when.items():
-                if 'lte' in condition:
-                    limit = condition['lte']
-                    if context.get(key, 0) > limit:
-                        match = False
-                        break
-            
-            if match:
-                dist_name = selector.get('distribution')
-                if dist_name:
-                    dist_config = self.sampler.get_distribution(dist_name)
-                    if dist_config:
-                        return self.sampler.sample(dist_config)
-        
-        return 0.0
-
 
 def create_automaton(automaton_name: str, automata_config: Dict[str, Any], sampler) -> Automaton:
     """

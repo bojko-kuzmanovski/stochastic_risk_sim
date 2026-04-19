@@ -3,16 +3,11 @@
     "params": ["age"],
     "trigger": "CONTACT_ATTEMPT",
     "type": "probabilistic",
-    "distribution_selector": [
-      {
-        "when": { "age": { "lte": 30 } },
-        "distribution": "ig_tiktok_first_contact_lte_30"
-      },
-      {
-        "when": { "age": { "gt": 30 } },
-        "distribution": "ig_tiktok_first_contact_gt_30"
-      }
-    ],
+    "distribution": "ig_tiktok_first_contact",
+    "refs": {
+      "alpha": "6 - 0.05 * age",
+      "beta": "10 + 0.1 * age"
+    },
     "output_success": "CONTACT_ACCEPTED",
     "output_failure": "CONTACT_REJECTED"
   },
@@ -21,16 +16,11 @@
     "params": ["age"],
     "trigger": "RECRUITMENT_ATTEMPT",
     "type": "probabilistic",
-    "distribution_selector": [
-      {
-        "when": { "age": { "lte": 30 } },
-        "distribution": "ig_tiktok_mule_transition_lte_30"
-      },
-      {
-        "when": { "age": { "gt": 30 } },
-        "distribution": "ig_tiktok_mule_transition_gt_30"
-      }
-    ],
+    "distribution": "ig_tiktok_mule_transition",
+    "refs": {
+      "alpha": "3 - 0.03 * age",
+      "beta": "40 + 0.3 * age"
+    },
     "output_success": "ACCEPT_RECRUITMENT",
     "output_failure": "RECRUITMENT_REJECT"
   },

@@ -64,11 +64,19 @@ class Agent(ABC):
 class GenericAgent(Agent):
     """
     Generic agent that can represent any agent type from agents.json.
-    No hardcoded citizen or malicious classes.
     """
 
-    def __init__(self, agent_id: str, agent_type: str, automaton, attributes: Dict):
+    def __init__(self, agent_id: str, agent_type: str, automaton, attributes: Dict, automaton_names: List[str] = None):
         super().__init__(agent_id, agent_type, automaton, attributes)
+        self.automaton_names = automaton_names or []
+        self._automata_cache = {}  # Cache for additional automata
+
+    def get_automaton(self, name: str, automata_config: Dict, sampler):
+        """Get or create an automaton by name."""
+        if name not in self._automata_cache:
+            from multi_agent_system.automaton import create_automaton
+            self._automata_cache[name] = create_automaton(name, automata_config, sampler)
+        return self._automata_cache[name]
 
     def propose(self, intention: Any, world_state: Any) -> Dict[str, Any]:
         """Generic intention proposal based on automaton output."""
@@ -137,21 +145,16 @@ def create_agent(agent_type: str, agent_id: str, agents_config: Dict[str, Any],
     if agent_config is None:
         raise ValueError(f"Agent type '{agent_type}' not found in agents.json")
     
-    # Get automaton names from agent config
     automata_names = agent_config.get('automa', [])
     if not automata_names:
         raise ValueError(f"No automaton specified for agent type '{agent_type}'")
     
-    # For citizens, we need to handle multiple automata
-    # For now, just take the first one (contact acceptance)
-    # The recruitment transition will be handled separately
+    # Create first automaton
     automaton_name = automata_names[0]
     automaton = create_automaton(automaton_name, automata_config, sampler)
     
     # Generate attributes
     attributes = generate_agent_attributes(agent_config, sampler, agent_type)
     
-    # Store all automaton names for later use
-    attributes['automata_names'] = automata_names
-    
-    return GenericAgent(agent_id, agent_type, automaton, attributes)
+    # Create agent with automaton names
+    return GenericAgent(agent_id, agent_type, automaton, attributes, automata_names)

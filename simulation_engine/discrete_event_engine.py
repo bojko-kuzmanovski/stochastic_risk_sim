@@ -78,67 +78,65 @@ class DiscreteEventSimulator:
         """Get a random citizen from the population."""
         citizens = [c for c in self.population.values() if c.type == 'citizen']
         return random.choice(citizens) if citizens else None
-    
+
     def handle_contact_attempt(self, event: Event):
-      """Handle a contact attempt event."""
-      malicious = self.population.get(event.agent_id)
-      citizen = self.population.get(event.target_id)
-      
-      if not malicious or not citizen:
-          return
-      
-      # Schedule next contact for this malicious agent
-      next_citizen = self.get_random_citizen()
-      if next_citizen:
-          dist_config = self.sampler.get_distribution('ig_tiktok_daily_contact')
-          delay = self.sampler.sample(dist_config) if dist_config else 1.0
-          self.schedule_contact_attempt(malicious.id, next_citizen.id, delay)
-      
-      # Process current contact - CITIZEN decides
-      if malicious.state == 'idle' and citizen.state == 'idle':
-          local_view = {'age': citizen.get_attribute('age', 0)}
-          intention = citizen.step(local_view)  # ← CHANGE HERE: citizen, not malicious
-          
-          if intention == 'CONTACT_ACCEPTED':
-              citizen.update_state('contacted')
-              malicious.update_state('recruiting')
-              citizen.attributes['last_contact_time'] = self.current_time
-              self.schedule_recruitment_attempt(malicious.id, citizen.id, 1.0)
-    
+        """Handle a contact attempt event."""
+        malicious = self.population.get(event.agent_id)
+        citizen = self.population.get(event.target_id)
+        
+        if not malicious or not citizen:
+            return
+        
+        # Schedule next contact for this malicious agent
+        next_citizen = self.get_random_citizen()
+        if next_citizen:
+            dist_config = self.sampler.get_distribution('ig_tiktok_daily_contact')
+            delay = self.sampler.sample(dist_config) if dist_config else 1.0
+            self.schedule_contact_attempt(malicious.id, next_citizen.id, delay)
+        
+        # Process current contact - CITIZEN decides
+        if malicious.state == 'idle' and citizen.state == 'idle':
+            local_view = {'age': citizen.get_attribute('age', 0)}
+            intention = citizen.step(local_view)
+            
+            if intention == 'CONTACT_ACCEPTED':
+                citizen.update_state('contacted')
+                malicious.update_state('recruiting')
+                citizen.attributes['last_contact_time'] = self.current_time
+                self.schedule_recruitment_attempt(malicious.id, citizen.id, 1.0)
+
     def handle_recruitment_attempt(self, event: Event):
-      """Handle a recruitment attempt event."""
-      malicious = self.population.get(event.agent_id)
-      citizen = self.population.get(event.target_id)
-      
-      if not malicious or not citizen:
-          return
-      
-      if malicious.state == 'recruiting' and citizen.state == 'contacted':
-          local_view = {'age': citizen.get_attribute('age', 0)}
-          
-          # Get the recruitment automaton (second one)
-          automata_names = citizen.get_attribute('automata_names', [])
-          if len(automata_names) >= 2:
-              # Create or get the recruitment automaton
-              recruitment_automaton = create_automaton(automata_names[1], self.automata_config, self.sampler)
-              intention = recruitment_automaton.step(local_view)
-          else:
-              # Fallback to the same automaton
-              intention = citizen.step(local_view)
-          
-          if intention == 'ACCEPT_RECRUITMENT':
-              citizen.update_state('active')
-              citizen.attributes['mule_count'] = citizen.attributes.get('mule_count', 0) + 1
-              malicious.update_state('idle')
-              
-              self.transactions.append({
-                  'time': self.current_time,
-                  'malicious_id': malicious.id,
-                  'citizen_id': citizen.id,
-                  'amount': citizen.get_attribute('income', 0) * 0.1
-              })
-          else:
-              malicious.update_state('idle')
+        """Handle a recruitment attempt event."""
+        malicious = self.population.get(event.agent_id)
+        citizen = self.population.get(event.target_id)
+        
+        if not malicious or not citizen:
+            return
+        
+        if malicious.state == 'recruiting' and citizen.state == 'contacted':
+            local_view = {'age': citizen.get_attribute('age', 0)}
+            
+            # Get the recruitment automaton (second one) from cache
+            automata_names = citizen.automaton_names
+            if len(automata_names) >= 2:
+                recruitment_automaton = citizen.get_automaton(automata_names[1], self.automata_config, self.sampler)
+                intention = recruitment_automaton.step(local_view)
+            else:
+                intention = citizen.step(local_view)
+            
+            if intention == 'ACCEPT_RECRUITMENT':
+                citizen.update_state('active')
+                citizen.attributes['mule_count'] = citizen.attributes.get('mule_count', 0) + 1
+                malicious.update_state('idle')
+                
+                self.transactions.append({
+                    'time': self.current_time,
+                    'malicious_id': malicious.id,
+                    'citizen_id': citizen.id,
+                    'amount': citizen.get_attribute('income', 0) * 0.1
+                })
+            else:
+                malicious.update_state('idle')
 
     def initialize_events(self):
         """Schedule initial contact attempts - one per malicious agent."""
