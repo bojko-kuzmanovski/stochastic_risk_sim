@@ -1,0 +1,75 @@
+{
+  "victim_first_contact_acceptance": {
+    "params": ["age"],
+    "trigger": "CONTACT_ATTEMPT",
+    "type": "probabilistic",
+    "distribution_selector": [
+      {
+        "when": { "age": { "lte": 30 } },
+        "distribution": "ig_tiktok_first_contact_lte_30"
+      },
+      {
+        "when": { "age": { "gt": 30 } },
+        "distribution": "ig_tiktok_first_contact_gt_30"
+      }
+    ],
+    "output_success": "CONTACT_ACCEPTED",
+    "output_failure": "CONTACT_REJECTED"
+  },
+
+  "victim_mule_transition": {
+    "params": ["age"],
+    "trigger": "RECRUITMENT_ATTEMPT",
+    "type": "probabilistic",
+    "distribution_selector": [
+      {
+        "when": { "age": { "lte": 30 } },
+        "distribution": "ig_tiktok_mule_transition_lte_30"
+      },
+      {
+        "when": { "age": { "gt": 30 } },
+        "distribution": "ig_tiktok_mule_transition_gt_30"
+      }
+    ],
+    "output_success": "ACCEPT_RECRUITMENT",
+    "output_failure": "RECRUITMENT_REJECT"
+  },
+
+  "attacker_mule_fishing": {
+    "params": {},
+    "gamma": {},
+
+    "states": {
+      "initial": "IDLE",
+      "final": ["CONTACT_ATTEMPT"]
+    },
+
+    "transitions": [
+      {
+        "from": "IDLE",
+        "to": "CONTACT_ATTEMPT",
+
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "ig_tiktok_daily_contact",
+          "inputs": {
+            "lambda": "gamma.daily_contact_pressure"
+          }
+        },
+
+        "emit_intent": "ATTEMPT_CONTACT_TARGET"
+      }
+    ],
+
+    "intents_fifo": []
+  },
+
+  "attacker_recruitment": {
+    "params": [],
+    "trigger": "CONTACT_ACCEPTED",
+    "type": "deterministic",
+    "distribution": "",
+    "conditions": {},
+    "output_success": "RECRUITMENT_ATTEMPT"
+  }
+}

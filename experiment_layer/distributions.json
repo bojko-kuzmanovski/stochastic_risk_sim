@@ -1,0 +1,233 @@
+{
+  "age": {
+    "family": "gamma",
+    "params": {
+      "shape": {
+        "value": 5.0,
+        "ref": null
+      },
+      "scale": {
+        "value": 5.0,
+        "ref": null
+      }
+    },
+    "truncation": {
+      "min": 18,
+      "max": 80
+    }
+  },
+
+  "education": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 2.0,
+        "ref": null
+      },
+      "beta": {
+        "value": 2.0,
+        "ref": null
+      }
+    },
+    "truncation": {
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+
+  "income": {
+    "family": "lognormal",
+    "params": {
+      "mean": {
+        "value": 7.0,
+        "ref": null
+      },
+      "sigma": {
+        "value": 1.0,
+        "ref": null
+      }
+    },
+    "truncation": {
+      "min": 9582.47,
+      "max": 17000000
+    }
+  },
+
+  "ig_tiktok_daily_contact": {
+    "family": "poisson",
+    "params": {
+      "lambda": {
+        "value": 50,
+        "ref": null
+      }
+    }
+  },
+
+  "ig_tiktok_first_contact_lte_30": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 9,
+        "ref": null
+      },
+      "beta": {
+        "value": 11,
+        "ref": null
+      }
+    }
+  },
+
+  "ig_tiktok_first_contact_gt_30": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 3,
+        "ref": null
+      },
+      "beta": {
+        "value": 18,
+        "ref": null
+      }
+    }
+  },
+
+  "ig_tiktok_mule_transition_lte_30": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 6,
+        "ref": null
+      },
+      "beta": {
+        "value": 44,
+        "ref": null
+      }
+    }
+  },
+
+  "ig_tiktok_mule_transition_gt_30": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 2,
+        "ref": null
+      },
+      "beta": {
+        "value": 23,
+        "ref": null
+      }
+    }
+  },
+
+  "wa_telegram_first_contact": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 25,
+        "ref": null
+      },
+      "beta": {
+        "value": 75,
+        "ref": null
+      }
+    }
+  },
+
+  "wa_telegram_mule_transition": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 45,
+        "ref": null
+      },
+      "beta": {
+        "value": 55,
+        "ref": null
+      }
+    }
+  },
+
+  "job_fake_entry_first_contact": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 6,
+        "ref": null
+      },
+      "beta": {
+        "value": 44,
+        "ref": null
+      }
+    }
+  },
+
+  "job_fake_mule_transition": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 65,
+        "ref": null
+      },
+      "beta": {
+        "value": 35,
+        "ref": null
+      }
+    }
+  },
+
+  "romance_entry_first_contact": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 3,
+        "ref": null
+      },
+      "beta": {
+        "value": 47,
+        "ref": null
+      }
+    }
+  },
+
+  "romance_mule_transition": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 85,
+        "ref": null
+      },
+      "beta": {
+        "value": 15,
+        "ref": null
+      }
+    }
+  },
+
+  "gaming_entry_first_contact": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 18,
+        "ref": null
+      },
+      "beta": {
+        "value": 82,
+        "ref": null
+      }
+    }
+  },
+
+  "gaming_mule_transition": {
+    "family": "beta",
+    "params": {
+      "alpha": {
+        "value": 25,
+        "ref": null
+      },
+      "beta": {
+        "value": 75,
+        "ref": null
+      }
+    }
+  }
+}

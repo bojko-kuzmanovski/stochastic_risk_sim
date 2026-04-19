@@ -1,0 +1,48 @@
+{
+  "citizen": {
+    "id_prefix": "citizen_",
+
+    "params": {
+      "age": {
+        "type": "probabilistic",
+        "distribution": "age"
+      },
+
+      "education": {
+        "type": "probabilistic",
+        "distribution": "education",
+        "transform": "binary_threshold",
+        "threshold": 0.5,
+        "refs": {
+          "alpha": "2.0 + 0.05 * age",
+          "beta": "2.0"
+        }
+      },
+
+      "income": {
+        "type": "probabilistic",
+        "distribution": "income",
+        "refs": {
+          "mean": "7.0 + 0.8 * education + 0.02 * age",
+          "sigma": "1.0"
+        }
+      }
+    },
+
+    "automa": [
+      "victim_first_contact_acceptance",
+      "victim_mule_transition"
+    ]
+  },
+
+  "malicious": {
+    "id_prefix": "malicious_",
+
+    "params": {},
+
+    "automa": [
+      "attacker_mule_fishing",
+      "attacker_recruitment"
+    ]
+  }
+}

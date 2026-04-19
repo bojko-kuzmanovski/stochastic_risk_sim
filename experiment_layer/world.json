@@ -1,0 +1,7 @@
+{
+  "agents": {
+    "citizen": 10000,
+    "malicious": 10
+  },
+  "max_time": 10000.0
+}
