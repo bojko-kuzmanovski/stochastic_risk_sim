@@ -5,7 +5,7 @@ import random
 import numpy as np
 
 # Import from automaton module
-from multi_agent_system.automaton import create_automaton
+from core.automaton import create_automaton
 
 class Agent(ABC):
     """Base abstraction for all agents."""
@@ -74,7 +74,7 @@ class GenericAgent(Agent):
     def get_automaton(self, name: str, automata_config: Dict, sampler):
         """Get or create an automaton by name."""
         if name not in self._automata_cache:
-            from multi_agent_system.automaton import create_automaton
+            from core.automaton import create_automaton
             self._automata_cache[name] = create_automaton(name, automata_config, sampler)
         return self._automata_cache[name]
 

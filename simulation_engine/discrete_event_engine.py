@@ -9,9 +9,9 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from stochastic.sample_distribution import SampleDistribution
-from multi_agent_system.agent import create_agent, GenericAgent
-from multi_agent_system.automaton import create_automaton
+from core.distribution import SampleDistribution
+from core.agent import create_agent, GenericAgent
+from core.automaton import create_automaton
 
 @dataclass(order=True)
 class Event:

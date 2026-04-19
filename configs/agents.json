@@ -25,22 +25,12 @@
           "sigma": "1.0"
         }
       }
-    },
-
-    "automa": [
-      "victim_first_contact_acceptance",
-      "victim_mule_transition"
-    ]
+    }
   },
 
   "malicious": {
     "id_prefix": "malicious_",
 
-    "params": {},
-
-    "automa": [
-      "attacker_mule_fishing",
-      "attacker_recruitment"
-    ]
+    "params": {}
   }
 }
