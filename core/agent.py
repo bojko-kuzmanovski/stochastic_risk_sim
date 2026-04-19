@@ -1,9 +1,8 @@
 from typing import Dict, Any, Optional, List
-import random
-import numpy as np
 import heapq
 import time
 
+from core.event import Event
 
 class Agent:
     """
@@ -61,21 +60,33 @@ class Agent:
         def __repr__(self) -> str:
             return f"EventQueue(size={len(self._queue)})"
     
-    def __init__(self, agent_type: str, config: Dict[str, Any], distributions, index: int):
+    def __init__(self, agent_type: str, config: Dict[str, Any], distributions, automata, index: int):
+        """
+        Initialize an agent from configuration.
+        
+        Args:
+            agent_type: Type of agent (e.g., 'citizen', 'malicious')
+            config: Agent configuration dict
+            distributions: Distributions instance for sampling
+            automata: Automata instance for event processing
+            index: Unique index for this agent instance
+        """
         self._type = agent_type
         self._config = config
         self._distributions = distributions
+        self._automata = automata
         self._id = f"{config['id_prefix']}{index+1:06d}"
         self._attributes: Dict[str, Any] = {}
         self._state: str = 'idle'
         self._event_queue = self.EventQueue()
         
+        self._validate_distributions()
         self._generate_attributes()
     
-    def _validate_distributions(self):
+    def _validate_distributions(self) -> None:
         """Validate that distributions is a Distributions instance."""
         if not hasattr(self._distributions, 'sample'):
-            raise TypeError(f"distributions must have a 'sample' method")
+            raise TypeError(f"distributions must have a 'sample' method. Got {type(self._distributions)}")
     
     def _validate_param_config(self, param_name: str, param_config: Dict) -> None:
         """Validate a single parameter configuration."""
@@ -121,7 +132,7 @@ class Agent:
         else:
             raise ValueError(f"Unknown type '{param_type}' for parameter '{param_name}'")
     
-    def _generate_attributes(self):
+    def _generate_attributes(self) -> None:
         """Generate all attributes for this agent."""
         params_config = self._config.get('params', {})
         
@@ -167,8 +178,11 @@ class Agent:
             # Pop the event (remove from queue)
             event = self._event_queue.pop()
             
-            # TODO: Execute the automaton corresponding to event.signal
-            # result = self._execute_automaton(event.signal, event.to_context())
+            # Execute the automaton corresponding to event.signal
+            result = self._automata.step(event.signal, event.to_context())
+            
+            # TODO: Handle result - could generate new events or update state
+            # For now, just increment processed counter
             
             processed += 1
         
@@ -231,22 +245,24 @@ class Agents:
     Factory that creates all agents from configuration.
     """
     
-    def __init__(self, agents_config: Dict[str, Any], distributions):
+    def __init__(self, agents_config: Dict[str, Any], distributions, automata):
         """
         Initialize and create all agents from configuration.
         
         Args:
             agents_config: Full agents.json dict with quantity for each agent type
             distributions: Distributions instance for sampling
+            automata: Automata instance for event processing
         """
         self._config = agents_config
         self._distributions = distributions
+        self._automata = automata
         self._agents: Dict[str, Agent] = {}  # id -> Agent
         self._by_type: Dict[str, List[Agent]] = {}  # type -> List[Agent]
         
         self._create_all_agents()
     
-    def _create_all_agents(self):
+    def _create_all_agents(self) -> None:
         """Create all agents based on configuration."""
         for agent_type, config in self._config.items():
             quantity = config.get('quantity')
@@ -258,7 +274,7 @@ class Agents:
             
             agents_list = []
             for i in range(quantity):
-                agent = Agent(agent_type, config, self._distributions, i)
+                agent = Agent(agent_type, config, self._distributions, self._automata, i)
                 agents_list.append(agent)
                 self._agents[agent.id] = agent
             
@@ -275,6 +291,10 @@ class Agents:
     def get_all_ids(self) -> List[str]:
         """Get all agent IDs."""
         return list(self._agents.keys())
+    
+    def get_all_agents(self) -> List[Agent]:
+        """Get all agents as a list."""
+        return list(self._agents.values())
     
     @property
     def total_count(self) -> int:
