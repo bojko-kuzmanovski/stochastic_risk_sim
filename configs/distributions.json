@@ -1,90 +1,123 @@
-{
-  "event_processing_rate": {
+[
+  {
+    "distribution_name": "event_processing_rate",
     "family": "exponential",
+    "output_type": "float",
     "params": { "rate": 0.2 },
     "truncation": { "min": 1.5, "max": 10.0 }
   },
-  "event_processing_batch_size": {
+  {
+    "distribution_name": "event_processing_batch_size",
     "family": "poisson",
+    "output_type": "int",
     "params": { "lambda": 7 },
     "truncation": { "min": 3, "max": 20 }
   },
-  "age": {
+  {
+    "distribution_name": "age",
     "family": "gamma",
+    "output_type": "float",
     "params": { "shape": 5.0, "scale": 5.0 },
     "truncation": { "min": 18, "max": 80 }
   },
-  "education": {
+  {
+    "distribution_name": "education",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 2.0, "beta": 2.0 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "income": {
+  {
+    "distribution_name": "income",
     "family": "lognormal",
+    "output_type": "float",
     "params": { "mean": 7.0, "sigma": 1.0 },
     "truncation": { "min": 9582.47, "max": 17000000 }
   },
-  "beta_contact_ig": {
+  {
+    "distribution_name": "beta_contact_ig",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 9, "beta": 11 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_mule_ig": {
+  {
+    "distribution_name": "beta_mule_ig",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 6, "beta": 44 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_contact_wa": {
+  {
+    "distribution_name": "beta_contact_wa",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 25, "beta": 75 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_mule_wa": {
+  {
+    "distribution_name": "beta_mule_wa",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 45, "beta": 55 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_contact_job": {
+  {
+    "distribution_name": "beta_contact_job",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 6, "beta": 44 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_mule_job": {
+  {
+    "distribution_name": "beta_mule_job",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 65, "beta": 35 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_contact_romance": {
+  {
+    "distribution_name": "beta_contact_romance",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 3, "beta": 47 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_mule_romance": {
+  {
+    "distribution_name": "beta_mule_romance",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 85, "beta": 15 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_contact_gaming": {
+  {
+    "distribution_name": "beta_contact_gaming",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 18, "beta": 82 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "beta_mule_gaming": {
+  {
+    "distribution_name": "beta_mule_gaming",
     "family": "beta",
+    "output_type": "float",
     "params": { "alpha": 25, "beta": 75 },
     "truncation": { "min": 0.0, "max": 1.0 }
   },
-  "poisson_contact_rate": {
+  {
+    "distribution_name": "poisson_contact_rate",
     "family": "poisson",
+    "output_type": "int",
     "params": { "lambda": 50 },
     "truncation": { "min": 0, "max": 200 }
   },
-  "channel_selection": {
+  {
+    "distribution_name": "channel_selection",
     "family": "categorical",
+    "output_type": "string",
     "params": {
       "probabilities": [0.25, 0.25, 0.20, 0.15, 0.15]
     },
-    "labels": ["ig", "wa", "job", "romance", "gaming"],
-    "truncation": { "min": 0, "max": 4 }
+    "labels": ["ig", "wa", "job", "romance", "gaming"]
   }
-}
+]

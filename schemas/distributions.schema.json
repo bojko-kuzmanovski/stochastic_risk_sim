@@ -3,9 +3,7 @@
   "title": "DistributionsFactory",
   "type": "array",
   "items": {
-    "allOf": [
-      { "$ref": "#/definitions/distribution_entry" }
-    ]
+    "$ref": "#/definitions/distribution_entry"
   },
   "definitions": {
     "truncation_bounds": {
@@ -14,11 +12,13 @@
       "properties": {
         "min": { "type": "number" },
         "max": { "type": "number" }
-      }
+      },
+      "additionalProperties": false
     },
     "distribution_entry": {
       "type": "object",
-      "required": ["distribution_name", "family", "params"],
+      "required": ["distribution_name", "family", "params", "output_type"],
+      "additionalProperties": false,
       "properties": {
         "distribution_name": { "type": "string" },
         "family": {
@@ -31,7 +31,13 @@
             "categorical"
           ]
         },
+        "output_type": { "enum": ["int", "float", "string"] },
         "params": { "type": "object" },
+        "labels": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 0
+        },
         "truncation": { "$ref": "#/definitions/truncation_bounds" }
       },
       "allOf": [
@@ -42,7 +48,12 @@
               "params": {
                 "type": "object",
                 "required": ["rate"],
-                "properties": { "rate": { "type": "number" } },
+                "properties": {
+                  "rate": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
                 "additionalProperties": false
               }
             }
@@ -55,7 +66,12 @@
               "params": {
                 "type": "object",
                 "required": ["lambda"],
-                "properties": { "lambda": { "type": "number" } },
+                "properties": {
+                  "lambda": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
                 "additionalProperties": false
               }
             }
@@ -69,8 +85,14 @@
                 "type": "object",
                 "required": ["shape", "scale"],
                 "properties": {
-                  "shape": { "type": "number" },
-                  "scale": { "type": "number" }
+                  "shape": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "scale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
                 },
                 "additionalProperties": false
               }
@@ -85,8 +107,14 @@
                 "type": "object",
                 "required": ["alpha", "beta"],
                 "properties": {
-                  "alpha": { "type": "number" },
-                  "beta": { "type": "number" }
+                  "alpha": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "beta": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
                 },
                 "additionalProperties": false
               }
@@ -102,7 +130,10 @@
                 "required": ["mean", "sigma"],
                 "properties": {
                   "mean": { "type": "number" },
-                  "sigma": { "type": "number" }
+                  "sigma": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
                 },
                 "additionalProperties": false
               }
@@ -114,18 +145,16 @@
           "then": {
             "required": ["labels"],
             "properties": {
-              "labels": {
-                "type": "array",
-                "items": { "type": "string" },
-                "minItems": 1
-              },
               "params": {
                 "type": "object",
                 "required": ["probabilities"],
                 "properties": {
                   "probabilities": {
                     "type": "array",
-                    "items": { "type": "number" },
+                    "items": {
+                      "type": "number",
+                      "minimum": 0
+                    },
                     "minItems": 1
                   }
                 },

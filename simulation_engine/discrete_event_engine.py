@@ -10,11 +10,11 @@ from tqdm import tqdm
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.distribution import Distributions
-from core.agent import Agents
-from core.automaton import Automata
-from core.environment import Environments
-from core.event import Event
+from core.distributions import Distributions
+from core.agents import Agents
+from core.automata import Automata
+from core.environments import Environments
+from core.events import Event
 from simulation_engine.metrics import MetricsCollector
 from simulation_engine.event_scheduler import EventScheduler
 
@@ -27,7 +27,7 @@ class SimEvent:
 
 class DiscreteEventSimulator:
     def __init__(self, agents_config, automata_config, distributions_config, 
-                 environments_config, events_config, metrics_config):
+                 environments_config, events_config, metrics_config = {}):
         self.agents_config = agents_config
         self.automata_config = automata_config
         self.distributions_config = distributions_config
@@ -36,6 +36,7 @@ class DiscreteEventSimulator:
         self.metrics_config = metrics_config
         
         self.metrics_collector = MetricsCollector(metrics_config)
+
         self.distributions = Distributions(distributions_config)
         self.automata = Automata(automata_config, self.distributions)
         self.agents = Agents(agents_config, self.distributions, self.automata, self.metrics_collector)

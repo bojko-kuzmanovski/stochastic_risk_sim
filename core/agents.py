@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional, List
 import heapq
 import time
 
-from core.event import Event
+from core.events import Event
 
 
 class Agent:

@@ -27,17 +27,13 @@ def main():
     with open(script_dir / 'events.json', 'r') as f:
         events_config = json.load(f)
     
-    with open(script_dir / 'metrics.json', 'r') as f:
-        metrics_config = json.load(f)
-    
     # Create and run simulator
     sim = DiscreteEventSimulator(
         agents_config=agents_config,
         automata_config=automata_config,
         distributions_config=distributions_config,
         environments_config=environments_config,
-        events_config=events_config,
-        metrics_config=metrics_config
+        events_config=events_config
     )
     
     # Run simulation with hardcoded max time
