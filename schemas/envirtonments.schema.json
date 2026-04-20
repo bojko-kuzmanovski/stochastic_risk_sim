@@ -12,12 +12,6 @@
         "type": "object",
         "additionalProperties": { "$ref": "#/definitions/param_definition" }
       },
-      "context": {
-        "type": "object",
-        "properties": {
-          "agents": { "type": "array", "items": { "type": "string" } }
-        }
-      },
       "profile": {
         "type": "object",
         "properties": {
@@ -58,13 +52,41 @@
           }
         }
       },
-      "groups": {
+      "direct_channels": {
         "type": "array",
         "items": {
           "type": "object",
-          "required": ["group_id", "agents"],
+          "required": ["agents_id"],
           "properties": {
-            "group_id": { "type": "string" },
+            "agents_id": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "type": "string" }
+            },
+            "interactions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["from_agent_id", "to_agent_id", "timestamp", "was_replied"],
+                "properties": {
+                  "from_agent_id": { "type": "string" },
+                  "to_agent_id": { "type": "string" },
+                  "timestamp": { "type": "number" },
+                  "was_replied": { "type": "boolean", "default": false }
+                }
+              }
+            }
+          }
+        }
+      },
+      "group_channels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["channel_id", "agents"],
+          "properties": {
+            "channel_id": { "type": "string" },
             "agents": {
               "type": "array",
               "minItems": 1,
@@ -76,37 +98,25 @@
                   "is_admin": { "type": "boolean" }
                 }
               }
-            }
-          }
-        }
-      },
-      "direct_channels": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["channel_id", "agents_id"],
-          "properties": {
-            "channel_id": { "type": "string" },
-            "agents_id": {
+            },
+            "interactions": {
               "type": "array",
-              "minItems": 2,
-              "maxItems": 2,
-              "items": { "type": "string" }
-            }
-          }
-        }
-      },
-      "group_channels": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["channel_id", "agents_id"],
-          "properties": {
-            "channel_id": { "type": "string" },
-            "agents_id": {
-              "type": "array",
-              "minItems": 1,
-              "items": { "type": "string" }
+              "items": {
+                "type": "object",
+                "required": ["from_agent_id", "timestamp"],
+                "properties": {
+                  "from_agent_id": { "type": "string" },
+                  "timestamp": { "type": "number" },
+                  "seen_by": { 
+                    "type": "array", 
+                    "items": { "type": "string" }
+                  },
+                  "reacted_by": { 
+                    "type": "array", 
+                    "items": { "type": "string" }
+                  }
+                }
+              }
             }
           }
         }

@@ -4,9 +4,8 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["event_name", "event_category", "signal"],
+    "required": ["event_category", "signal"],
     "properties": {
-      "event_name": { "type": "string" },
       "event_category": { "enum": ["static", "dynamic"] },
       "signal": { "type": "string" }
     },   
@@ -21,17 +20,9 @@
       }
     },
     "else": {
-      "required": ["from_agent", "to_agent", "created_at", "scheduled_for"],
+      "required": ["created_at", "to_agent"],
       "properties": {
-        "from_agent": {
-          "type": "object",
-          "required": ["agent_id", "agent_type"],
-          "properties": {
-            "agent_id": { "type": "string" },
-            "agent_type": { "type": "string" },
-            "metadata": { "type": "object", "additionalProperties": true }
-          }
-        },
+        "created_at": { "type": "number", "minimum": 0 },
         "to_agent": {
           "type": "object",
           "required": ["agent_id", "agent_type"],
@@ -41,16 +32,23 @@
             "metadata": { "type": "object", "additionalProperties": true }
           }
         },
+        "from_agent": {
+          "type": "object",
+          "required": ["agent_id", "agent_type"],
+          "properties": {
+            "agent_id": { "type": "string" },
+            "agent_type": { "type": "string" },
+            "metadata": { "type": "object", "additionalProperties": true }
+          }
+        },
         "env": {
-          "type": ["object", "null"],
+          "type": "object",
           "required": ["env_id", "env_type"],
           "properties": {
             "env_id": { "type": "string" },
             "env_type": { "type": "string" }
           }
         },
-        "created_at": { "type": "number" },
-        "scheduled_for": { "type": "number", "minimum": 0 },
         "payload": {
           "type": "object",
           "additionalProperties": true
