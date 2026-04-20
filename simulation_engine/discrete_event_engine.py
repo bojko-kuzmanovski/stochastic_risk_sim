@@ -15,7 +15,7 @@ from core.agent import Agents
 from core.automaton import Automata
 from core.environment import Environments
 from core.event import Event
-from core.metrics import MetricsCollector
+from simulation_engine.metrics import MetricsCollector
 from simulation_engine.event_scheduler import EventScheduler
 
 

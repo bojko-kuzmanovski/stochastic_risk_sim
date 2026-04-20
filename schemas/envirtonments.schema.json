@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EnvironmentsFactory",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["quantity", "environment_type", "params"],
+    "properties": {
+      "quantity": { "type": "integer", "minimum": 0 },
+      "environment_type": { "type": "string" },
+      "params": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/definitions/param_definition" }
+      },
+      "context": {
+        "type": "object",
+        "properties": {
+          "agents": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "profile": {
+        "type": "object",
+        "properties": {
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["agent_id", "is_private"],
+              "properties": {
+                "agent_id": { "type": "string" },
+                "is_private": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      },
+      "follow": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["from_agent_id", "to_agent_id", "is_approved"],
+          "properties": {
+            "from_agent_id": { "type": "string" },
+            "to_agent_id": { "type": "string" },
+            "is_approved": { "type": "boolean" }
+          }
+        }
+      },
+      "connection": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["from_agent_id", "to_agent_id", "is_approved"],
+          "properties": {
+            "from_agent_id": { "type": "string" },
+            "to_agent_id": { "type": "string" },
+            "is_approved": { "type": "boolean" }
+          }
+        }
+      },
+      "groups": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["group_id", "agents"],
+          "properties": {
+            "group_id": { "type": "string" },
+            "agents": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["agent_id", "is_admin"],
+                "properties": {
+                  "agent_id": { "type": "string" },
+                  "is_admin": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "direct_channels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["channel_id", "agents_id"],
+          "properties": {
+            "channel_id": { "type": "string" },
+            "agents_id": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "group_channels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["channel_id", "agents_id"],
+          "properties": {
+            "channel_id": { "type": "string" },
+            "agents_id": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "applications": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["publisher_agent_id", "applicants_agents_id"],
+          "properties": {
+            "publisher_agent_id": { "type": "string" },
+            "applicants_agents_id": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "param_definition": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["probabilistic", "deterministic"] },
+        "value": { "type": ["string", "number", "boolean"] },
+        "distribution": { "type": "string" },
+        "refs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "if": {
+        "properties": { "type": { "const": "probabilistic" } }
+      },
+      "then": {
+        "required": ["distribution"]
+      },
+      "else": {
+        "required": ["value"]
+      }
+    }
+  }
+}

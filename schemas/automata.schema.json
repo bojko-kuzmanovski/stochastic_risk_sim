@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AutomataFactory",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["automaton_name", "params", "internal_vars", "states", "transitions"],
+    "properties": {
+      "automaton_name": { "type": "string" },
+      "params": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      },
+      "internal_vars": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      },
+      "states": {
+        "type": "object",
+        "required": ["initial", "final"],
+        "properties": {
+          "initial": { "type": "string" },
+          "final": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "transitions": {
+        "type": "array",
+        "items": { "$ref": "#/definitions/transition" }
+      }
+    }
+  },
+  "definitions": {
+    "threshold_case": {
+      "type": "object",
+      "required": ["threshold", "to"],
+      "properties": {
+        "threshold": { "type": "string" },
+        "to": { "type": "string" },
+        "emit_intent": { "type": "string" },
+        "action_required": { "type": "string" },
+        "update": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "required": ["from", "type", "thresholds"],
+      "properties": {
+        "from": { "type": "string" },
+        "type": { "enum": ["probabilistic", "deterministic"] },
+        "distribution": { "type": "string" },
+        "refs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "thresholds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/threshold_case" }
+        }
+      },
+      "if": {
+        "properties": { "type": { "const": "probabilistic" } }
+      },
+      "then": {
+        "required": ["distribution"]
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentsFactory",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["quantity", "agent_type", "params", "automata"],
+    "properties": {
+      "quantity": { "type": "integer", "minimum": 1 },
+      "agent_type": { "type": "string" },
+      "params": {
+        "type": "object",
+        "additionalProperties": { "$ref": "#/definitions/param_definition" }
+      },
+      "automata": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  },
+  "definitions": {
+    "param_definition": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["probabilistic", "deterministic"] },
+        "value": { "type": ["string", "number", "boolean"] },
+        "distribution": { "type": "string" },
+        "refs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "if": {
+        "properties": { "type": { "const": "probabilistic" } }
+      },
+      "then": {
+        "required": ["distribution"]
+      },
+      "else": {
+        "required": ["value"]
+      }
+    }
+  }
+}

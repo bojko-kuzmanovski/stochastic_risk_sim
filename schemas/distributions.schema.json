@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DistributionsFactory",
+  "type": "array",
+  "items": {
+    "allOf": [
+      { "$ref": "#/definitions/distribution_entry" }
+    ]
+  },
+  "definitions": {
+    "truncation_bounds": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+    "distribution_entry": {
+      "type": "object",
+      "required": ["distribution_name", "family", "params"],
+      "properties": {
+        "distribution_name": { "type": "string" },
+        "family": {
+          "enum": [
+            "exponential",
+            "poisson",
+            "gamma",
+            "beta",
+            "lognormal",
+            "categorical"
+          ]
+        },
+        "params": { "type": "object" },
+        "truncation": { "$ref": "#/definitions/truncation_bounds" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "family": { "const": "exponential" } } },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": ["rate"],
+                "properties": { "rate": { "type": "number" } },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "poisson" } } },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": ["lambda"],
+                "properties": { "lambda": { "type": "number" } },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "gamma" } } },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": ["shape", "scale"],
+                "properties": {
+                  "shape": { "type": "number" },
+                  "scale": { "type": "number" }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "beta" } } },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": ["alpha", "beta"],
+                "properties": {
+                  "alpha": { "type": "number" },
+                  "beta": { "type": "number" }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "lognormal" } } },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": ["mean", "sigma"],
+                "properties": {
+                  "mean": { "type": "number" },
+                  "sigma": { "type": "number" }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "categorical" } } },
+          "then": {
+            "required": ["labels"],
+            "properties": {
+              "labels": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1
+              },
+              "params": {
+                "type": "object",
+                "required": ["probabilities"],
+                "properties": {
+                  "probabilities": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
