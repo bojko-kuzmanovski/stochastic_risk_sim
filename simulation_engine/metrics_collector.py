@@ -73,7 +73,7 @@ class MetricsCollector:
         total_events = final.get('dynamic_events', 0) + stats.get('static_events', 0)
         
         print("\n" + "="*60)
-        print("📊 SIMULATION REPORT STATS")
+        print("📊 SIMULATION STATISTICS")
         print("="*60)
         
         # Distributions
