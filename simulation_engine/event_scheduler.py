@@ -84,5 +84,6 @@ class EventScheduler:
             return None
         return min(self._next_execution.values())
     
-    def __repr__(self) -> str:
-        return f"EventScheduler(events={list(self._config.keys())})"
+    def get_static_events_count(self) -> int:
+        """Return count of static events."""
+        return len(self._config)

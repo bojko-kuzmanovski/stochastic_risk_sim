@@ -18,13 +18,7 @@ class Automata:
             automaton_resolved = automaton_entry.copy()
 
             # Resolve params
-            resolved_params = {}
-            for param_name, param_def in automaton_entry.get("params", {}).items():
-                if param_def["type"] == "deterministic":
-                    resolved_params[param_name] = param_def["value"]
-                elif param_def["type"] == "probabilistic":
-                    resolved_params[param_name] = distributions.sample(param_def["distribution"])
-
+            resolved_params = automaton_entry.get("params", {}).copy()
             automaton_resolved["params"] = resolved_params
 
             # Resolve transitions (only distribution sampling when probabilistic)

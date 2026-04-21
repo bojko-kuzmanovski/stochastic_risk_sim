@@ -43,7 +43,8 @@
       "victim_mule_romance",
       "victim_contact_gaming",
       "victim_mule_gaming"
-    ]
+    ],
+    "event_queue": []
   },
   {
     "quantity": 5,
@@ -62,6 +63,7 @@
       "attacker_select_channel",
       "attacker_fishing_generic",
       "attacker_recruitment_router"
-    ]
+    ],
+    "event_queue": []
   }
 ]

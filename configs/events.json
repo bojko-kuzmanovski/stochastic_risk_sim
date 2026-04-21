@@ -1,107 +1,137 @@
-{
-  "attacker_select_channel_ig": {
+[
+  {
+    "event_category": "static",
+    "signal": "attacker_select_channel_ig",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 10.0
+      "value": 10.0
     }
   },
-  "attacker_select_channel_wa": {
+  {
+    "event_category": "static",
+    "signal": "attacker_select_channel_wa",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 10.0
+      "value": 10.0
     }
   },
-  "attacker_select_channel_job": {
+  {
+    "event_category": "static",
+    "signal": "attacker_select_channel_job",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 10.0
+      "value": 10.0
     }
   },
-  "attacker_select_channel_romance": {
+  {
+    "event_category": "static",
+    "signal": "attacker_select_channel_romance",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 10.0
+      "value": 10.0
     }
   },
-  "attacker_select_channel_gaming": {
+  {
+    "event_category": "static",
+    "signal": "attacker_select_channel_gaming",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 10.0
+      "value": 10.0
     }
   },
-  "victim_contact_ig": {
+  {
+    "event_category": "static",
+    "signal": "victim_contact_ig",
     "agent_type": "citizen",
     "periodicity": {
       "type": "probabilistic",
       "distribution": "event_processing_rate"
     }
   },
-  "victim_contact_wa": {
+  {
+    "event_category": "static",
+    "signal": "victim_contact_wa",
     "agent_type": "citizen",
     "periodicity": {
       "type": "probabilistic",
       "distribution": "event_processing_rate"
     }
   },
-  "victim_contact_job": {
+  {
+    "event_category": "static",
+    "signal": "victim_contact_job",
     "agent_type": "citizen",
     "periodicity": {
       "type": "probabilistic",
       "distribution": "event_processing_rate"
     }
   },
-  "victim_contact_romance": {
+  {
+    "event_category": "static",
+    "signal": "victim_contact_romance",
     "agent_type": "citizen",
     "periodicity": {
       "type": "probabilistic",
       "distribution": "event_processing_rate"
     }
   },
-  "victim_contact_gaming": {
+  {
+    "event_category": "static",
+    "signal": "victim_contact_gaming",
     "agent_type": "citizen",
     "periodicity": {
       "type": "probabilistic",
       "distribution": "event_processing_rate"
     }
   },
-  "attacker_recruitment_router_ig": {
+  {
+    "event_category": "static",
+    "signal": "attacker_recruitment_router_ig",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 5.0
+      "value": 5.0
     }
   },
-  "attacker_recruitment_router_wa": {
+  {
+    "event_category": "static",
+    "signal": "attacker_recruitment_router_wa",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 5.0
+      "value": 5.0
     }
   },
-  "attacker_recruitment_router_job": {
+  {
+    "event_category": "static",
+    "signal": "attacker_recruitment_router_job",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 5.0
+      "value": 5.0
     }
   },
-  "attacker_recruitment_router_romance": {
+  {
+    "event_category": "static",
+    "signal": "attacker_recruitment_router_romance",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 5.0
+      "value": 5.0
     }
   },
-  "attacker_recruitment_router_gaming": {
+  {
+    "event_category": "static",
+    "signal": "attacker_recruitment_router_gaming",
     "agent_type": "malicious",
     "periodicity": {
       "type": "deterministic",
-      "interval": 5.0
+      "value": 5.0
     }
   }
-}
+]

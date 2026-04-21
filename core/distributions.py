@@ -64,13 +64,14 @@ class Distributions:
 
                 return sampler
 
-            self.samplers[name] = make_sampler(
-                family, output_type, params, labels, truncation
-            )
+            self.samplers[name] = {
+                'sampler': make_sampler(family, output_type, params, labels, truncation),
+                'family': family
+            }
 
     def sample(self, name, bound_params=None):
-        sampler = self.samplers.get(name)
-        if not sampler:
+        entry = self.samplers.get(name)
+        if not entry:
             raise ValueError(f"Distribution {name} not found")
 
-        return sampler(bound_params)
+        return entry['sampler'](bound_params)
