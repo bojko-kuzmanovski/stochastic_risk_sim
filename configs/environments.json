@@ -1,51 +1,59 @@
-{
-  "instagram": {
-    "id_prefix": "instagram_",
+[
+  {
+    "environment_type": "instagram",
     "quantity": 1,
     "params": {},
-    "modules": ["profile", "follow", "direct_channels"],
-    "constraints": ["follow requires profile", "direct_channels requires follow"]
+    "profile": [],
+    "follow": [],
+    "direct_channels": []
   },
-  "tiktok": {
-    "id_prefix": "tiktok_",
+  {
+    "environment_type": "tiktok",
     "quantity": 1,
     "params": {},
-    "modules": ["profile", "follow", "direct_channels"],
-    "constraints": ["follow requires profile", "direct_channels requires follow"]
+    "profile": [],
+    "follow": [],
+    "direct_channels": []
   },
-  "whatsapp": {
-    "id_prefix": "whatsapp_",
+  {
+    "environment_type": "whatsapp",
     "quantity": 1,
     "params": {},
-    "modules": ["profile", "connection", "direct_channels", "group_channels"],
-    "constraints": ["connection requires profile", "direct_channels requires connection", "group_channels requires connection"]
+    "profile": [],
+    "connection": [],
+    "direct_channels": [],
+    "group_channels": []
   },
-  "telegram": {
-    "id_prefix": "telegram_",
+  {
+    "environment_type": "telegram",
     "quantity": 1,
     "params": {},
-    "modules": ["profile", "connection", "direct_channels", "group_channels"],
-    "constraints": ["connection requires profile"]
+    "profile": [],
+    "direct_channels": [],
+    "group_channels": []
   },
-  "job": {
-    "id_prefix": "job_",
+  {
+    "environment_type": "job",
     "quantity": 10,
     "params": {},
-    "modules": ["profile", "applications"],
-    "constraints": ["applications requires profile"]
+    "profile": [],
+    "applications": []
   },
-  "romance": {
-    "id_prefix": "romance_",
+  {
+    "environment_type": "romance",
     "quantity": 5,
     "params": {},
-    "modules": ["profile", "connection", "direct_channels"],
-    "constraints": ["connection requires profile", "direct_channels requires connection"]
+    "profile": [],
+    "connection": [],
+    "direct_channels": []
   },
-  "gaming": {
-    "id_prefix": "gaming_",
+  {
+    "environment_type": "gaming",
     "quantity": 5,
     "params": {},
-    "modules": ["profile", "connection", "groups", "direct_channels", "group_channels"],
-    "constraints": ["connection requires profile", "direct_channels requires connection", "group_channels requires connection"]
+    "profile": [],
+    "connection": [],
+    "direct_channels": [],
+    "group_channels": []
   }
-}
+]

@@ -6,65 +6,71 @@ from jsonschema import validate
 class Distributions:
     def __init__(self, config_data):
         schema_path = "schemas/distributions.schema.json"
-
-        # Load schema file
         with open(schema_path, 'r') as f:
-            self._schema = json.load(f)
-        
-        # Validate data against schema
-        validate(instance=config_data, schema=self._schema)
-        
-        # Store configurations indexed by name
-        self._configs = {d["distribution_name"]: d for d in self._data}
+            schema = json.load(f)
+
+        validate(instance=config_data, schema=schema)
+
+        self.samplers = {}
+
+        for d in config_data:
+            name = d["distribution_name"]
+            family = d["family"]
+            output_type = d["output_type"]
+            params = d.get("params", {})
+            labels = d.get("labels", [])
+            truncation = d.get("truncation")
+
+            def make_sampler(family, output_type, params, labels, truncation):
+                def sampler(bound_params=None):
+                    p = {**params, **(bound_params or {})}
+                    max_attempts = 1000
+
+                    for _ in range(max_attempts):
+                        if family == "categorical":
+                            val = random.choices(
+                                labels,
+                                weights=p.get("probabilities")
+                            )[0]
+                        elif family == "exponential":
+                            val = random.expovariate(p["rate"])
+                        elif family == "poisson":
+                            val = np.random.poisson(p["lambda"])
+                        elif family == "gamma":
+                            val = random.gammavariate(p["shape"], p["scale"])
+                        elif family == "beta":
+                            val = random.betavariate(p["alpha"], p["beta"])
+                        elif family == "lognormal":
+                            val = random.lognormvariate(p["mean"], p["sigma"])
+                        else:
+                            raise ValueError(f"Unknown family {family}")
+
+                        if family != "categorical" and truncation:
+                            if not (truncation["min"] <= val <= truncation["max"]):
+                                continue
+
+                        if output_type == "int":
+                            val = int(val)
+                        elif output_type == "float":
+                            val = round(float(val), 4)
+                        else:
+                            val = str(val)
+
+                        return val
+
+                    raise ValueError(
+                        f"Truncation too restrictive for {name}"
+                    )
+
+                return sampler
+
+            self.samplers[name] = make_sampler(
+                family, output_type, params, labels, truncation
+            )
 
     def sample(self, name, bound_params=None):
-        config = self._configs.get(name)
-        if not config:
+        sampler = self.samplers.get(name)
+        if not sampler:
             raise ValueError(f"Distribution {name} not found")
 
-        # Extract config properties
-        family = config["family"]
-        output_type = config["output_type"]
-        params = config.get("params", {})
-        labels = config.get("labels", [])
-        truncation = config.get("truncation")
-
-        # Unify parameters: bound_params overrides default params
-        p = {**params, **(bound_params or {})}
-        
-        max_attempts = 1000
-        for _ in range(max_attempts):
-            if family == "categorical":
-                val = random.choices(labels, weights=p.get("probabilities"))[0]
-            else:
-                # Mapping from JSON names to random library functions
-                dispatch = {
-                    "exponential": (random.expovariate, ["rate"]),
-                    "poisson": (np.random.poisson, ["lambda"]),
-                    "gamma": (random.gammavariate, ["shape", "scale"]),
-                    "beta": (random.betavariate, ["alpha", "beta"]),
-                    "lognormal": (random.lognormvariate, ["mean", "sigma"])
-                }
-                func, arg_keys = dispatch[family]
-                val = func(*(p[k] for k in arg_keys))
-
-            if family != "categorical" and truncation:
-                if not (truncation["min"] <= val <= truncation["max"]):
-                    continue # Reintento
-
-            # Normalize output type
-            if output_type == "int":
-                final_val = int(val)
-            elif output_type == "float":
-                final_val = round(float(val), 4)
-            else:
-                final_val = str(val)
-
-            return {
-                "output_type": output_type,
-                "value": final_val
-            }
-            
-        raise ValueError(
-            f"Truncation too restrictive for distribution {name}"
-        )
+        return sampler(bound_params)

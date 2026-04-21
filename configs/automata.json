@@ -1,136 +1,313 @@
-{
-  "victim_contact_ig": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_contact_ig",
-    "refs": {
-      "alpha": "6 - 0.05 * age",
-      "beta": "10 + 0.1 * age"
+[
+  {
+    "automaton_name": "victim_contact_ig",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["CONTACTED", "CONTACT_REJECTED"]
     },
-    "output_success": "attacker_recruitment_router_ig",
-    "output_failure": "CONTACT_REJECTED",
-    "is_semantic_success": false,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_contact_ig",
+        "refs": {
+          "alpha": "6 - 0.05 * age",
+          "beta": "10 + 0.1 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "CONTACTED",
+            "emit_intent": "attacker_recruitment_router_ig"
+          },
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_REJECTED"
+          }
+        ]
+      }
+    ]
   },
-  "victim_mule_ig": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_mule_ig",
-    "refs": {
-      "alpha": "3 - 0.03 * age",
-      "beta": "40 + 0.3 * age"
+  {
+    "automaton_name": "victim_mule_ig",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["ACCEPT_RECRUITMENT_IG", "RECRUITMENT_REJECT"]
     },
-    "output_success": "ACCEPT_RECRUITMENT_IG",
-    "output_failure": "RECRUITMENT_REJECT",
-    "is_semantic_success": true,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_mule_ig",
+        "refs": {
+          "alpha": "3 - 0.03 * age",
+          "beta": "40 + 0.3 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "ACCEPT_RECRUITMENT_IG"
+          },
+          {
+            "threshold": "1.0",
+            "to": "RECRUITMENT_REJECT"
+          }
+        ]
+      }
+    ]
   },
-  "victim_contact_wa": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_contact_wa",
-    "refs": {
-      "alpha": "4 - 0.03 * age",
-      "beta": "12 + 0.15 * age"
+  {
+    "automaton_name": "victim_contact_wa",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["CONTACTED", "CONTACT_REJECTED"]
     },
-    "output_success": "attacker_recruitment_router_wa",
-    "output_failure": "CONTACT_REJECTED",
-    "is_semantic_success": false,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_contact_wa",
+        "refs": {
+          "alpha": "4 - 0.03 * age",
+          "beta": "12 + 0.15 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "CONTACTED",
+            "emit_intent": "attacker_recruitment_router_wa"
+          },
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_REJECTED"
+          }
+        ]
+      }
+    ]
   },
-  "victim_mule_wa": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_mule_wa",
-    "refs": {
-      "alpha": "8 - 0.06 * age",
-      "beta": "12 + 0.1 * age"
+  {
+    "automaton_name": "victim_mule_wa",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["ACCEPT_RECRUITMENT_WA", "RECRUITMENT_REJECT"]
     },
-    "output_success": "ACCEPT_RECRUITMENT_WA",
-    "output_failure": "RECRUITMENT_REJECT",
-    "is_semantic_success": true,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_mule_wa",
+        "refs": {
+          "alpha": "8 - 0.06 * age",
+          "beta": "12 + 0.1 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "ACCEPT_RECRUITMENT_WA"
+          },
+          {
+            "threshold": "1.0",
+            "to": "RECRUITMENT_REJECT"
+          }
+        ]
+      }
+    ]
   },
-  "victim_contact_job": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_contact_job",
-    "refs": {
-      "alpha": "3 - 0.02 * age",
-      "beta": "25 + 0.2 * age"
+  {
+    "automaton_name": "victim_contact_job",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["CONTACTED", "CONTACT_REJECTED"]
     },
-    "output_success": "attacker_recruitment_router_job",
-    "output_failure": "CONTACT_REJECTED",
-    "is_semantic_success": false,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_contact_job",
+        "refs": {
+          "alpha": "3 - 0.02 * age",
+          "beta": "25 + 0.2 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "CONTACTED",
+            "emit_intent": "attacker_recruitment_router_job"
+          },
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_REJECTED"
+          }
+        ]
+      }
+    ]
   },
-  "victim_mule_job": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_mule_job",
-    "refs": {
-      "alpha": "12 - 0.08 * age",
-      "beta": "8 + 0.05 * age"
+  {
+    "automaton_name": "victim_mule_job",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["ACCEPT_RECRUITMENT_JOB", "RECRUITMENT_REJECT"]
     },
-    "output_success": "ACCEPT_RECRUITMENT_JOB",
-    "output_failure": "RECRUITMENT_REJECT",
-    "is_semantic_success": true,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_mule_job",
+        "refs": {
+          "alpha": "12 - 0.08 * age",
+          "beta": "8 + 0.05 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "ACCEPT_RECRUITMENT_JOB"
+          },
+          {
+            "threshold": "1.0",
+            "to": "RECRUITMENT_REJECT"
+          }
+        ]
+      }
+    ]
   },
-  "victim_contact_romance": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_contact_romance",
-    "refs": {
-      "alpha": "2 - 0.01 * age",
-      "beta": "30 + 0.25 * age"
+  {
+    "automaton_name": "victim_contact_romance",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["CONTACTED", "CONTACT_REJECTED"]
     },
-    "output_success": "attacker_recruitment_router_romance",
-    "output_failure": "CONTACT_REJECTED",
-    "is_semantic_success": false,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_contact_romance",
+        "refs": {
+          "alpha": "2 - 0.01 * age",
+          "beta": "30 + 0.25 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "CONTACTED",
+            "emit_intent": "attacker_recruitment_router_romance"
+          },
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_REJECTED"
+          }
+        ]
+      }
+    ]
   },
-  "victim_mule_romance": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_mule_romance",
-    "refs": {
-      "alpha": "15 - 0.1 * age",
-      "beta": "5 + 0.02 * age"
+  {
+    "automaton_name": "victim_mule_romance",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["ACCEPT_RECRUITMENT_ROMANCE", "RECRUITMENT_REJECT"]
     },
-    "output_success": "ACCEPT_RECRUITMENT_ROMANCE",
-    "output_failure": "RECRUITMENT_REJECT",
-    "is_semantic_success": true,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_mule_romance",
+        "refs": {
+          "alpha": "15 - 0.1 * age",
+          "beta": "5 + 0.02 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "ACCEPT_RECRUITMENT_ROMANCE"
+          },
+          {
+            "threshold": "1.0",
+            "to": "RECRUITMENT_REJECT"
+          }
+        ]
+      }
+    ]
   },
-  "victim_contact_gaming": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_contact_gaming",
-    "refs": {
-      "alpha": "5 - 0.04 * age",
-      "beta": "20 + 0.2 * age"
+  {
+    "automaton_name": "victim_contact_gaming",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["CONTACTED", "CONTACT_REJECTED"]
     },
-    "output_success": "attacker_recruitment_router_gaming",
-    "output_failure": "CONTACT_REJECTED",
-    "is_semantic_success": false,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_contact_gaming",
+        "refs": {
+          "alpha": "5 - 0.04 * age",
+          "beta": "20 + 0.2 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "CONTACTED",
+            "emit_intent": "attacker_recruitment_router_gaming"
+          },
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_REJECTED"
+          }
+        ]
+      }
+    ]
   },
-  "victim_mule_gaming": {
-    "params": ["age"],
-    "type": "probabilistic",
-    "distribution": "beta_mule_gaming",
-    "refs": {
-      "alpha": "5 - 0.03 * age",
-      "beta": "20 + 0.15 * age"
+  {
+    "automaton_name": "victim_mule_gaming",
+    "params": { "age": "number" },
+    "internal_vars": {},
+    "states": {
+      "initial": "IDLE",
+      "final": ["ACCEPT_RECRUITMENT_GAMING", "RECRUITMENT_REJECT"]
     },
-    "output_success": "ACCEPT_RECRUITMENT_GAMING",
-    "output_failure": "RECRUITMENT_REJECT",
-    "is_semantic_success": true,
-    "is_semantic_failure": true
+    "transitions": [
+      {
+        "from": "IDLE",
+        "type": "probabilistic",
+        "distribution": "beta_mule_gaming",
+        "refs": {
+          "alpha": "5 - 0.03 * age",
+          "beta": "20 + 0.15 * age"
+        },
+        "thresholds": [
+          {
+            "threshold": "0.5",
+            "to": "ACCEPT_RECRUITMENT_GAMING"
+          },
+          {
+            "threshold": "1.0",
+            "to": "RECRUITMENT_REJECT"
+          }
+        ]
+      }
+    ]
   },
-  "attacker_select_channel_ig": {
-    "params": [],
+  {
+    "automaton_name": "attacker_select_channel_ig",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["CHOSEN"]
@@ -138,18 +315,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "CHOSEN",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "attacker_fishing_ig"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CHOSEN",
+            "emit_intent": "attacker_fishing_ig"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_select_channel_wa": {
-    "params": [],
+  {
+    "automaton_name": "attacker_select_channel_wa",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["CHOSEN"]
@@ -157,18 +337,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "CHOSEN",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "attacker_fishing_wa"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CHOSEN",
+            "emit_intent": "attacker_fishing_wa"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_select_channel_job": {
-    "params": [],
+  {
+    "automaton_name": "attacker_select_channel_job",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["CHOSEN"]
@@ -176,18 +359,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "CHOSEN",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "attacker_fishing_job"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CHOSEN",
+            "emit_intent": "attacker_fishing_job"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_select_channel_romance": {
-    "params": [],
+  {
+    "automaton_name": "attacker_select_channel_romance",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["CHOSEN"]
@@ -195,18 +381,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "CHOSEN",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "attacker_fishing_romance"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CHOSEN",
+            "emit_intent": "attacker_fishing_romance"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_select_channel_gaming": {
-    "params": [],
+  {
+    "automaton_name": "attacker_select_channel_gaming",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["CHOSEN"]
@@ -214,18 +403,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "CHOSEN",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "attacker_fishing_gaming"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CHOSEN",
+            "emit_intent": "attacker_fishing_gaming"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_fishing_ig": {
-    "params": [],
+  {
+    "automaton_name": "attacker_fishing_ig",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "FISHING",
       "final": ["CONTACT_SENT"]
@@ -233,22 +425,21 @@
     "transitions": [
       {
         "from": "FISHING",
-        "to": "CONTACT_SENT",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "poisson_contact_rate",
-          "inputs": {
-            "lambda": 50
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_SENT",
+            "emit_intent": "victim_contact_ig"
           }
-        },
-        "emit_intent": "victim_contact_ig"
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_fishing_wa": {
-    "params": [],
+  {
+    "automaton_name": "attacker_fishing_wa",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "FISHING",
       "final": ["CONTACT_SENT"]
@@ -256,22 +447,21 @@
     "transitions": [
       {
         "from": "FISHING",
-        "to": "CONTACT_SENT",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "poisson_contact_rate",
-          "inputs": {
-            "lambda": 50
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_SENT",
+            "emit_intent": "victim_contact_wa"
           }
-        },
-        "emit_intent": "victim_contact_wa"
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_fishing_job": {
-    "params": [],
+  {
+    "automaton_name": "attacker_fishing_job",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "FISHING",
       "final": ["CONTACT_SENT"]
@@ -279,22 +469,21 @@
     "transitions": [
       {
         "from": "FISHING",
-        "to": "CONTACT_SENT",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "poisson_contact_rate",
-          "inputs": {
-            "lambda": 50
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_SENT",
+            "emit_intent": "victim_contact_job"
           }
-        },
-        "emit_intent": "victim_contact_job"
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_fishing_romance": {
-    "params": [],
+  {
+    "automaton_name": "attacker_fishing_romance",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "FISHING",
       "final": ["CONTACT_SENT"]
@@ -302,22 +491,21 @@
     "transitions": [
       {
         "from": "FISHING",
-        "to": "CONTACT_SENT",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "poisson_contact_rate",
-          "inputs": {
-            "lambda": 50
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_SENT",
+            "emit_intent": "victim_contact_romance"
           }
-        },
-        "emit_intent": "victim_contact_romance"
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_fishing_gaming": {
-    "params": [],
+  {
+    "automaton_name": "attacker_fishing_gaming",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "FISHING",
       "final": ["CONTACT_SENT"]
@@ -325,22 +513,21 @@
     "transitions": [
       {
         "from": "FISHING",
-        "to": "CONTACT_SENT",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "poisson_contact_rate",
-          "inputs": {
-            "lambda": 50
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "CONTACT_SENT",
+            "emit_intent": "victim_contact_gaming"
           }
-        },
-        "emit_intent": "victim_contact_gaming"
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_recruitment_router_ig": {
-    "params": [],
+  {
+    "automaton_name": "attacker_recruitment_router_ig",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["ROUTED"]
@@ -348,18 +535,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "ROUTED",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "victim_mule_ig"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "ROUTED",
+            "emit_intent": "victim_mule_ig"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_recruitment_router_wa": {
-    "params": [],
+  {
+    "automaton_name": "attacker_recruitment_router_wa",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["ROUTED"]
@@ -367,18 +557,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "ROUTED",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "victim_mule_wa"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "ROUTED",
+            "emit_intent": "victim_mule_wa"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_recruitment_router_job": {
-    "params": [],
+  {
+    "automaton_name": "attacker_recruitment_router_job",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["ROUTED"]
@@ -386,18 +579,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "ROUTED",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "victim_mule_job"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "ROUTED",
+            "emit_intent": "victim_mule_job"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_recruitment_router_romance": {
-    "params": [],
+  {
+    "automaton_name": "attacker_recruitment_router_romance",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["ROUTED"]
@@ -405,18 +601,21 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "ROUTED",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "victim_mule_romance"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "ROUTED",
+            "emit_intent": "victim_mule_romance"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   },
-  "attacker_recruitment_router_gaming": {
-    "params": [],
+  {
+    "automaton_name": "attacker_recruitment_router_gaming",
+    "params": {},
+    "internal_vars": {},
     "states": {
       "initial": "IDLE",
       "final": ["ROUTED"]
@@ -424,14 +623,15 @@
     "transitions": [
       {
         "from": "IDLE",
-        "to": "ROUTED",
-        "rule": {
-          "type": "deterministic"
-        },
-        "emit_intent": "victim_mule_gaming"
+        "type": "deterministic",
+        "thresholds": [
+          {
+            "threshold": "1.0",
+            "to": "ROUTED",
+            "emit_intent": "victim_mule_gaming"
+          }
+        ]
       }
-    ],
-    "is_semantic_success": false,
-    "is_semantic_failure": false
+    ]
   }
-}
+]

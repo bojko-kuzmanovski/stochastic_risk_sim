@@ -39,7 +39,7 @@
       "properties": {
         "threshold": { "type": "string" },
         "to": { "type": "string" },
-        "emit_intent": { "type": "string" },
+        "event_emit": { "type": "string" },
         "action_required": { "type": "string" },
         "update": {
           "type": "object",

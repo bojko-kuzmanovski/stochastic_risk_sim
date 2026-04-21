@@ -1,7 +1,7 @@
-{
-  "citizen": {
+[
+  {
     "quantity": 1000,
-    "id_prefix": "citizen_",
+    "agent_type": "citizen",
     "params": {
       "event_processing_rate": {
         "type": "probabilistic",
@@ -45,9 +45,9 @@
       "victim_mule_gaming"
     ]
   },
-  "malicious": {
+  {
     "quantity": 5,
-    "id_prefix": "malicious_",
+    "agent_type": "malicious",
     "params": {
       "event_processing_rate": {
         "type": "probabilistic",
@@ -64,4 +64,4 @@
       "attacker_recruitment_router"
     ]
   }
-}
+]

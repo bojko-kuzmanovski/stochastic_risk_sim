@@ -5,27 +5,24 @@
   "items": {
     "type": "object",
     "required": ["quantity", "environment_type", "params"],
+    "additionalProperties": false,
     "properties": {
-      "quantity": { "type": "integer", "minimum": 0 },
+      "quantity": { "type": "integer", "minimum": 1 },
       "environment_type": { "type": "string" },
       "params": {
         "type": "object",
         "additionalProperties": { "$ref": "#/definitions/param_definition" }
       },
       "profile": {
-        "type": "object",
-        "properties": {
-          "agents": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["agent_id", "is_private"],
-              "properties": {
-                "agent_id": { "type": "string" },
-                "is_private": { "type": "boolean" }
-              }
-            }
-          }
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["agent_id"],
+          "properties": {
+            "agent_id": { "type": "string" },
+            "is_private": { "type": "boolean" }
+          },
+          "additionalProperties": false
         }
       },
       "follow": {
@@ -37,7 +34,8 @@
             "from_agent_id": { "type": "string" },
             "to_agent_id": { "type": "string" },
             "is_approved": { "type": "boolean" }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "connection": {
@@ -49,7 +47,8 @@
             "from_agent_id": { "type": "string" },
             "to_agent_id": { "type": "string" },
             "is_approved": { "type": "boolean" }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "direct_channels": {
@@ -74,10 +73,12 @@
                   "to_agent_id": { "type": "string" },
                   "timestamp": { "type": "number" },
                   "was_replied": { "type": "boolean", "default": false }
-                }
+                },
+                "additionalProperties": false
               }
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "group_channels": {
@@ -96,7 +97,8 @@
                 "properties": {
                   "agent_id": { "type": "string" },
                   "is_admin": { "type": "boolean" }
-                }
+                },
+                "additionalProperties": false
               }
             },
             "interactions": {
@@ -106,33 +108,29 @@
                 "required": ["from_agent_id", "timestamp"],
                 "properties": {
                   "from_agent_id": { "type": "string" },
-                  "timestamp": { "type": "number" },
-                  "seen_by": { 
-                    "type": "array", 
-                    "items": { "type": "string" }
-                  },
-                  "reacted_by": { 
-                    "type": "array", 
-                    "items": { "type": "string" }
-                  }
-                }
+                  "timestamp": { "type": "number" }
+                },
+                "additionalProperties": false
               }
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
       "applications": {
         "type": "array",
         "items": {
           "type": "object",
-          "required": ["publisher_agent_id", "applicants_agents_id"],
+          "required": ["application_id", "publisher_agent_id", "applicants_agents_id"],
           "properties": {
+            "application_id": { "type": "string" },
             "publisher_agent_id": { "type": "string" },
             "applicants_agents_id": {
               "type": "array",
               "items": { "type": "string" }
             }
-          }
+          },
+          "additionalProperties": false
         }
       }
     }
@@ -150,6 +148,7 @@
           "additionalProperties": { "type": "string" }
         }
       },
+      "additionalProperties": false,
       "if": {
         "properties": { "type": { "const": "probabilistic" } }
       },
