@@ -93,5 +93,4 @@ class Agents:
                     }
                 }
 
-                # 🔥 ENTREGA DIRECTA → procesamiento automático en el receptor
                 self.agents.receive_event(agent["agent_id"], new_event)

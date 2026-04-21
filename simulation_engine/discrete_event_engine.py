@@ -14,28 +14,14 @@ from simulation_engine.event_scheduler import EventScheduler
 
 class DiscreteEventSimulator:
     def __init__(self, agents_config, automata_config, distributions_config, environments_config, events_config):
-
-        self.distributions = Distributions(distributions_config)
-        self.automata = Automata(automata_config, self.distributions)
-        self.agents = Agents(agents_config, self.distributions)
-        self.environments = Environments(environments_config, self.distributions)
-
-        # Already resolved events
+        self.metrics_collector = MetricsCollector()
+        self.distributions = Distributions(distributions_config, self.metrics_collector)
+        self.automata = Automata(automata_config, self.distributions, self.metrics_collector)
+        self.agents = Agents(agents_config, self.distributions, self.metrics_collector)
+        self.environments = Environments(environments_config, self.distributions, self.metrics_collector)
         events = Events(events_config, self.distributions)
         static_events = [e for e in events.data if e["event_category"] == "static"]
-
         self.event_scheduler = EventScheduler(static_events, self.agents)
-
-        self.metrics_collector = MetricsCollector()
-        self.metrics_collector.collect_initial_stats(
-            distributions=self.distributions,
-            environments=self.environments,
-            agents=self.agents,
-            automata=self.automata,
-            event_scheduler=self.event_scheduler
-        )
-
-        self.events_processed = 0
 
     def run_simulation(self, max_time: float = 10000.0):
         start_time = time.time()
@@ -93,9 +79,4 @@ class DiscreteEventSimulator:
         pbar.close()
 
         # Final metrics
-        self.metrics_collector.set_final_stats(
-            events_processed=self.events_processed,
-            max_time=max_time
-        )
-
         self.metrics_collector.print_report()

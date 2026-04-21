@@ -18,6 +18,7 @@ class Events:
         for event_entry in config_data:
 
             event_resolved = event_entry.copy()
+            event_resolved["created_at"] = int(time.time())
 
             # STATIC EVENTS
             if event_entry["event_category"] == "static":
@@ -32,20 +33,8 @@ class Events:
 
             # DYNAMIC EVENTS
             else:
-                event_resolved["created_at"] = int(time.time())
-
                 # optional payload passthrough (already dynamic structure)
                 if "payload" not in event_resolved:
                     event_resolved["payload"] = {}
-
-                # ensure minimal normalization of nested objects
-                if "to_agent" in event_resolved:
-                    event_resolved["to_agent"] = event_entry["to_agent"]
-
-                if "from_agent" in event_resolved:
-                    event_resolved["from_agent"] = event_entry["from_agent"]
-
-                if "env" in event_resolved:
-                    event_resolved["env"] = event_entry["env"]
 
             self.data.append(event_resolved)
