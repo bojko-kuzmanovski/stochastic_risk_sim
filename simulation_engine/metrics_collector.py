@@ -1,112 +1,111 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from collections import defaultdict
 
 
 class MetricsCollector:
     """
-    Collects and computes metrics based on metrics.json configuration.
+    Collects and computes all simulation metrics and prints unified report.
     """
     
-    def __init__(self, metrics_config: Dict[str, Any]):
-        """
-        Initialize metrics collector from configuration.
-        
-        Args:
-            metrics_config: Full metrics.json dict where keys are metric names
-                           and values contain 'automaton' and 'terminal_state'
-        """
-        self._config = metrics_config
-        self._values: Dict[str, Any] = {}
-        
-        # Storage for automaton terminal state counts
+    def __init__(self):
         self._automaton_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._initial_stats = {}
+        self._final_stats = {}
     
-    def set_global_metric(self, name: str, value: Any) -> None:
-        """Set a global metric value."""
-        self._values[name] = value
+    def collect_initial_stats(self, distributions, environments, agents, automata, event_scheduler):
+        """Collect all initial configuration stats."""
+        # Distributions by family
+        dist_by_family = {}
+        for name, info in distributions.samplers.items():
+            fam = info.get('family', 'unknown')
+            dist_by_family[fam] = dist_by_family.get(fam, 0) + 1
+        
+        # Environments by type
+        env_by_type = {}
+        for e in environments.data:
+            t = e.get('environment_type', 'unknown')
+            env_by_type[t] = env_by_type.get(t, 0) + 1
+        
+        # Agents by type
+        agent_by_type = {}
+        for a in agents.data:
+            t = a.get('agent_type', 'unknown')
+            agent_by_type[t] = agent_by_type.get(t, 0) + 1
+        
+        # Automata transitions
+        det_trans = prob_trans = 0
+        for aut in automata.data:
+            for t in aut.get('transitions', []):
+                if t.get('type') == 'deterministic':
+                    det_trans += 1
+                elif t.get('type') == 'probabilistic':
+                    prob_trans += 1
+        
+        self._initial_stats = {
+            'total_distributions': len(distributions.samplers),
+            'dist_by_family': dist_by_family,
+            'total_environments': len(environments.data),
+            'env_by_type': env_by_type,
+            'total_agents': len(agents.data),
+            'agent_by_type': agent_by_type,
+            'total_automata': len(automata.data),
+            'det_transitions': det_trans,
+            'prob_transitions': prob_trans,
+            'static_events': event_scheduler.get_static_events_count()
+        }
+    
+    def set_final_stats(self, events_processed: int, max_time: float):
+        """Collect final simulation stats."""
+        self._final_stats = {
+            'dynamic_events': events_processed,
+            'max_time': max_time
+        }
     
     def record_automaton_result(self, automaton_name: str, result: str) -> None:
-        """
-        Record the result of an automaton execution.
-        
-        Args:
-            automaton_name: Name of the automaton that executed
-            result: Output signal (success or failure)
-        """
+        """Record the result of an automaton execution."""
         self._automaton_counts[automaton_name][result] += 1
     
-    def compute_metrics(self, agents, environments, transactions) -> Dict[str, Any]:
-        """
-        Compute all metrics based on configuration.
+    def print_report(self) -> None:
+        """Print unified simulation report."""
+        stats = self._initial_stats
+        final = self._final_stats
         
-        Args:
-            agents: Agents instance
-            environments: Environments instance
-            transactions: List of transaction records
+        total_events = final.get('dynamic_events', 0) + stats.get('static_events', 0)
         
-        Returns:
-            Dictionary with all computed metrics
-        """
-        results = dict(self._values)  # Start with manually set metrics
-        
-        # Agent counts by type
-        for agent_type in ['citizen', 'malicious']:
-            results[f'total_{agent_type}'] = len(agents.get_by_type(agent_type))
-        
-        # Environment counts by type
-        results['total_environments'] = environments.total_count
-        for env_type, env_list in environments.get_all_by_type().items():
-            results[f'total_{env_type}_environments'] = len(env_list)
-        
-        # Active mules (specific to citizen)
-        citizens = agents.get_by_type('citizen')
-        active_citizens = [c for c in citizens if c.state == 'active']
-        results['active_mules'] = len(active_citizens)
-        results['activation_rate'] = len(active_citizens) / len(citizens) if citizens else 0
-        results['total_transactions'] = len(transactions)
-        
-        # Automaton metrics from config
-        for metric_name, metric_config in self._config.items():
-            automaton_name = metric_config.get('automaton')
-            terminal_state = metric_config.get('terminal_state')
-            
-            count = self._automaton_counts[automaton_name].get(terminal_state, 0)
-            results[metric_name] = count
-        
-        return results
-    
-    def print_report(self, metrics: Dict[str, Any]) -> None:
-        """Print formatted metrics report."""
         print("\n" + "="*60)
-        print("📊 SIMULATION METRICS REPORT")
+        print("📊 SIMULATION REPORT STATS")
         print("="*60)
         
-        # Agent counts
-        print("\n👥 AGENTS:")
-        print(f"   Total citizens: {metrics.get('total_citizens', 0)}")
-        print(f"   Total malicious: {metrics.get('total_malicious', 0)}")
-        print(f"   Active mules: {metrics.get('active_mules', 0)}")
-        print(f"   Activation rate: {metrics.get('activation_rate', 0):.2%}")
+        # Distributions
+        print(f"\n📈 Distributions: {stats.get('total_distributions', 0)}")
+        for fam, cnt in sorted(stats.get('dist_by_family', {}).items()):
+            print(f"   └── {fam}: {cnt}")
         
-        # Environment counts
-        print("\n🌍 ENVIRONMENTS:")
-        print(f"   Total environments: {metrics.get('total_environments', 0)}")
-        for key, value in metrics.items():
-            if key.endswith('_environments') and key != 'total_environments':
-                env_type = key.replace('total_', '').replace('_environments', '')
-                print(f"   {env_type}: {value}")
+        # Environments
+        print(f"\n🌍 Environments: {stats.get('total_environments', 0)}")
+        for t, cnt in sorted(stats.get('env_by_type', {}).items()):
+            print(f"   └── {t}: {cnt}")
         
-        # Transactions
-        print("\n💰 TRANSACTIONS:")
-        print(f"   Total: {metrics.get('total_transactions', 0)}")
+        # Agents
+        print(f"\n👤 Agents: {stats.get('total_agents', 0)}")
+        for t, cnt in sorted(stats.get('agent_by_type', {}).items()):
+            print(f"   └── {t}: {cnt}")
         
-        # Automaton metrics
-        print("\n🤖 AUTOMATON METRICS:")
-        for metric_name in self._config.keys():
-            value = metrics.get(metric_name, 0)
-            print(f"   {metric_name}: {value}")
+        # Automata transitions
+        print(f"\n🤖 Automata: {stats.get('total_automata', 0)}")
+        print(f"   └── deterministic transitions: {stats.get('det_transitions', 0)}")
+        print(f"   └── probabilistic transitions: {stats.get('prob_transitions', 0)}")
+        
+        # Events
+        print(f"\n📅 Total Events: {total_events}")
+        print(f"   └── static: {stats.get('static_events', 0)}")
+        print(f"   └── dynamic: {final.get('dynamic_events', 0)}")
+        
+        # Automata executions
+        if self._automaton_counts:
+            print(f"\n🎯 Automata Executions:")
+            for aut_name in sorted(self._automaton_counts.keys()):
+                for state, count in sorted(self._automaton_counts[aut_name].items()):
+                    print(f"   └── {aut_name} → {state}: {count}")
         
         print("\n" + "="*60)
-    
-    def __repr__(self) -> str:
-        return f"MetricsCollector(metrics={list(self._config.keys())})"

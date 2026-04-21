@@ -7,13 +7,12 @@ class EventScheduler:
     Manages static events that trigger periodically to keep agents active.
     """
     
-    def __init__(self, events_config: Dict[str, Any], distributions):
+    def __init__(self, events_config: List[Dict[str, Any]], distributions):
         """
         Initialize event scheduler from configuration.
         
         Args:
-            events_config: Full events.json dict where keys are signal names
-                           and values contain 'agent_type' and 'periodicity'
+            events_config: List of event configs with 'signal', 'agent_type', 'periodicity'
             distributions: Distributions instance for sampling
         """
         self._config = events_config
@@ -26,10 +25,10 @@ class EventScheduler:
         interval_type = periodicity.get('type', 'deterministic')
         
         if interval_type == 'deterministic':
-            return periodicity.get('interval', 1.0)
+            return periodicity.get('value', 1.0)  # cambiado de 'interval' a 'value'
         elif interval_type == 'probabilistic':
             distribution_name = periodicity.get('distribution')
-            if distribution_name and distribution_name in self._distributions:
+            if distribution_name:
                 return self._distributions.sample(distribution_name)
             return 1.0
         else:
@@ -40,8 +39,13 @@ class EventScheduler:
         Initialize all static events. Sets next execution times.
         Returns None (no immediate events).
         """
-        for signal, config in self._config.items():
-            periodicity = config.get('periodicity', {})
+        for event_config in self._config:
+            if event_config.get('event_category') != 'static':
+                continue
+            signal = event_config.get('signal')
+            if not signal:
+                continue
+            periodicity = event_config.get('periodicity', {})
             interval = self._get_interval(periodicity)
             
             self._next_execution[signal] = current_time + interval
@@ -56,11 +60,17 @@ class EventScheduler:
         """
         due_events = []
         
-        for signal, config in self._config.items():
+        for event_config in self._config:
+            if event_config.get('event_category') != 'static':
+                continue
+            signal = event_config.get('signal')
+            if not signal:
+                continue
+                
             next_time = self._next_execution.get(signal, float('inf'))
             if next_time <= current_time:
-                agent_type = config.get('agent_type', '*')
-                periodicity = config.get('periodicity', {})
+                agent_type = event_config.get('agent_type', '*')
+                periodicity = event_config.get('periodicity', {})
                 
                 # Determine target agents
                 if agent_type == '*':
@@ -86,4 +96,4 @@ class EventScheduler:
     
     def get_static_events_count(self) -> int:
         """Return count of static events."""
-        return len(self._config)
+        return sum(1 for e in self._config if e.get('event_category') == 'static')

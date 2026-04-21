@@ -3,6 +3,7 @@ import random
 import string
 import json
 from jsonschema import validate
+from typing import Dict, List
 
 class Environments:
     def __init__(self, config_data, distributions):
@@ -41,6 +42,23 @@ class Environments:
                 
                 # Store in internal list
                 self.data.append(env_resolved)
+    
+    @property
+    def total_count(self) -> int:
+        """Return total number of environments."""
+        return len(self.data)
+
+
+    def get_all_by_type(self) -> Dict[str, List]:
+        """Return all environments grouped by type."""
+        by_type = {}
+        for env in self.data:
+            t = env.get('environment_type', 'unknown')
+            if t not in by_type:
+                by_type[t] = []
+            by_type[t].append(env)
+        return by_type
+
 
     def profile_register(self, env_id, agent_id, is_private):
         for env in self.data:

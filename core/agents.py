@@ -1,5 +1,6 @@
 import json
 from jsonschema import validate
+from typing import Dict
 
 class Agents:
     def __init__(self, config_data, distributions):
@@ -41,3 +42,18 @@ class Agents:
 
                 # Store in internal list
                 self.data.append(agent_resolved)
+
+    def get_by_type(self, agent_type: str):
+        """Return all agents of a specific type."""
+        return [a for a in self.data if a.get('agent_type') == agent_type]
+
+    def get_all_agents(self):
+        """Return all agents."""
+        return self.data
+    
+    def receive_event(self, agent_id: str, event: Dict) -> None:
+        """Add an event to the agent's event queue."""
+        for agent in self.data:
+            if agent['agent_id'] == agent_id:
+                agent['event_queue'].append(event)
+                return
