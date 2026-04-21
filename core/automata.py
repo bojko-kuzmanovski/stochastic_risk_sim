@@ -21,6 +21,19 @@ class Automata:
             resolved_params = automaton_entry.get("params", {}).copy()
             automaton_resolved["params"] = resolved_params
 
+            # Resolve internal_vars
+            resolved_internal_vars = {}
+            for internal_var_name, internal_var_def in automaton_entry.get("internal_vars", {}).items():
+                if internal_var_def["type"] == "deterministic":
+                    resolved_internal_vars[internal_var_name] = internal_var_def["value"]
+
+                elif internal_var_def["type"] == "probabilistic":
+                    dist_name = internal_var_def["distribution"]
+                    resolved_internal_vars[internal_var_name] = distributions.sample(dist_name)
+            
+            # Assign resolved internal_vars
+                automaton_entry["internal_vars"] = resolved_internal_vars
+
             # Resolve transitions (only distribution sampling when probabilistic)
             resolved_transitions = []
             for t in automaton_entry.get("transitions", []):

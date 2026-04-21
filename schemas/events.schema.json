@@ -28,8 +28,7 @@
           "required": ["agent_id", "agent_type"],
           "properties": {
             "agent_id": { "type": "string" },
-            "agent_type": { "type": "string" },
-            "metadata": { "type": "object", "additionalProperties": true }
+            "agent_type": { "type": "string" }
           }
         },
         "from_agent": {
@@ -37,8 +36,7 @@
           "required": ["agent_id", "agent_type"],
           "properties": {
             "agent_id": { "type": "string" },
-            "agent_type": { "type": "string" },
-            "metadata": { "type": "object", "additionalProperties": true }
+            "agent_type": { "type": "string" }
           }
         },
         "env": {

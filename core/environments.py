@@ -42,12 +42,7 @@ class Environments:
                 
                 # Store in internal list
                 self.data.append(env_resolved)
-    
-    @property
-    def total_count(self) -> int:
-        """Return total number of environments."""
-        return len(self.data)
-
+                
 
     def get_all_by_type(self) -> Dict[str, List]:
         """Return all environments grouped by type."""

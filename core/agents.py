@@ -23,7 +23,7 @@ class Agents:
                 # Assign agent_id
                 agent_resolved["agent_id"] = f"{agent_entry['agent_type']}_{n}"
 
-                # Resolve parameters
+                # Resolve params
                 resolved_params = {}
                 for param_name, param_def in agent_entry.get("params", {}).items():
                     if param_def["type"] == "deterministic":
@@ -33,7 +33,7 @@ class Agents:
                         dist_name = param_def["distribution"]
                         resolved_params[param_name] = distributions.sample(dist_name)
 
-                # Assign resolved parameters
+                # Assign resolved params
                 agent_resolved["params"] = resolved_params
 
                 # Ensure event_queue exists (required by schema)
@@ -51,9 +51,47 @@ class Agents:
         """Return all agents."""
         return self.data
     
-    def receive_event(self, agent_id: str, event: Dict) -> None:
-        """Add an event to the agent's event queue."""
-        for agent in self.data:
-            if agent['agent_id'] == agent_id:
-                agent['event_queue'].append(event)
-                return
+    def receive_event(self, agent_id, event):
+        agent = self._get_agent(agent_id)
+        agent["event_queue"].append(event)
+        self._process_agent_queue(agent)
+
+    def _process_agent_queue(self, agent):
+        batch_size = agent["params"].get("event_processing_batch_size", 1)
+
+        processed = 0
+        while agent["event_queue"] and processed < batch_size:
+            event = agent["event_queue"].pop(0)
+            self._execute_automaton(agent, event)
+            processed += 1
+    
+    def _execute_automaton(self, agent, event):
+        signal = event.get("signal")
+
+        automaton = next(
+            (a for a in self.automata.data if a["automaton_name"] == signal),
+            None
+        )
+        if not automaton:
+            return
+
+        current_state = automaton["states"]["initial"]
+
+        for transition in automaton["transitions"]:
+            if transition["from"] != current_state:
+                continue
+
+            threshold = transition["thresholds"][0]
+            next_state = threshold["to"]
+
+            if "emit_intent" in threshold:
+                new_event = {
+                    "signal": threshold["emit_intent"],
+                    "from_agent": {
+                        "agent_id": agent["agent_id"],
+                        "agent_type": agent["agent_type"]
+                    }
+                }
+
+                # 🔥 ENTREGA DIRECTA → procesamiento automático en el receptor
+                self.agents.receive_event(agent["agent_id"], new_event)
