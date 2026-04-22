@@ -63,6 +63,14 @@ class Agents:
         """Return all agents."""
         return self.data
     
+    def set_param(self, agent_id: str, key: str, value) -> None:
+        env = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        self.metrics.record_environment(env["agent_type"], "set_param")
+        if env:
+            if "params" not in env:
+                env["params"] = {}
+            env["params"][key] = value
+    
     async def receive_event(self, agent_id, event):
         agent = next(a for a in self.data if a["agent_id"] == agent_id)
         await agent["event_queue"].put(event)
