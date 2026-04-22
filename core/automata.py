@@ -1,6 +1,8 @@
 import json
 from jsonschema import validate
 
+from core.events import Events
+
 class Automata:
     def __init__(self, config_data, distributions, metrics_collector):
         # Load schema file
@@ -47,6 +49,27 @@ class Automata:
                 dist_name = v["distribution"]
                 refs = v.get("refs", {})
                 params[k] = self.distributions.sample(dist_name, refs) if refs else self.distributions.sample(dist_name)
+            
+            elif v["type"] == "logic":
+                query = v["query"]
+                target_name = query["target"]
+                method_name = query["method"]
+                param_keys = query.get("params", [])
+                
+                # Resolve from event
+                resolved_args = []
+                for key in param_keys:
+                    resolved_args.append(event.get(key))
+                
+                # Select target
+                target_obj = self.agents if target_name == "agents" else self.environments
+                
+                try:
+                    # Ejecute method
+                    method = getattr(target_obj, method_name)
+                    params[k] = method(*resolved_args)
+                except Exception:
+                    params[k] = None
 
         while True:
 
@@ -67,22 +90,47 @@ class Automata:
                 return None
 
             # Resolver valor _X_
-            if transition["type"] == "deterministic":
-                _X_ = transition.get("value")
+            if transition["rule"]["type"] == "deterministic":
+                value = transition["rule"]["value"]
+                # Si es una referencia a params
+                if isinstance(value, str) and value.startswith("params."):
+                    # Valor referencial
+                    key = value.split(".", 1)[1]
+                    _X_ = params.get(key, value)
+                else:
+                    # Valor literal
+                    _X_ = value
 
-            elif transition["type"] == "probabilistic":
-                dist_name = transition["distribution"]
-                refs = transition.get("refs", {})
+            elif transition["rule"]["type"] == "probabilistic":
+                dist_name = transition["rule"]["distribution"]
+                refs = transition["rule"].get("refs", {})
                 _X_ = self.distributions.sample(dist_name, refs) if refs else self.distributions.sample(dist_name)
+
+            elif transition["rule"]["type"] == "logic":
+                query = transition["rule"]["query"]
+                target_name = query["target"]
+                method_name = query["method"]
+                param_keys = query.get("params", [])
+                
+                # Resolver valores con prioridad: params > event
+                resolved_args = []
+                for key in param_keys:
+                    # Primero busca en params, luego en event
+                    val = params.get(key)
+                    if val is None:
+                        val = event.get(key)
+                    resolved_args.append(val)
+                
+                target_obj = self.agents if target_name == "agents" else self.environments
+                
+                try:
+                    method = getattr(target_obj, method_name)
+                    _X_ = method(*resolved_args)
+                except Exception:
+                    _X_ = None
 
             else:
                 _X_ = None
-            
-            # Contexto de evaluación (prioridad: X > event > params)
-            eval_context = {}
-            eval_context.update(params)
-            eval_context.update(event)
-            eval_context["_X_"] = _X_
 
             # Evaluar thresholds
             chosen_case = None
@@ -91,7 +139,7 @@ class Automata:
                 expr = th.get("threshold")
 
                 try:
-                    if eval(expr, {"__builtins__": {}}, eval_context):
+                    if eval(expr, {"__builtins__": {}}, {"X": _X_}):
                         chosen_case = th
                         break
                 except Exception:
@@ -102,32 +150,95 @@ class Automata:
                 self.metrics_collector.record_automaton_execution(automaton_name, state)
                 return None
 
-            # Aplicar transición
+            # Aplicar efectos de la transición
             state = chosen_case.get("to")
             effect_order = chosen_case.get("effect_order", [])
 
             for action in effect_order:
-                if action == "event_emit" or action == "action_required":
+                if action == "event_emit":
+                    event_emit_obj = chosen_case.get("event_emit")
+                    signal = event_emit_obj["signal"]
+                    param_keys = event_emit_obj.get("params", [])
+                    
+                    # Resolver valores con prioridad: params > event
+                    resolved_params = {}
+                    for key in param_keys:
+                        val = params.get(key)
+                        if val is None:
+                            val = event.get(key)
+                        resolved_params[key] = val
+                    
+                    # Crear objeto Events
+                    events = Events([{ "signal": signal, **resolved_params }], self.distributions)
+                    
+                    # Enviar al agente correspondiente
+                    await self.agents.receive_event(events[0].agent_id, events[0])
+                    
+                elif action == "action_required":
+                    action_obj = chosen_case.get("action_required")
+                    target_name = action_obj["target"]
+                    method_name = action_obj["method"]
+                    param_keys = action_obj.get("params", [])
+                    
+                    # Resolver valores con prioridad: params > event
+                    resolved_args = []
+                    for key in param_keys:
+                        val = params.get(key)
+                        if val is None:
+                            val = event.get(key)
+                        resolved_args.append(val)
+                    
+                    # Seleccionar el objeto target
+                    target_obj = self.agents if target_name == "agents" else self.environments
+                    
                     try:
-                        expr = chosen_case.get(action, "")
-                        eval(expr, {"__builtins__": {}}, eval_context)
+                        method = getattr(target_obj, method_name)
+                        method(*resolved_args)
                     except Exception:
                         pass
 
-                elif action == "update":
-                    updates = chosen_case.get("update", {})
+                elif action == "update_params":
+                    updates = chosen_case.get("update_params", {})
                     resolved_updates = {}
 
                     for k, v in updates.items():
                         if v.get("type") == "deterministic":
-                            resolved_updates[k] = v.get("value")
+                            value = v.get("value")
+                            # Si es una referencia a params
+                            if isinstance(value, str) and value.startswith("params."):
+                                # Valor referencial
+                                key = value.split(".", 1)[1]
+                                resolved_updates[k] = params.get(key, value)
+                            else:
+                                # Valor literal
+                                resolved_updates[k] = value
 
                         elif v.get("type") == "probabilistic":
                             dist_name = v["distribution"]
                             refs = v.get("refs", {})
-                            resolved_updates[k] = (
-                                self.distributions.sample(dist_name, refs)
-                                if refs else self.distributions.sample(dist_name)
-                            )
+                            resolved_updates[k] = self.distributions.sample(dist_name, refs) if refs else self.distributions.sample(dist_name)
+
+                        elif v.get("type") == "logic":
+                            query = v["query"]
+                            target_name = query["target"]
+                            method_name = query["method"]
+                            param_keys = query.get("params", [])
+                            
+                            # Resolver valores con prioridad: params > event
+                            resolved_args = []
+                            for key in param_keys:
+                                # Primero busca en params, luego en event
+                                val = params.get(key)
+                                if val is None:
+                                    val = event.get(key)
+                                resolved_args.append(val)
+                            
+                            target_obj = self.agents if target_name == "agents" else self.environments
+                            
+                            try:
+                                method = getattr(target_obj, method_name)
+                                resolved_updates[k] = method(*resolved_args)
+                            except Exception:
+                                resolved_updates[k] = None
 
                     params.update(resolved_updates)

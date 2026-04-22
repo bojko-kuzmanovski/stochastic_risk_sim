@@ -40,10 +40,7 @@ class EventScheduler:
 
                         # emit event to all agents
                         for agent in target_agents:
-                            self._agents.receive_event(
-                                agent["agent_id"],
-                                {"signal": signal}
-                            )
+                            self._agents.receive_event(agent["agent_id"], {"signal": signal})
 
                         # mark as completed
                         state["last_execution"] = now

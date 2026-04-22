@@ -82,21 +82,28 @@ class Agents:
     async def receive_event(self, agent_id, event):
         agent = next(a for a in self.data if a["agent_id"] == agent_id)
         await agent["event_queue"].put(event)
-        if self.metrics:
+        if self.metrics_collector:
             event_category = event.get("event_category")
             signal = event.get("signal")
-            self.metrics.record_agent_event(event_category, signal)
+            self.metrics_collector.record_agent_event(event_category, signal)
 
     async def _agent_loop(self, agent):
         max_concurrency = 5
         semaphore = asyncio.Semaphore(max_concurrency)
 
+        async def _process_event(event):
+            async with semaphore:
+                try:
+                    signal = event.get("signal")
+
+                    if signal not in agent.get("automata", []):
+                        return
+
+                    await self.automata.process_event(event)
+
+                except Exception as e:
+                    pass
+
         while True:
             event = await agent["event_queue"].get()
-            async with semaphore:
-                signal = event.get("signal")
-
-                if signal not in agent.get("automata", []):
-                    continue
-
-                await self.automata.process_event(event)
+            asyncio.create_task(_process_event(event))
