@@ -21,26 +21,7 @@
       "params": {
         "type": "object",
         "additionalProperties": {
-          "type": "object",
-          "required": ["type"],
-          "properties": {
-            "type": { "enum": ["probabilistic", "deterministic"] },
-            "value": { "type": ["string", "number", "boolean"] },
-            "distribution": { "type": "string" },
-            "refs": {
-              "type": "object",
-              "additionalProperties": { "type": "string" }
-            }
-          },
-          "if": {
-            "properties": { "type": { "const": "probabilistic" } }
-          },
-          "then": {
-            "required": ["distribution"]
-          },
-          "else": {
-            "required": ["value"]
-          }
+          "$ref": "#/definitions/param_value"
         }
       },
       "transitions": {
@@ -50,65 +31,51 @@
     }
   },
   "definitions": {
+    "transition": {
+      "type": "object",
+      "required": ["from", "source", "thresholds"],
+      "properties": {
+        "from": { "type": "string" },
+        "source": {
+          "$ref": "#/definitions/param_value"
+        },
+        "thresholds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/threshold_case" }
+        }
+      }
+    },
     "threshold_case": {
       "type": "object",
       "required": ["threshold", "to", "effect_order"],
       "properties": {
         "threshold": { "type": "string" },
         "to": { "type": "string" },
-
-        "action_required": { "type": "string" },
-        "event_emit": { "type": "string" },
-
-        "update": {
+        "event_emit": {
+          "$ref": "#/definitions/event_emit_object"
+        },
+        "action_required": {
+          "$ref": "#/definitions/action_required_object"
+        },
+        "update_params": {
           "type": "object",
           "additionalProperties": {
-            "type": "object",
-            "required": ["type"],
-            "properties": {
-              "type": { "enum": ["probabilistic", "deterministic"] },
-              "value": { "type": ["string", "number", "boolean"] },
-              "distribution": { "type": "string" },
-              "refs": {
-                "type": "object",
-                "additionalProperties": { "type": "string" }
-              }
-            },
-            "if": {
-              "properties": { "type": { "const": "probabilistic" } }
-            },
-            "then": {
-              "required": ["distribution"]
-            },
-            "else": {
-              "required": ["value"]
-            }
+            "$ref": "#/definitions/param_value"
           }
         },
-
         "effect_order": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["update", "event_emit", "action_required"]
+            "enum": ["event_emit", "action_required", "update_params"]
           },
-          "minItems": 0,
+          "minItems": 1,
           "maxItems": 3,
           "uniqueItems": true
         }
-
       },
       "allOf": [
-        {
-          "if": { "required": ["update"] },
-          "then": {
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "update" }
-              }
-            }
-          }
-        },
         {
           "if": { "required": ["event_emit"] },
           "then": {
@@ -128,36 +95,151 @@
               }
             }
           }
+        },
+        {
+          "if": { "required": ["update_params"] },
+          "then": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "update_params" }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "event_emit" }
+              }
+            }
+          },
+          "then": {
+            "required": ["event_emit"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "action_required" }
+              }
+            }
+          },
+          "then": {
+            "required": ["action_required"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "update_params" }
+              }
+            }
+          },
+          "then": {
+            "required": ["update_params"]
+          }
         }
       ]
     },
-    "transition": {
+    "event_emit_object": {
       "type": "object",
-      "required": ["from", "type", "thresholds"],
+      "required": ["signal", "params"],
       "properties": {
-        "from": { "type": "string" },
-        "type": { "enum": ["probabilistic", "deterministic"] },
+        "signal": { "type": "string" },
+        "params": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "action_required_object": {
+      "type": "object",
+      "required": ["target", "params"],
+      "properties": {
+        "target": {
+          "type": "string",
+          "enum": ["agents", "environments"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["A", "B"]
+        },
+        "params": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "query_object": {
+      "type": "object",
+      "required": ["target", "params"],
+      "properties": {
+        "target": {
+          "type": "string",
+          "enum": ["agents", "environments"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["A", "B"]
+        },
+        "params": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "param_value": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["probabilistic", "deterministic", "logic"] },
+
         "value": { "type": ["string", "number", "boolean"] },
+
         "distribution": { "type": "string" },
         "refs": {
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
-        "thresholds": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/definitions/threshold_case" }
+
+        "query": {
+          "$ref": "#/definitions/query_object"
         }
       },
-      "if": {
-        "properties": { "type": { "const": "probabilistic" } }
-      },
-      "then": {
-        "required": ["distribution"]
-      },
-      "else": {
-        "required": ["value"]
-      }
+      "additionalProperties": false,
+
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "probabilistic" } }
+          },
+          "then": {
+            "required": ["distribution"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "deterministic" } }
+          },
+          "then": {
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "logic" } }
+          },
+          "then": {
+            "required": ["query"]
+          }
+        }
+      ]
     }
   }
 }

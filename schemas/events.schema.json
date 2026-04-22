@@ -4,31 +4,27 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["event_category", "signal"],
+    "required": ["event_category"],
     "properties": {
-      "event_category": { "enum": ["static", "dynamic"] },
-      "signal": { "type": "string" }
+      "event_category": { "enum": ["static", "dynamic"] }
     },   
     "if": {
       "properties": { "event_category": { "const": "static" } }
     },
     "then": {
-      "required": ["agent_type", "periodicity"],
+      "required": ["signal", "agent_type", "periodicity"],
       "properties": {
+        "signal": { "type": "string" },
         "agent_type": { "type": "string" },
         "periodicity": { "$ref": "#/definitions/periodicity_definition" }
       }
     },
     "else": {
-      "required": ["created_at", "agent_id"],
+      "required": ["signal", "agent_id", "env_id"],
       "properties": {
-        "created_at": { "type": "number", "minimum": 0 },
+        "signal": { "type": "string" },
         "agent_id": { "type": "string" },
-        "env_id": { "type": "string" },
-        "payload": {
-          "type": "object",
-          "additionalProperties": true
-        }
+        "env_id": { "type": "string" }
       }
     }
   },
