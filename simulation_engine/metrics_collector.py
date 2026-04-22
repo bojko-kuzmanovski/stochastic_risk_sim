@@ -23,7 +23,7 @@ class MetricsCollector:
 
 
     # RUNTIME HOOKS
-    def record_event(self, event_category: str, signal: str) -> None:
+    def record_agent_event(self, event_category: str, signal: str) -> None:
         self._event_counts[event_category][signal] += 1
 
     def record_automaton(self, automaton_name: str, state: str) -> None:

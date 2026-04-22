@@ -65,7 +65,6 @@ class Agents:
     
     def set_param(self, agent_id: str, key: str, value) -> None:
         env = next((a for a in self.data if a.get("agent_id") == agent_id), None)
-        self.metrics.record_environment(env["agent_type"], "set_param")
         if env:
             if "params" not in env:
                 env["params"] = {}
@@ -77,7 +76,7 @@ class Agents:
         if self.metrics:
             event_category = event.get("event_category")
             signal = event.get("signal")
-            self.metrics.record_event(event_category, signal)
+            self.metrics.record_agent_event(event_category, signal)
 
     async def _agent_loop(self, agent):
         max_concurrency = 5
