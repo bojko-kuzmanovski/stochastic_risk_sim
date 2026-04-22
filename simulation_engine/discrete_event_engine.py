@@ -84,4 +84,4 @@ class DiscreteEventSimulator:
         pbar.close()
 
         # Final metrics
-        self.metrics_collector.print_report()
+        self.metrics_collector.print_report(self.distributions, self.environments, self.agents, self.automata, self.events)

@@ -66,6 +66,10 @@ class Environments:
                     "agent_id": agent_id,
                     "is_private": is_private
                 })
+
+                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                self.metrics_collector.record_environment(env["environment_type"], "profile_register")
+
                 return
 
 
@@ -75,6 +79,10 @@ class Environments:
                 for p in env["profile"]:
                     if p["agent_id"] == agent_id:
                         p["is_private"] = is_private
+
+                        env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                        self.metrics_collector.record_environment(env["environment_type"], "profile_private_change")
+
                         return
                     
 
@@ -93,6 +101,10 @@ class Environments:
                         "to_agent_id": to_agent_id,
                         "is_approved": False
                     })
+
+                    env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                    self.metrics_collector.record_environment(env["environment_type"], "follow_request")
+
                 return
 
 
@@ -106,6 +118,10 @@ class Environments:
                     for f in env["follow"]:
                         if f["from_agent_id"] == from_agent_id and f["to_agent_id"] == to_agent_id:
                             env["follow"].remove(f)
+
+                            env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                            self.metrics_collector.record_environment(env["environment_type"], "follow_reject")
+
                             return
                 return
 
@@ -124,6 +140,10 @@ class Environments:
                         ):
                             if not f["is_approved"]:
                                 f["is_approved"] = True
+
+                                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                                self.metrics_collector.record_environment(env["environment_type"], "follow_accept")
+
                             return
                     return
         
@@ -146,6 +166,10 @@ class Environments:
                         "to_agent_id": to_agent_id,
                         "is_approved": False
                     })
+
+                    env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                    self.metrics_collector.record_environment(env["environment_type"], "connection_request")
+                    
                 return
 
 
@@ -162,6 +186,10 @@ class Environments:
                             (c["from_agent_id"] == to_agent_id and c["to_agent_id"] == from_agent_id)
                         ):
                             env["connection"].remove(c)
+
+                            env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                            self.metrics_collector.record_environment(env["environment_type"], "connection_reject")
+
                             return
                 return
 
@@ -180,6 +208,10 @@ class Environments:
                         ):
                             if not c["is_approved"]:
                                 c["is_approved"] = True
+
+                            env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                            self.metrics_collector.record_environment(env["environment_type"], "connection_accept")
+
                             return
                     return
     
@@ -244,6 +276,9 @@ class Environments:
                     "was_replied": False
                 })
 
+                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                self.metrics_collector.record_environment(env["environment_type"], "direct_channels_interact")
+
                 return
             
 
@@ -268,6 +303,10 @@ class Environments:
                     }],
                     "interactions": []
                 })
+
+                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                self.metrics_collector.record_environment(env["environment_type"], "group_channels_register")
+
                 return
 
 
@@ -282,6 +321,10 @@ class Environments:
                         for a in ch["agents"]:
                             if a["agent_id"] == agent_id and a["is_admin"]:
                                 env["group_channels"].remove(ch)
+
+                                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                                self.metrics_collector.record_environment(env["environment_type"], "group_channels_delete")
+
                                 return
                 return
     
@@ -311,6 +354,10 @@ class Environments:
                         for a in ch["agents"]:
                             if a["agent_id"] == agent_i:
                                 ch["agents"].remove(a)
+
+                                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                                self.metrics_collector.record_environment(env["environment_type"], "group_channels_agent_delete")
+
                                 return
                 return
 
@@ -329,6 +376,10 @@ class Environments:
                             "agent_id": agent_id,
                             "is_admin": False
                         })
+
+                        env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                        self.metrics_collector.record_environment(env["environment_type"], "group_channels_join")
+                        
                         return
                 return
 
@@ -347,6 +398,10 @@ class Environments:
                             "from_agent_id": agent_id,
                             "timestamp": time.time()
                         })
+
+                        env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                        self.metrics_collector.record_environment(env["environment_type"], "group_channels_interact")
+
                         return
                 return
     
@@ -369,6 +424,10 @@ class Environments:
                     "publisher_agent_id": agent_id,
                     "applicants_agents_id": []
                 })
+
+                env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                self.metrics_collector.record_environment(env["environment_type"], "applications_create")
+                
                 return
 
 
@@ -382,5 +441,9 @@ class Environments:
                     if app["application_id"] == application_id:
                         if agent_id not in app["applicants_agents_id"]:
                             app["applicants_agents_id"].append(agent_id)
+
+                            env = next((e for e in self.data if e.get("env_id") == env_id), None)
+                            self.metrics_collector.record_environment(env["environment_type"], "applications_apply")
+
                         return
                 return
