@@ -72,19 +72,6 @@ class MetricsCollector:
         # RUNTIME METRICS
         print("\n🚀 RUNTIME METRICS")
 
-        # Events
-        total_static = sum(self._agent_event_counts["static"].values())
-        total_dynamic = sum(self._agent_event_counts["dynamic"].values())
-
-        print(f"\n📅 Events:")
-        print(f"   └── static: {total_static}")
-        print(f"   └── dynamic: {total_dynamic}")
-
-        for cat, signals in self._agent_event_counts.items():
-            print(f"\n   {cat.upper()}:")
-            for sig, cnt in signals.items():
-                print(f"   └── {sig}: {cnt}")
-
         # Distributions runtime
         print("\n🎲 Distribution Usage:")
         for dist, fams in self._distribution_sample_counts.items():
@@ -114,5 +101,18 @@ class MetricsCollector:
         for aut, states in self._automaton_execution_counts.items():
             for state, cnt in states.items():
                 print(f"   └── {aut} → {state}: {cnt}")
+        
+        # Events
+        total_static = sum(self._agent_event_counts["static"].values())
+        total_dynamic = sum(self._agent_event_counts["dynamic"].values())
+
+        print(f"\n📅 Events:")
+        print(f"   └── static: {total_static}")
+        print(f"   └── dynamic: {total_dynamic}")
+
+        for cat, signals in self._agent_event_counts.items():
+            print(f"\n   {cat.upper()}:")
+            for sig, cnt in signals.items():
+                print(f"   └── {sig}: {cnt}")
 
         print("\n" + "=" * 60)
