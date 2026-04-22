@@ -68,7 +68,7 @@ class Environments:
                 })
 
                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                self.metrics_collector.record_environment(env["environment_type"], "profile_register")
+                self.metrics_collector.record_environment_action(env["environment_type"], "profile_register")
 
                 return
 
@@ -81,7 +81,7 @@ class Environments:
                         p["is_private"] = is_private
 
                         env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                        self.metrics_collector.record_environment(env["environment_type"], "profile_private_change")
+                        self.metrics_collector.record_environment_action(env["environment_type"], "profile_private_change")
 
                         return
                     
@@ -103,7 +103,7 @@ class Environments:
                     })
 
                     env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                    self.metrics_collector.record_environment(env["environment_type"], "follow_request")
+                    self.metrics_collector.record_environment_action(env["environment_type"], "follow_request")
 
                 return
 
@@ -120,7 +120,7 @@ class Environments:
                             env["follow"].remove(f)
 
                             env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                            self.metrics_collector.record_environment(env["environment_type"], "follow_reject")
+                            self.metrics_collector.record_environment_action(env["environment_type"], "follow_reject")
 
                             return
                 return
@@ -142,7 +142,7 @@ class Environments:
                                 f["is_approved"] = True
 
                                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                                self.metrics_collector.record_environment(env["environment_type"], "follow_accept")
+                                self.metrics_collector.record_environment_action(env["environment_type"], "follow_accept")
 
                             return
                     return
@@ -168,7 +168,7 @@ class Environments:
                     })
 
                     env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                    self.metrics_collector.record_environment(env["environment_type"], "connection_request")
+                    self.metrics_collector.record_environment_action(env["environment_type"], "connection_request")
                     
                 return
 
@@ -188,7 +188,7 @@ class Environments:
                             env["connection"].remove(c)
 
                             env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                            self.metrics_collector.record_environment(env["environment_type"], "connection_reject")
+                            self.metrics_collector.record_environment_action(env["environment_type"], "connection_reject")
 
                             return
                 return
@@ -210,7 +210,7 @@ class Environments:
                                 c["is_approved"] = True
 
                             env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                            self.metrics_collector.record_environment(env["environment_type"], "connection_accept")
+                            self.metrics_collector.record_environment_action(env["environment_type"], "connection_accept")
 
                             return
                     return
@@ -277,7 +277,7 @@ class Environments:
                 })
 
                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                self.metrics_collector.record_environment(env["environment_type"], "direct_channels_interact")
+                self.metrics_collector.record_environment_action(env["environment_type"], "direct_channels_interact")
 
                 return
             
@@ -305,7 +305,7 @@ class Environments:
                 })
 
                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                self.metrics_collector.record_environment(env["environment_type"], "group_channels_register")
+                self.metrics_collector.record_environment_action(env["environment_type"], "group_channels_register")
 
                 return
 
@@ -323,7 +323,7 @@ class Environments:
                                 env["group_channels"].remove(ch)
 
                                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                                self.metrics_collector.record_environment(env["environment_type"], "group_channels_delete")
+                                self.metrics_collector.record_environment_action(env["environment_type"], "group_channels_delete")
 
                                 return
                 return
@@ -356,7 +356,7 @@ class Environments:
                                 ch["agents"].remove(a)
 
                                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                                self.metrics_collector.record_environment(env["environment_type"], "group_channels_agent_delete")
+                                self.metrics_collector.record_environment_action(env["environment_type"], "group_channels_agent_delete")
 
                                 return
                 return
@@ -378,7 +378,7 @@ class Environments:
                         })
 
                         env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                        self.metrics_collector.record_environment(env["environment_type"], "group_channels_join")
+                        self.metrics_collector.record_environment_action(env["environment_type"], "group_channels_join")
                         
                         return
                 return
@@ -400,7 +400,7 @@ class Environments:
                         })
 
                         env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                        self.metrics_collector.record_environment(env["environment_type"], "group_channels_interact")
+                        self.metrics_collector.record_environment_action(env["environment_type"], "group_channels_interact")
 
                         return
                 return
@@ -426,7 +426,7 @@ class Environments:
                 })
 
                 env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                self.metrics_collector.record_environment(env["environment_type"], "applications_create")
+                self.metrics_collector.record_environment_action(env["environment_type"], "applications_create")
                 
                 return
 
@@ -443,7 +443,7 @@ class Environments:
                             app["applicants_agents_id"].append(agent_id)
 
                             env = next((e for e in self.data if e.get("env_id") == env_id), None)
-                            self.metrics_collector.record_environment(env["environment_type"], "applications_apply")
+                            self.metrics_collector.record_environment_action(env["environment_type"], "applications_apply")
 
                         return
                 return

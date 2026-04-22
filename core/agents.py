@@ -15,7 +15,7 @@ class Agents:
 
         # Process agents attributes
         self.data = []
-        self.metrics = metrics_collector
+        self.metrics_collector = metrics_collector
         self.automata = None
         self._tasks = {}
 
@@ -64,11 +64,20 @@ class Agents:
         return self.data
     
     def set_param(self, agent_id: str, key: str, value) -> None:
-        env = next((a for a in self.data if a.get("agent_id") == agent_id), None)
-        if env:
-            if "params" not in env:
-                env["params"] = {}
-            env["params"][key] = value
+        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        if agent:
+            if "params" not in agent:
+                agent["params"] = {}
+            agent["params"][key] = value
+            self.metrics_collector.record_agent_action(agent["agent_type"], "set_param")
+    
+    def get_param(self, agent_id: str, key: str, default=None):
+        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        if not agent:
+            return default
+
+        self.metrics_collector.record_agent_action(agent["agent_type"], "get_param")
+        return agent.get("params", {}).get(key, default)
     
     async def receive_event(self, agent_id, event):
         agent = next(a for a in self.data if a["agent_id"] == agent_id)

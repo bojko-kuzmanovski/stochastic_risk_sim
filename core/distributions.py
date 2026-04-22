@@ -11,7 +11,7 @@ class Distributions:
 
         validate(instance=config_data, schema=schema)
 
-        self.metrics = metrics_collector
+        self.metrics_collector = metrics_collector
         self.samplers = {}
 
         for d in config_data:
@@ -57,8 +57,8 @@ class Distributions:
                         else:
                             val = str(val)
 
-                        if self.metrics:
-                            self.metrics.record_distribution(name, family)
+                        if self.metrics_collector:
+                            self.metrics_collector.record_distribution_sample(name, family)
 
                         return val
 

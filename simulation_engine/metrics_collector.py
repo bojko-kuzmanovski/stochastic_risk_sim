@@ -9,31 +9,37 @@ class MetricsCollector:
 
     def __init__(self):
 
-        # Distribution runtime usage
-        self._distribution_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
-
         # Events runtime usage
-        self._event_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._agent_event_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         # Automata execution counts
-        self._automaton_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._automaton_execution_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+        # Distribution runtime usage
+        self._distribution_sample_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         # Environment actions
-        self._environment_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._environment_action_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+        # Agents actions
+        self._agent_action_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
 
     # RUNTIME HOOKS
     def record_agent_event(self, event_category: str, signal: str) -> None:
-        self._event_counts[event_category][signal] += 1
+        self._agent_event_counts[event_category][signal] += 1
 
-    def record_automaton(self, automaton_name: str, state: str) -> None:
-        self._automaton_counts[automaton_name][state] += 1
+    def record_automaton_execution(self, automaton_name: str, state: str) -> None:
+        self._automaton_execution_counts[automaton_name][state] += 1
 
-    def record_distribution(self, dist_name: str, family: str) -> None:
-        self._distribution_counts[dist_name][family] += 1
+    def record_distribution_sample(self, dist_name: str, family: str) -> None:
+        self._distribution_sample_counts[dist_name][family] += 1
 
-    def record_environment(self, env_type: str, action: str) -> None:
-        self._environment_counts[env_type][action] += 1
+    def record_environment_action(self, env_type: str, action: str) -> None:
+        self._environment_action_counts[env_type][action] += 1
+
+    def record_agent_action(self, agent_type: str, action: str) -> None:
+        self._agent_action_counts[agent_type][action] += 1
 
     # REPORT
     def print_report(self, distributions, environments, agents, automata, events):
@@ -67,21 +73,21 @@ class MetricsCollector:
         print("\n🚀 RUNTIME METRICS")
 
         # Events
-        total_static = sum(self._event_counts["static"].values())
-        total_dynamic = sum(self._event_counts["dynamic"].values())
+        total_static = sum(self._agent_event_counts["static"].values())
+        total_dynamic = sum(self._agent_event_counts["dynamic"].values())
 
         print(f"\n📅 Events:")
         print(f"   └── static: {total_static}")
         print(f"   └── dynamic: {total_dynamic}")
 
-        for cat, signals in self._event_counts.items():
+        for cat, signals in self._agent_event_counts.items():
             print(f"\n   {cat.upper()}:")
             for sig, cnt in signals.items():
                 print(f"   └── {sig}: {cnt}")
 
         # Distributions runtime
         print("\n🎲 Distribution Usage:")
-        for dist, fams in self._distribution_counts.items():
+        for dist, fams in self._distribution_sample_counts.items():
             total = sum(fams.values())
             print(f"   └── {dist}: {total}")
             for fam, cnt in fams.items():
@@ -89,15 +95,23 @@ class MetricsCollector:
 
         # Environments runtime
         print("\n🌍 Environment Actions:")
-        for env, actions in self._environment_counts.items():
+        for env, actions in self._environment_action_counts.items():
             total = sum(actions.values())
             print(f"   └── {env}: {total}")
             for act, cnt in actions.items():
                 print(f"       └── {act}: {cnt}")
 
+        # Agent runtime
+        print("\n🤖 Agent Actions:")
+        for agent, actions in self._agent_action_counts.items():
+            total = sum(actions.values())
+            print(f"   └── {agent}: {total}")
+            for act, cnt in actions.items():
+                print(f"       └── {act}: {cnt}")
+
         # Automata runtime
         print("\n🎯 Automata Executions:")
-        for aut, states in self._automaton_counts.items():
+        for aut, states in self._automaton_execution_counts.items():
             for state, cnt in states.items():
                 print(f"   └── {aut} → {state}: {cnt}")
 

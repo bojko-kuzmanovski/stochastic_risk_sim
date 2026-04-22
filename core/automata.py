@@ -14,7 +14,7 @@ class Automata:
         # Process automata
         self.data = config_data
         self.distributions = distributions
-        self.metrics = metrics_collector
+        self.metrics_collector = metrics_collector
         self.agents = None
         self.environments = None
     
@@ -52,7 +52,7 @@ class Automata:
 
             # Si ya estamos en estado final, registramos y salimos
             if state in final_states:
-                self.metrics.record_automaton(automaton_name, state)
+                self.metrics_collector.record_automaton_execution(automaton_name, state)
                 return None
 
             # Buscar transición válida desde el estado actual
@@ -63,7 +63,7 @@ class Automata:
 
             if not transition:
                 # No hay transición posible → estado terminal implícito (fallo)
-                self.metrics.record_automaton(automaton_name, state)
+                self.metrics_collector.record_automaton_execution(automaton_name, state)
                 return None
 
             # Resolver valor _X_
@@ -99,7 +99,7 @@ class Automata:
 
             # Si no hay caso válido → transición fallida
             if not chosen_case:
-                self.metrics.record_automaton(automaton_name, state)
+                self.metrics_collector.record_automaton_execution(automaton_name, state)
                 return None
 
             # Aplicar transición

@@ -32,9 +32,5 @@ class Events:
                 event_resolved["periodicity"] = periodicity
 
             # DYNAMIC EVENTS
-            else:
-                # optional payload passthrough
-                if "payload" not in event_resolved:
-                    event_resolved["payload"] = {}
 
             self.data.append(event_resolved)
