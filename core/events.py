@@ -33,7 +33,7 @@ class Events:
 
             # DYNAMIC EVENTS
             else:
-                # optional payload passthrough (already dynamic structure)
+                # optional payload passthrough
                 if "payload" not in event_resolved:
                     event_resolved["payload"] = {}
 

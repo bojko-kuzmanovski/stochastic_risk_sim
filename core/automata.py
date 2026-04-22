@@ -1,6 +1,5 @@
 import json
 from jsonschema import validate
-import re
 
 class Automata:
     def __init__(self, config_data, distributions, metrics_collector):
@@ -13,11 +12,16 @@ class Automata:
         validate(instance=config_data, schema=schema)
 
         # Process automata
+        self.data = config_data
         self.distributions = distributions
         self.metrics = metrics_collector
-        self.data = config_data
+        self.agents = None
+        self.environments = None
+    
+    def set_objects(self, agents, environments):
+        self.agents = agents
+        self.environments = environments
 
-    # async def process_event(self, signal, agent, agents, environments):
     async def process_event(self, event):
         signal = event.get("signal")
 

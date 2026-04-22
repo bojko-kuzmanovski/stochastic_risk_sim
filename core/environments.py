@@ -6,7 +6,7 @@ from jsonschema import validate
 from typing import Dict, List
 
 class Environments:
-    def __init__(self, config_data, distributions):
+    def __init__(self, config_data, distributions, metrics_collector):
         # Load schema file
         schema_path = "schemas/environments.schema.json"
         with open(schema_path, 'r') as f:
@@ -17,6 +17,7 @@ class Environments:
 
         # Process environment data
         self.data = []
+        self.metrics_collector = metrics_collector
         
         for env_entry in config_data:
             for n in range(1, env_entry["quantity"] + 1):

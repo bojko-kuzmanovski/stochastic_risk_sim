@@ -4,7 +4,7 @@ from jsonschema import validate
 from typing import Dict
 
 class Agents:
-    def __init__(self, config_data, distributions, automata, metrics_collector):
+    def __init__(self, config_data, distributions, metrics_collector):
         # Load schema file
         schema_path = "schemas/agents.schema.json"
         with open(schema_path, 'r') as f:
@@ -14,9 +14,9 @@ class Agents:
         validate(instance=config_data, schema=schema)
 
         # Process agents attributes
-        self.metrics = metrics_collector
-        self.automata = automata
         self.data = []
+        self.metrics = metrics_collector
+        self.automata = None
         self._tasks = {}
 
         for agent_entry in config_data:
@@ -51,6 +51,9 @@ class Agents:
             self._tasks[agent["agent_id"]] = asyncio.create_task(
                 self._agent_loop(agent)
             )
+
+    def set_objects(self, automata):
+        self.automata = automata
 
     def get_by_type(self, agent_type: str):
         """Return all agents of a specific type."""

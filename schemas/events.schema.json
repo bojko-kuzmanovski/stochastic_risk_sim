@@ -20,33 +20,11 @@
       }
     },
     "else": {
-      "required": ["created_at", "to_agent"],
+      "required": ["created_at", "agent_id"],
       "properties": {
         "created_at": { "type": "number", "minimum": 0 },
-        "to_agent": {
-          "type": "object",
-          "required": ["agent_id", "agent_type"],
-          "properties": {
-            "agent_id": { "type": "string" },
-            "agent_type": { "type": "string" }
-          }
-        },
-        "from_agent": {
-          "type": "object",
-          "required": ["agent_id", "agent_type"],
-          "properties": {
-            "agent_id": { "type": "string" },
-            "agent_type": { "type": "string" }
-          }
-        },
-        "env": {
-          "type": "object",
-          "required": ["env_id", "env_type"],
-          "properties": {
-            "env_id": { "type": "string" },
-            "env_type": { "type": "string" }
-          }
-        },
+        "agent_id": { "type": "string" },
+        "env_id": { "type": "string" },
         "payload": {
           "type": "object",
           "additionalProperties": true
