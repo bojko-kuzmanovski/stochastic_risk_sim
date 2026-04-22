@@ -1,9 +1,10 @@
 import json
+import asyncio
 from jsonschema import validate
 from typing import Dict
 
 class Agents:
-    def __init__(self, config_data, distributions):
+    def __init__(self, config_data, distributions, automata, metrics_collector):
         # Load schema file
         schema_path = "schemas/agents.schema.json"
         with open(schema_path, 'r') as f:
@@ -12,8 +13,11 @@ class Agents:
         # Validate data against schema
         validate(instance=config_data, schema=schema)
 
-        # Process agents data
+        # Process agents attributes
+        self.metrics = metrics_collector
+        self.automata = automata
         self.data = []
+        self._tasks = {}
 
         for agent_entry in config_data:
             for n in range(1, agent_entry["quantity"] + 1):
@@ -36,12 +40,17 @@ class Agents:
                 # Assign resolved params
                 agent_resolved["params"] = resolved_params
 
-                # Ensure event_queue exists (required by schema)
-                if "event_queue" not in agent_resolved:
-                    agent_resolved["event_queue"] = []
+                # Asyncio event_queue
+                agent_resolved["event_queue"] = asyncio.Queue()
 
                 # Store in internal list
                 self.data.append(agent_resolved)
+
+        # start async workers per agent
+        for agent in self.data:
+            self._tasks[agent["agent_id"]] = asyncio.create_task(
+                self._agent_loop(agent)
+            )
 
     def get_by_type(self, agent_type: str):
         """Return all agents of a specific type."""
@@ -51,46 +60,24 @@ class Agents:
         """Return all agents."""
         return self.data
     
-    def receive_event(self, agent_id, event):
-        agent = self._get_agent(agent_id)
-        agent["event_queue"].append(event)
-        self._process_agent_queue(agent)
+    async def receive_event(self, agent_id, event):
+        agent = next(a for a in self.data if a["agent_id"] == agent_id)
+        await agent["event_queue"].put(event)
+        if self.metrics:
+            event_category = event.get("event_category")
+            signal = event.get("signal")
+            self.metrics.record_event(event_category, signal)
 
-    def _process_agent_queue(self, agent):
-        batch_size = agent["params"].get("event_processing_batch_size", 1)
+    async def _agent_loop(self, agent):
+        max_concurrency = 5
+        semaphore = asyncio.Semaphore(max_concurrency)
 
-        processed = 0
-        while agent["event_queue"] and processed < batch_size:
-            event = agent["event_queue"].pop(0)
-            self._execute_automaton(agent, event)
-            processed += 1
-    
-    def _execute_automaton(self, agent, event):
-        signal = event.get("signal")
+        while True:
+            event = await agent["event_queue"].get()
+            async with semaphore:
+                signal = event.get("signal")
 
-        automaton = next(
-            (a for a in self.automata.data if a["automaton_name"] == signal),
-            None
-        )
-        if not automaton:
-            return
+                if signal not in agent.get("automata", []):
+                    continue
 
-        current_state = automaton["states"]["initial"]
-
-        for transition in automaton["transitions"]:
-            if transition["from"] != current_state:
-                continue
-
-            threshold = transition["thresholds"][0]
-            next_state = threshold["to"]
-
-            if "emit_intent" in threshold:
-                new_event = {
-                    "signal": threshold["emit_intent"],
-                    "from_agent": {
-                        "agent_id": agent["agent_id"],
-                        "agent_type": agent["agent_type"]
-                    }
-                }
-
-                self.agents.receive_event(agent["agent_id"], new_event)
+                await self.automata.process_event(event)

@@ -3,14 +3,6 @@
     "quantity": 1000,
     "agent_type": "citizen",
     "params": {
-      "event_processing_rate": {
-        "type": "probabilistic",
-        "distribution": "event_processing_rate"
-      },
-      "event_processing_batch_size": {
-        "type": "probabilistic",
-        "distribution": "event_processing_batch_size"
-      },
       "age": {
         "type": "probabilistic",
         "distribution": "age"
@@ -43,27 +35,16 @@
       "victim_mule_romance",
       "victim_contact_gaming",
       "victim_mule_gaming"
-    ],
-    "event_queue": []
+    ]
   },
   {
     "quantity": 5,
     "agent_type": "malicious",
-    "params": {
-      "event_processing_rate": {
-        "type": "probabilistic",
-        "distribution": "event_processing_rate"
-      },
-      "event_processing_batch_size": {
-        "type": "probabilistic",
-        "distribution": "event_processing_batch_size"
-      }
-    },
+    "params": {},
     "automata": [
       "attacker_select_channel",
       "attacker_fishing_generic",
       "attacker_recruitment_router"
-    ],
-    "event_queue": []
+    ]
   }
 ]

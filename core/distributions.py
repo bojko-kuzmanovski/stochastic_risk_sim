@@ -4,13 +4,14 @@ import numpy as np
 from jsonschema import validate
 
 class Distributions:
-    def __init__(self, config_data):
+    def __init__(self, config_data, metrics_collector):
         schema_path = "schemas/distributions.schema.json"
         with open(schema_path, 'r') as f:
             schema = json.load(f)
 
         validate(instance=config_data, schema=schema)
 
+        self.metrics = metrics_collector
         self.samplers = {}
 
         for d in config_data:
@@ -55,6 +56,9 @@ class Distributions:
                             val = round(float(val), 4)
                         else:
                             val = str(val)
+
+                        if self.metrics:
+                            self.metrics.record_distribution(name, family)
 
                         return val
 

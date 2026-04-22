@@ -1,19 +1,5 @@
 [
   {
-    "distribution_name": "event_processing_rate",
-    "family": "exponential",
-    "output_type": "float",
-    "params": { "rate": 0.2 },
-    "truncation": { "min": 1.5, "max": 10.0 }
-  },
-  {
-    "distribution_name": "event_processing_batch_size",
-    "family": "poisson",
-    "output_type": "int",
-    "params": { "lambda": 7 },
-    "truncation": { "min": 3, "max": 20 }
-  },
-  {
     "distribution_name": "age",
     "family": "gamma",
     "output_type": "float",

@@ -17,7 +17,7 @@ class DiscreteEventSimulator:
         self.metrics_collector = MetricsCollector()
         self.distributions = Distributions(distributions_config, self.metrics_collector)
         self.automata = Automata(automata_config, self.distributions, self.metrics_collector)
-        self.agents = Agents(agents_config, self.distributions, self.metrics_collector)
+        self.agents = Agents(agents_config, self.distributions, self.automata, self.metrics_collector)
         self.environments = Environments(environments_config, self.distributions, self.metrics_collector)
         events = Events(events_config, self.distributions)
         static_events = [e for e in events.data if e["event_category"] == "static"]

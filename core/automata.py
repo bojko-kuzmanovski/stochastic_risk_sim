@@ -67,3 +67,48 @@ class Automata:
             automaton_resolved["transitions"] = resolved_transitions
 
             self.data.append(automaton_resolved)
+
+    async def process_event(self, event):
+        signal = event.get("signal")
+
+        automaton = next(
+            (a for a in self.data if a["automaton_name"] == signal),
+            None
+        )
+
+        if not automaton:
+            return None
+
+        state = automaton["states"]["initial"]
+
+        for transition in automaton["transitions"]:
+            if transition["from"] != state:
+                continue
+
+            for threshold in transition.get("thresholds", []):
+                # evaluar coincidencia de threshold
+                if threshold.get("threshold") and threshold["threshold"] != event.get("signal"):
+                    continue
+
+                # aplicar updates si existen
+                updates = {}
+                if "update" in threshold:
+                    updates = threshold["update"]
+
+                    for k, v in updates.items():
+                        automaton["internal_vars"][k] = v
+
+                # cambio de estado
+                next_state = threshold.get("to")
+                if next_state:
+                    state = next_state
+
+                # emisión de evento si aplica
+                if "event_emit" in threshold:
+                    return {
+                        "signal": threshold["event_emit"],
+                        "from_automaton": signal,
+                        "updates": updates
+                    }
+
+        return None

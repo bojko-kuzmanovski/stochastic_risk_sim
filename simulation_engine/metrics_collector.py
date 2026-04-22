@@ -4,150 +4,101 @@ from collections import defaultdict
 
 class MetricsCollector:
     """
-    Collects event and automata metrics and prints unified report.
+    Collects event, automata, distribution and environment metrics.
     """
 
     def __init__(self):
-        # Distribution samples count by distribution_name and family
+
+        # Distribution runtime usage
         self._distribution_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        # Event count by event_category and signal
+        # Events runtime usage
         self._event_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        # Automaton execution count by automaton_name and final state
+        # Automata execution counts
         self._automaton_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        # Environments executed actions count by environment_type and action
+        # Environment actions
         self._environment_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-    # --- hooks that Agents / Automata will use ---
+
+    # RUNTIME HOOKS
     def record_event(self, event_category: str, signal: str) -> None:
-        if event_category not in self._event_counts:
-            event_category = "dynamic"
         self._event_counts[event_category][signal] += 1
 
     def record_automaton(self, automaton_name: str, state: str) -> None:
         self._automaton_counts[automaton_name][state] += 1
 
-    # --- report ---
+    def record_distribution(self, dist_name: str, family: str) -> None:
+        self._distribution_counts[dist_name][family] += 1
+
+    def record_environment(self, env_type: str, action: str) -> None:
+        self._environment_counts[env_type][action] += 1
+
+    # REPORT
     def print_report(self, distributions, environments, agents, automata, events):
-        """Print unified simulation report."""
 
-        # Distributions by family
-        dist_by_family = {}
-        for _, info in distributions.samplers.items():
-            fam = info.get('family', 'unknown')
-            dist_by_family[fam] = dist_by_family.get(fam, 0) + 1
-
-        # Environments by type
-        env_by_type = {}
-        for e in environments.data:
-            t = e.get('environment_type', 'unknown')
-            env_by_type[t] = env_by_type.get(t, 0) + 1
-
-        # Agents by type
-        agent_by_type = {}
-        for a in agents.data:
-            t = a.get('agent_type', 'unknown')
-            agent_by_type[t] = agent_by_type.get(t, 0) + 1
-
-        # Automata transitions
-        det_trans = 0
-        prob_trans = 0
-
-        for aut in automata.data:
-            for t in aut.get("transitions", []):
-                if t.get("type") == "deterministic":
-                    det_trans += 1
-                elif t.get("type") == "probabilistic":
-                    prob_trans += 1
-
-        # Declared events
-        static_defined = [
-            e for e in events.data
-            if e.get("event_category") == "static"
-        ]
-
-        # Runtime totals
-        total_static = sum(self._event_counts["static"].values())
-        total_dynamic = sum(self._event_counts["dynamic"].values())
-        total_events = total_static + total_dynamic
-
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("📊 SIMULATION STATISTICS")
-        print("="*60)
+        print("=" * 60)
 
-        print("\n🧱 BUILD TIME METRICS")
+        # BUILDTIME METRICS
+        print("\n🧱 BUILDTIME METRICS")
 
-        # Distributions
         print(f"\n📈 Distributions: {len(distributions.samplers)}")
-        for fam, cnt in sorted(dist_by_family.items()):
-            print(f"   └── {fam}: {cnt}")
 
-        # Environments
         print(f"\n🌍 Environments: {len(environments.data)}")
-        for t, cnt in sorted(env_by_type.items()):
-            print(f"   └── {t}: {cnt}")
+        for e in environments.data:
+            print(f"   └── {e.get('environment_type')}")
 
-        # Agents
         print(f"\n👤 Agents: {len(agents.data)}")
-        for t, cnt in sorted(agent_by_type.items()):
-            print(f"   └── {t}: {cnt}")
+        for a in agents.data:
+            print(f"   └── {a.get('agent_type')}")
 
-        # Automata structure
         print(f"\n🤖 Automata: {len(automata.data)}")
-        print(f"   └── deterministic transitions: {det_trans}")
-        print(f"   └── probabilistic transitions: {prob_trans}")
 
-        # Declared events
+        static_defined = [e for e in events.data if e.get("event_category") == "static"]
+
         print(f"\n🧾 Static Events (defined): {len(static_defined)}")
         for e in sorted(static_defined, key=lambda x: x["signal"]):
-            print(f"   └── {e['signal']} (periodicity={e.get('periodicity')})")
+            print(f"   └── {e['signal']}")
 
+        # RUNTIME METRICS
         print("\n🚀 RUNTIME METRICS")
 
-        # Runtime events
-        print(f"\n📅 Total Events: {total_events}")
+        # Events
+        total_static = sum(self._event_counts["static"].values())
+        total_dynamic = sum(self._event_counts["dynamic"].values())
+
+        print(f"\n📅 Events:")
         print(f"   └── static: {total_static}")
         print(f"   └── dynamic: {total_dynamic}")
 
-        # Distribution usage
-        if self._distribution_counts:
-            print("\n🎲 Distribution Usage:")
-            for dist_name in sorted(self._distribution_counts.keys()):
-                total = sum(self._distribution_counts[dist_name].values())
-                print(f"   └── {dist_name}: {total}")
-
-                for fam, cnt in sorted(self._distribution_counts[dist_name].items()):
-                    print(f"       └── {fam}: {cnt}")
-        
-        # Environment actions
-        if self._environment_counts:
-            print("\n🌍 Environment Actions:")
-            for env_type in sorted(self._environment_counts.keys()):
-                total = sum(self._environment_counts[env_type].values())
-                print(f"   └── {env_type}: {total}")
-
-                for action, cnt in sorted(self._environment_counts[env_type].items()):
-                    print(f"       └── {action}: {cnt}")
-
-        # Breakdown static
-        if self._event_counts["static"]:
-            print("\n   Static by signal:")
-            for sig, cnt in sorted(self._event_counts["static"].items()):
+        for cat, signals in self._event_counts.items():
+            print(f"\n   {cat.upper()}:")
+            for sig, cnt in signals.items():
                 print(f"   └── {sig}: {cnt}")
 
-        # Breakdown dynamic
-        if self._event_counts["dynamic"]:
-            print("\n   Dynamic by signal:")
-            for sig, cnt in sorted(self._event_counts["dynamic"].items()):
-                print(f"   └── {sig}: {cnt}")
+        # Distributions runtime
+        print("\n🎲 Distribution Usage:")
+        for dist, fams in self._distribution_counts.items():
+            total = sum(fams.values())
+            print(f"   └── {dist}: {total}")
+            for fam, cnt in fams.items():
+                print(f"       └── {fam}: {cnt}")
 
-        # Automata executions
-        if self._automaton_counts:
-            print("\n🎯 Automata Executions:")
-            for aut_name in sorted(self._automaton_counts.keys()):
-                for state, count in sorted(self._automaton_counts[aut_name].items()):
-                    print(f"   └── {aut_name} → {state}: {count}")
+        # Environments runtime
+        print("\n🌍 Environment Actions:")
+        for env, actions in self._environment_counts.items():
+            total = sum(actions.values())
+            print(f"   └── {env}: {total}")
+            for act, cnt in actions.items():
+                print(f"       └── {act}: {cnt}")
+
+        # Automata runtime
+        print("\n🎯 Automata Executions:")
+        for aut, states in self._automaton_counts.items():
+            for state, cnt in states.items():
+                print(f"   └── {aut} → {state}: {cnt}")
 
         print("\n" + "=" * 60)

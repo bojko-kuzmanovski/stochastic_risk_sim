@@ -4,7 +4,7 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["quantity", "agent_type", "params", "automata", "event_queue"],
+    "required": ["quantity", "agent_type", "params", "automata"],
     "properties": {
       "quantity": { "type": "integer", "minimum": 1 },
       "agent_type": { "type": "string" },
@@ -15,11 +15,6 @@
       "automata": {
         "type": "array",
         "items": { "type": "string" }
-      },
-      "event_queue": {
-        "type": "array",
-        "items": {},
-        "default": []
       }
     }
   },
