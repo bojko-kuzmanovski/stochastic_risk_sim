@@ -4,14 +4,21 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["automaton_name", "params", "internal_vars", "states", "transitions"],
+    "required": ["automaton_name", "states", "params", "transitions"],
     "properties": {
       "automaton_name": { "type": "string" },
-      "params": {
+      "states": {
         "type": "object",
-        "additionalProperties": true
+        "required": ["initial", "final"],
+        "properties": {
+          "initial": { "type": "string" },
+          "final": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
       },
-      "internal_vars": {
+      "params": {
         "type": "object",
         "additionalProperties": {
           "type": "object",
@@ -36,17 +43,6 @@
           }
         }
       },
-      "states": {
-        "type": "object",
-        "required": ["initial", "final"],
-        "properties": {
-          "initial": { "type": "string" },
-          "final": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        }
-      },
       "transitions": {
         "type": "array",
         "items": { "$ref": "#/definitions/transition" }
@@ -56,12 +52,14 @@
   "definitions": {
     "threshold_case": {
       "type": "object",
-      "required": ["threshold", "to"],
+      "required": ["threshold", "to", "effect_order"],
       "properties": {
         "threshold": { "type": "string" },
         "to": { "type": "string" },
-        "event_emit": { "type": "string" },
+
         "action_required": { "type": "string" },
+        "event_emit": { "type": "string" },
+
         "update": {
           "type": "object",
           "additionalProperties": {
@@ -86,8 +84,52 @@
               "required": ["value"]
             }
           }
+        },
+
+        "effect_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["update", "event_emit", "action_required"]
+          },
+          "minItems": 0,
+          "maxItems": 3,
+          "uniqueItems": true
         }
-      }
+
+      },
+      "allOf": [
+        {
+          "if": { "required": ["update"] },
+          "then": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "update" }
+              }
+            }
+          }
+        },
+        {
+          "if": { "required": ["event_emit"] },
+          "then": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "event_emit" }
+              }
+            }
+          }
+        },
+        {
+          "if": { "required": ["action_required"] },
+          "then": {
+            "properties": {
+              "effect_order": {
+                "contains": { "const": "action_required" }
+              }
+            }
+          }
+        }
+      ]
     },
     "transition": {
       "type": "object",
@@ -95,6 +137,7 @@
       "properties": {
         "from": { "type": "string" },
         "type": { "enum": ["probabilistic", "deterministic"] },
+        "value": { "type": ["string", "number", "boolean"] },
         "distribution": { "type": "string" },
         "refs": {
           "type": "object",
@@ -111,6 +154,9 @@
       },
       "then": {
         "required": ["distribution"]
+      },
+      "else": {
+        "required": ["value"]
       }
     }
   }

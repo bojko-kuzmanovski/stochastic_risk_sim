@@ -20,7 +20,7 @@
           {
             "threshold": "0.5",
             "to": "CONTACTED",
-            "emit_intent": "attacker_recruitment_router_ig"
+            "event_emit": "attacker_recruitment_router_ig"
           },
           {
             "threshold": "1.0",
@@ -81,7 +81,7 @@
           {
             "threshold": "0.5",
             "to": "CONTACTED",
-            "emit_intent": "attacker_recruitment_router_wa"
+            "event_emit": "attacker_recruitment_router_wa"
           },
           {
             "threshold": "1.0",
@@ -142,7 +142,7 @@
           {
             "threshold": "0.5",
             "to": "CONTACTED",
-            "emit_intent": "attacker_recruitment_router_job"
+            "event_emit": "attacker_recruitment_router_job"
           },
           {
             "threshold": "1.0",
@@ -203,7 +203,7 @@
           {
             "threshold": "0.5",
             "to": "CONTACTED",
-            "emit_intent": "attacker_recruitment_router_romance"
+            "event_emit": "attacker_recruitment_router_romance"
           },
           {
             "threshold": "1.0",
@@ -264,7 +264,7 @@
           {
             "threshold": "0.5",
             "to": "CONTACTED",
-            "emit_intent": "attacker_recruitment_router_gaming"
+            "event_emit": "attacker_recruitment_router_gaming"
           },
           {
             "threshold": "1.0",
@@ -320,7 +320,7 @@
           {
             "threshold": "1.0",
             "to": "CHOSEN",
-            "emit_intent": "attacker_fishing_ig"
+            "event_emit": "attacker_fishing_ig"
           }
         ]
       }
@@ -342,7 +342,7 @@
           {
             "threshold": "1.0",
             "to": "CHOSEN",
-            "emit_intent": "attacker_fishing_wa"
+            "event_emit": "attacker_fishing_wa"
           }
         ]
       }
@@ -364,7 +364,7 @@
           {
             "threshold": "1.0",
             "to": "CHOSEN",
-            "emit_intent": "attacker_fishing_job"
+            "event_emit": "attacker_fishing_job"
           }
         ]
       }
@@ -386,7 +386,7 @@
           {
             "threshold": "1.0",
             "to": "CHOSEN",
-            "emit_intent": "attacker_fishing_romance"
+            "event_emit": "attacker_fishing_romance"
           }
         ]
       }
@@ -408,7 +408,7 @@
           {
             "threshold": "1.0",
             "to": "CHOSEN",
-            "emit_intent": "attacker_fishing_gaming"
+            "event_emit": "attacker_fishing_gaming"
           }
         ]
       }
@@ -430,7 +430,7 @@
           {
             "threshold": "1.0",
             "to": "CONTACT_SENT",
-            "emit_intent": "victim_contact_ig"
+            "event_emit": "victim_contact_ig"
           }
         ]
       }
@@ -452,7 +452,7 @@
           {
             "threshold": "1.0",
             "to": "CONTACT_SENT",
-            "emit_intent": "victim_contact_wa"
+            "event_emit": "victim_contact_wa"
           }
         ]
       }
@@ -474,7 +474,7 @@
           {
             "threshold": "1.0",
             "to": "CONTACT_SENT",
-            "emit_intent": "victim_contact_job"
+            "event_emit": "victim_contact_job"
           }
         ]
       }
@@ -496,7 +496,7 @@
           {
             "threshold": "1.0",
             "to": "CONTACT_SENT",
-            "emit_intent": "victim_contact_romance"
+            "event_emit": "victim_contact_romance"
           }
         ]
       }
@@ -518,7 +518,7 @@
           {
             "threshold": "1.0",
             "to": "CONTACT_SENT",
-            "emit_intent": "victim_contact_gaming"
+            "event_emit": "victim_contact_gaming"
           }
         ]
       }
@@ -540,7 +540,7 @@
           {
             "threshold": "1.0",
             "to": "ROUTED",
-            "emit_intent": "victim_mule_ig"
+            "event_emit": "victim_mule_ig"
           }
         ]
       }
@@ -562,7 +562,7 @@
           {
             "threshold": "1.0",
             "to": "ROUTED",
-            "emit_intent": "victim_mule_wa"
+            "event_emit": "victim_mule_wa"
           }
         ]
       }
@@ -584,7 +584,7 @@
           {
             "threshold": "1.0",
             "to": "ROUTED",
-            "emit_intent": "victim_mule_job"
+            "event_emit": "victim_mule_job"
           }
         ]
       }
@@ -606,7 +606,7 @@
           {
             "threshold": "1.0",
             "to": "ROUTED",
-            "emit_intent": "victim_mule_romance"
+            "event_emit": "victim_mule_romance"
           }
         ]
       }
@@ -628,7 +628,7 @@
           {
             "threshold": "1.0",
             "to": "ROUTED",
-            "emit_intent": "victim_mule_gaming"
+            "event_emit": "victim_mule_gaming"
           }
         ]
       }

@@ -1,8 +1,9 @@
 import json
 from jsonschema import validate
+import re
 
 class Automata:
-    def __init__(self, config_data, distributions):
+    def __init__(self, config_data, distributions, metrics_collector):
         # Load schema file
         schema_path = "schemas/automata.schema.json"
         with open(schema_path, "r") as f:
@@ -12,62 +13,11 @@ class Automata:
         validate(instance=config_data, schema=schema)
 
         # Process automata
-        self.data = []
+        self.distributions = distributions
+        self.metrics = metrics_collector
+        self.data = config_data
 
-        for automaton_entry in config_data:
-            automaton_resolved = automaton_entry.copy()
-
-            # Resolve params
-            resolved_params = automaton_entry.get("params", {}).copy()
-            automaton_resolved["params"] = resolved_params
-
-            # Resolve internal_vars
-            resolved_internal_vars = {}
-            for internal_var_name, internal_var_def in automaton_entry.get("internal_vars", {}).items():
-                if internal_var_def["type"] == "deterministic":
-                    resolved_internal_vars[internal_var_name] = internal_var_def["value"]
-
-                elif internal_var_def["type"] == "probabilistic":
-                    dist_name = internal_var_def["distribution"]
-                    resolved_internal_vars[internal_var_name] = distributions.sample(dist_name)
-            
-            # Assign resolved internal_vars
-                automaton_entry["internal_vars"] = resolved_internal_vars
-
-            # Resolve transitions (only distribution sampling when probabilistic)
-            resolved_transitions = []
-            for t in automaton_entry.get("transitions", []):
-                t_resolved = t.copy()
-
-                if t_resolved.get("type") == "probabilistic" and "distribution" in t_resolved:
-                    # keep structure, distribution stays as definition-level parameter
-                    pass
-
-                # resolve threshold updates if present
-                if "thresholds" in t_resolved:
-                    new_thresholds = []
-                    for th in t_resolved["thresholds"]:
-                        th_resolved = th.copy()
-
-                        if "update" in th_resolved:
-                            new_update = {}
-                            for k, v in th_resolved["update"].items():
-                                if v.get("type") == "deterministic":
-                                    new_update[k] = v["value"]
-                                elif v.get("type") == "probabilistic":
-                                    new_update[k] = distributions.sample(v["distribution"])
-                            th_resolved["update"] = new_update
-
-                        new_thresholds.append(th_resolved)
-
-                    t_resolved["thresholds"] = new_thresholds
-
-                resolved_transitions.append(t_resolved)
-
-            automaton_resolved["transitions"] = resolved_transitions
-
-            self.data.append(automaton_resolved)
-
+    # async def process_event(self, signal, agent, agents, environments):
     async def process_event(self, event):
         signal = event.get("signal")
 
@@ -79,36 +29,101 @@ class Automata:
         if not automaton:
             return None
 
+        automaton_name = automaton["automaton_name"]
         state = automaton["states"]["initial"]
+        final_states = set(automaton["states"].get("final", []))
 
-        for transition in automaton["transitions"]:
-            if transition["from"] != state:
-                continue
+        # Resolve params
+        params = {}
+        for k, v in automaton.get("params", {}).items():
+            if v["type"] == "deterministic":
+                params[k] = v["value"]
 
-            for threshold in transition.get("thresholds", []):
-                # evaluar coincidencia de threshold
-                if threshold.get("threshold") and threshold["threshold"] != event.get("signal"):
+            elif v["type"] == "probabilistic":
+                dist_name = v["distribution"]
+                refs = v.get("refs", {})
+                params[k] = self.distributions.sample(dist_name, refs) if refs else self.distributions.sample(dist_name)
+
+        while True:
+
+            # Si ya estamos en estado final, registramos y salimos
+            if state in final_states:
+                self.metrics.record_automaton(automaton_name, state)
+                return None
+
+            # Buscar transición válida desde el estado actual
+            transition = next(
+                (t for t in automaton["transitions"] if t["from"] == state),
+                None
+            )
+
+            if not transition:
+                # No hay transición posible → estado terminal implícito (fallo)
+                self.metrics.record_automaton(automaton_name, state)
+                return None
+
+            # Resolver valor _X_
+            if transition["type"] == "deterministic":
+                _X_ = transition.get("value")
+
+            elif transition["type"] == "probabilistic":
+                dist_name = transition["distribution"]
+                refs = transition.get("refs", {})
+                _X_ = self.distributions.sample(dist_name, refs) if refs else self.distributions.sample(dist_name)
+
+            else:
+                _X_ = None
+            
+            # Contexto de evaluación (prioridad: X > event > params)
+            eval_context = {}
+            eval_context.update(params)
+            eval_context.update(event)
+            eval_context["_X_"] = _X_
+
+            # Evaluar thresholds
+            chosen_case = None
+
+            for th in transition.get("thresholds", []):
+                expr = th.get("threshold")
+
+                try:
+                    if eval(expr, {"__builtins__": {}}, eval_context):
+                        chosen_case = th
+                        break
+                except Exception:
                     continue
 
-                # aplicar updates si existen
-                updates = {}
-                if "update" in threshold:
-                    updates = threshold["update"]
+            # Si no hay caso válido → transición fallida
+            if not chosen_case:
+                self.metrics.record_automaton(automaton_name, state)
+                return None
+
+            # Aplicar transición
+            state = chosen_case.get("to")
+            effect_order = chosen_case.get("effect_order", [])
+
+            for action in effect_order:
+                if action == "event_emit" or action == "action_required":
+                    try:
+                        expr = chosen_case.get(action, "")
+                        eval(expr, {"__builtins__": {}}, eval_context)
+                    except Exception:
+                        pass
+
+                elif action == "update":
+                    updates = chosen_case.get("update", {})
+                    resolved_updates = {}
 
                     for k, v in updates.items():
-                        automaton["internal_vars"][k] = v
+                        if v.get("type") == "deterministic":
+                            resolved_updates[k] = v.get("value")
 
-                # cambio de estado
-                next_state = threshold.get("to")
-                if next_state:
-                    state = next_state
+                        elif v.get("type") == "probabilistic":
+                            dist_name = v["distribution"]
+                            refs = v.get("refs", {})
+                            resolved_updates[k] = (
+                                self.distributions.sample(dist_name, refs)
+                                if refs else self.distributions.sample(dist_name)
+                            )
 
-                # emisión de evento si aplica
-                if "event_emit" in threshold:
-                    return {
-                        "signal": threshold["event_emit"],
-                        "from_automaton": signal,
-                        "updates": updates
-                    }
-
-        return None
+                    params.update(resolved_updates)
