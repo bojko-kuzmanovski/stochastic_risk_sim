@@ -30,13 +30,13 @@ class DiscreteEventSimulator:
         self.event_scheduler = EventScheduler(static_events, self.agents)
 
     async def run_simulation(self, max_time: float = 10000.0):
-        # Iniciar agentes asíncronos
+        # Start async agents
         await self.agents.start()
 
-        start_time = time.time()
-
         # Start async scheduler
-        self.event_scheduler.start()
+        await self.event_scheduler.start()
+
+        start_time = time.time()
 
         pbar = tqdm(
             total=max_time,
@@ -63,8 +63,8 @@ class DiscreteEventSimulator:
         pbar.refresh()
         pbar.close()
 
-        # Stop scheduler
-        self.event_scheduler.stop()
+        # Stop async scheduler
+        await self.event_scheduler.stop()
 
         # Draining phase
         total_agents = len(self.agents.data)

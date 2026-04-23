@@ -13,7 +13,7 @@ class MetricsCollector:
         self._agent_event_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         # Automata execution counts
-        self._automaton_execution_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._automaton_execution_counts: Dict[str, Dict[str, Dict[str, int]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
         # Distribution runtime usage
         self._distribution_sample_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -29,8 +29,8 @@ class MetricsCollector:
     def record_agent_event(self, event_category: str, signal: str) -> None:
         self._agent_event_counts[event_category][signal] += 1
 
-    def record_automaton_execution(self, automaton_name: str, state: str) -> None:
-        self._automaton_execution_counts[automaton_name][state] += 1
+    def record_automaton_execution(self, automaton_name: str, result: str, state: str) -> None:
+        self._automaton_execution_counts[automaton_name][result][state] += 1
 
     def record_distribution_sample(self, dist_name: str, family: str) -> None:
         self._distribution_sample_counts[dist_name][family] += 1
@@ -52,10 +52,22 @@ class MetricsCollector:
         print("🧱 BUILDTIME METRICS")
         print("*" * 60)
 
-        print(f"\n📈 Distributions: {len(distributions.samplers)}")
-        for dist_name in sorted(distributions.samplers.keys()):
-            print(f"   └── {dist_name}")
+        # Distributions buildtime
+        family_distributions = {}
+        for dist_name in distributions.samplers.keys():
+            family = distributions.samplers[dist_name]['family']
+            if family not in family_distributions:
+                family_distributions[family] = []
+            family_distributions[family].append(dist_name)
 
+        print(f"\n📈 Distributions: {len(distributions.samplers)}")
+        for family in sorted(family_distributions.keys()):
+            count = len(family_distributions[family])
+            print(f"   └── {family}: {count}")
+            for dist_name in sorted(family_distributions[family]):
+                print(f"       └── {dist_name}")
+
+        # Environments buildtime
         env_count = {}
         for e in environments.data:
             env_type = e.get('environment_type')
@@ -65,6 +77,7 @@ class MetricsCollector:
         for env_type in sorted(env_count.keys()):
             print(f"   └── {env_type}: {env_count[env_type]}")
 
+        # Agents buildtime
         agent_count = {}
         for a in agents.data:
             agent_type = a.get('agent_type')
@@ -74,14 +87,31 @@ class MetricsCollector:
         for agent_type in sorted(agent_count.keys()):
             print(f"   └── {agent_type}: {agent_count[agent_type]}")
 
+        # Automata buildtime
         print(f"\n🤖 Automata: {len(automata.data)}")
         for aut in sorted(automata.data, key=lambda x: x.get('automaton_name', '')):
             print(f"   └── {aut.get('automaton_name')}")
 
+        # Declared events buildtime
         static_defined = [e for e in events.data if e.get("event_category") == "static"]
-        print(f"\n🧾 Static Events: {len(static_defined)}")
-        for e in sorted(static_defined, key=lambda x: x["signal"]):
-            print(f"   └── {e['signal']}")
+        signal_counts = {}
+        signal_agents = {}
+        for e in static_defined:
+            signal = e["signal"]
+            agent_type = e["agent_type"]
+            
+            if signal not in signal_counts:
+                signal_counts[signal] = 0
+                signal_agents[signal] = set()
+            
+            signal_counts[signal] += 1
+            signal_agents[signal].add(agent_type)
+
+        print(f"\n🧾 Static Declared Events: {len(static_defined)}")
+        for signal in sorted(signal_counts.keys()):
+            print(f"   └── {signal}: {signal_counts[signal]}")
+            for agent_type in sorted(signal_agents[signal]):
+                print(f"       └── {agent_type}")
 
         # RUNTIME METRICS
         print("\n" + "*" * 60)
@@ -89,16 +119,26 @@ class MetricsCollector:
         print("*" * 60)
 
         # Distributions runtime
-        print("\n🎲 Distribution Usage:")
-        for dist in sorted(self._distribution_sample_counts.keys()):
-            fams = self._distribution_sample_counts[dist]
-            total = sum(fams.values())
-            print(f"   └── {dist}: {total}")
-            for fam in sorted(fams.keys()):
-                print(f"       └── {fam}: {fams[fam]}")
+        family_usage = {}
+        total_all = 0
+        for dist_name, fams in self._distribution_sample_counts.items():
+            for family, count in fams.items():
+                if family not in family_usage:
+                    family_usage[family] = {"total": 0, "distributions": []}
+                family_usage[family]["total"] += count
+                family_usage[family]["distributions"].append((dist_name, count))
+                total_all += count
+
+        print(f"\n🎲 Distribution Usage: {total_all}")
+        for family in sorted(family_usage.keys()):
+            total = family_usage[family]["total"]
+            print(f"   └── {family}: {total}")
+            for dist_name, count in sorted(family_usage[family]["distributions"]):
+                print(f"       └── {dist_name}: {count}")
 
         # Environments runtime
-        print("\n🌍 Environment Actions:")
+        total_env = sum(sum(actions.values()) for actions in self._environment_action_counts.values())
+        print(f"\n🌍 Environment Actions: {total_env}")
         for env in sorted(self._environment_action_counts.keys()):
             actions = self._environment_action_counts[env]
             total = sum(actions.values())
@@ -107,7 +147,8 @@ class MetricsCollector:
                 print(f"       └── {act}: {actions[act]}")
 
         # Agent runtime
-        print("\n🤖 Agent Actions:")
+        total_agent = sum(sum(actions.values()) for actions in self._agent_action_counts.values())
+        print(f"\n🤖 Agent Actions: {total_agent}")
         for agent in sorted(self._agent_action_counts.keys()):
             actions = self._agent_action_counts[agent]
             total = sum(actions.values())
@@ -116,17 +157,24 @@ class MetricsCollector:
                 print(f"       └── {act}: {actions[act]}")
 
         # Automata runtime
-        print("\n🎯 Automata Executions:")
+        total_aut = sum(sum(sum(states.values()) for states in result.values()) for result in self._automaton_execution_counts.values())
+        print(f"\n🎯 Automata Executions: {total_aut}")
         for aut in sorted(self._automaton_execution_counts.keys()):
-            states = self._automaton_execution_counts[aut]
-            for state in sorted(states.keys()):
-                print(f"   └── {aut} → {state}: {states[state]}")
-        
+            results = self._automaton_execution_counts[aut]
+            total = sum(sum(states.values()) for states in results.values())
+            print(f"   └── {aut}: {total}")
+            for result in sorted(results.keys()):
+                states = results[result]
+                result_total = sum(states.values())
+                print(f"       └── {result}: {result_total}")
+                for state in sorted(states.keys()):
+                    print(f"           └── {state}: {states[state]}")
+
         # Events runtime
         total_static = sum(self._agent_event_counts["static"].values())
         total_dynamic = sum(self._agent_event_counts["dynamic"].values())
 
-        print(f"\n📅 Events Executions:")
+        print(f"\n📅 Events Generated: {total_static + total_dynamic}")
         print(f"   └── static: {total_static}")
         print(f"   └── dynamic: {total_dynamic}")
 

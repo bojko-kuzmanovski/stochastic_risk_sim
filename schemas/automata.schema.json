@@ -108,6 +108,7 @@
         },
         {
           "if": {
+            "required": ["effect_order"],
             "properties": {
               "effect_order": {
                 "contains": { "const": "event_emit" }
@@ -120,6 +121,7 @@
         },
         {
           "if": {
+            "required": ["effect_order"],
             "properties": {
               "effect_order": {
                 "contains": { "const": "action_required" }
@@ -132,6 +134,7 @@
         },
         {
           "if": {
+            "required": ["effect_order"],
             "properties": {
               "effect_order": {
                 "contains": { "const": "update_params" }
@@ -204,7 +207,9 @@
         "method": {
           "type": "string",
           "enum": [
-            "get_param"
+            "get_param",
+            "get_env_ids_by_type",
+            "profile_already_registered"
           ]
         },
         "params": {

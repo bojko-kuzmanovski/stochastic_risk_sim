@@ -3,21 +3,117 @@
     "automaton_name": "register_profile_ig",
     "states": {
       "initial": "START",
-      "final": ["DONE"]
+      "final": ["DONE_PUBLIC", "DONE_PRIVATE", "NO_MOOD", "DONE_ALREADY"]
     },
-    "params": {},
+    "params": {
+      "env_type": {
+        "type": "deterministic",
+        "value": "instagram"
+      }
+    },
     "transitions": [
       {
         "from": "START",
-        "rule": { "type": "deterministic", "value": true },
+        "rule": { "type": "probabilistic", "distribution": "mood_register_env" },
         "thresholds": [
           {
-            "threshold": "X == true",
-            "to": "DONE",
+            "threshold": "X > 0.5",
+            "to": "CHECK_EXISTING",
+            "update_params": {
+              "env_ids": {
+                "type": "logic",
+                "query": {
+                  "target": "environments",
+                  "method": "get_env_ids_by_type",
+                  "params": ["env_type"]
+                }
+              },
+              "env_id": {
+                "type": "deterministic",
+                "value": "${env_ids[0]}"
+              }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0.5",
+            "to": "NO_MOOD",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "CHECK_EXISTING",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "environments",
+            "method": "profile_already_registered",
+            "params": ["env_id", "agent_id"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE_ALREADY",
+            "effect_order": []
+          },
+          {
+            "threshold": "not X",
+            "to": "DECIDE_PRIVACY",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "DECIDE_PRIVACY",
+        "rule": { "type": "probabilistic", "distribution": "prefer_public_profile_env" },
+        "thresholds": [
+          {
+            "threshold": "X > 0.5",
+            "to": "PRIVACY_DECIDED",
+            "update_params": {
+              "public_profile": {
+                "type": "deterministic",
+                "value": true
+              }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0.5",
+            "to": "PRIVACY_DECIDED",
+            "update_params": {
+              "public_profile": {
+                "type": "deterministic",
+                "value": false
+              }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "PRIVACY_DECIDED",
+        "rule": { "type": "deterministic", "value": "${public_profile}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE_PUBLIC",
             "action_required": {
               "target": "environments",
               "method": "profile_register",
-              "params": ["env_id", "agent_id", "false"]
+              "params": ["env_id", "agent_id", "public_profile"]
+            },
+            "effect_order": ["action_required"]
+          },
+          {
+            "threshold": "not X",
+            "to": "DONE_PRIVATE",
+            "action_required": {
+              "target": "environments",
+              "method": "profile_register",
+              "params": ["env_id", "agent_id", "public_profile"]
             },
             "effect_order": ["action_required"]
           }
@@ -25,6 +121,12 @@
       }
     ]
   },
+
+
+
+
+
+
   {
     "automaton_name": "follow_random_ig",
     "states": {

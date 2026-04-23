@@ -1,3 +1,20 @@
 [
-  
+  {
+    "event_category": "static",
+    "signal": "register_profile_ig",
+    "agent_type": "citizen",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 2.0
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "register_profile_ig",
+    "agent_type": "malicious",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 4.0
+    }
+  }
 ]

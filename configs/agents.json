@@ -25,16 +25,7 @@
       }
     },
     "automata": [
-      "victim_contact_ig",
-      "victim_mule_ig",
-      "victim_contact_wa",
-      "victim_mule_wa",
-      "victim_contact_job",
-      "victim_mule_job",
-      "victim_contact_romance",
-      "victim_mule_romance",
-      "victim_contact_gaming",
-      "victim_mule_gaming"
+      "register_profile_ig"
     ]
   },
   {
@@ -42,9 +33,7 @@
     "agent_type": "malicious",
     "params": {},
     "automata": [
-      "attacker_select_channel",
-      "attacker_fishing_generic",
-      "attacker_recruitment_router"
+      "register_profile_ig"
     ]
   }
 ]

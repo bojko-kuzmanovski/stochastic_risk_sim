@@ -51,17 +51,7 @@ class Environments:
                 
                 # Store in internal list
                 self.data.append(env_resolved)
-                
 
-    def get_all_by_type(self) -> Dict[str, List]:
-        """Return all environments grouped by type."""
-        by_type = {}
-        for env in self.data:
-            t = env.get('environment_type', 'unknown')
-            if t not in by_type:
-                by_type[t] = []
-            by_type[t].append(env)
-        return by_type
     
     def get_param(self, env_id, agent_id, param_name):
         """Método query para obtener datos del entorno"""
@@ -92,6 +82,22 @@ class Environments:
             return list(set(following) & set(followers))
         
         return None
+    
+    def get_env_ids_by_type(self, env_type: str) -> List[str]:
+        self.metrics_collector.record_environment_action(env_type, "get_env_ids_by_type")
+        return [
+            env["env_id"]
+            for env in self.data
+            if env.get("environment_type") == env_type
+        ]
+    
+    def profile_already_registered(self, env_id, agent_id):
+        env = next((e for e in self.data if e.get("env_id") == env_id), None)
+        if not env or "profile" not in env:
+            return False
+
+        self.metrics_collector.record_environment_action(env["environment_type"], "profile_already_registered")
+        return any(p["agent_id"] == agent_id for p in env["profile"])
 
     def profile_register(self, env_id, agent_id, is_private):
         for env in self.data:

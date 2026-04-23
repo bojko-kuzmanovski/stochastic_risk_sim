@@ -22,7 +22,7 @@ class Distributions:
             labels = d.get("labels", [])
             truncation = d.get("truncation")
 
-            def make_sampler(family, output_type, params, labels, truncation):
+            def make_sampler(dist_name, family, output_type, params, labels, truncation):
                 def sampler(bound_params=None):
                     p = {**params, **(bound_params or {})}
                     max_attempts = 1000
@@ -55,18 +55,18 @@ class Distributions:
                             val = str(val)
 
                         if self.metrics_collector:
-                            self.metrics_collector.record_distribution_sample(name, family)
+                            self.metrics_collector.record_distribution_sample(dist_name, family)
 
                         return val
 
                     raise ValueError(
-                        f"Truncation too restrictive for {name}"
+                        f"Truncation too restrictive for {dist_name}"
                     )
 
                 return sampler
 
             self.samplers[name] = {
-                'sampler': make_sampler(family, output_type, params, labels, truncation),
+                'sampler': make_sampler(name, family, output_type, params, labels, truncation),
                 'family': family
             }
 

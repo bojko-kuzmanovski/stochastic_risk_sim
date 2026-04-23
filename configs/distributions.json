@@ -20,6 +20,24 @@
     "params": { "mean": 7.0, "sigma": 1.0 },
     "truncation": { "min": 9582.47, "max": 17000000 }
   },
+
+  {
+    "distribution_name": "mood_register_env",
+    "family": "beta",
+    "output_type": "float",
+    "params": { "alpha": 6.0, "beta": 14.0 },
+    "truncation": { "min": 0.0, "max": 1.0 }
+  },
+  {
+    "distribution_name": "prefer_public_profile_env",
+    "family": "beta",
+    "output_type": "float",
+    "params": { "alpha": 3.5, "beta": 6.5 },
+    "truncation": { "min": 0.0, "max": 1.0 }
+  },
+
+
+
   {
     "distribution_name": "beta_contact_ig",
     "family": "beta",

@@ -1,5 +1,6 @@
 import json
 from jsonschema import validate
+import re
 
 from core.events import Events
 
@@ -59,7 +60,14 @@ class Automata:
         def resolve_value(vdef, ctx):
             t = vdef["type"]
             if t == "deterministic":
-                return eval_expr(vdef["value"], ctx)
+                val = vdef["value"]
+                if isinstance(val, str) and val.startswith("${") and val.endswith("}"):
+                    expr = val[2:-1]
+                    try:
+                        return eval(expr, {"__builtins__": {}}, ctx)
+                    except:
+                        return ctx.get(expr, val)
+                return eval_expr(val, ctx)
             elif t == "probabilistic":
                 dist = vdef["distribution"]
                 refs = resolve_refs(vdef.get("refs", {}), ctx)
@@ -79,12 +87,12 @@ class Automata:
         # Main loop / Transition Function
         while True:
             if state in final_states:
-                self.metrics_collector.record_automaton_execution(automaton_name, state)
+                self.metrics_collector.record_automaton_execution(automaton_name, "sucess", state)
                 return None
 
             transition = next((t for t in automaton["transitions"] if t["from"] == state), None)
             if not transition:
-                self.metrics_collector.record_automaton_execution(automaton_name, state)
+                self.metrics_collector.record_automaton_execution(automaton_name, "failure", state)
                 return None
 
             # Resolve _X_
@@ -102,14 +110,16 @@ class Automata:
                     continue
 
             if not chosen_case:
-                self.metrics_collector.record_automaton_execution(automaton_name, state)
+                self.metrics_collector.record_automaton_execution(automaton_name, "failure", state)
                 return None
 
-            # Apply effects
+            # Apply transition
             state = chosen_case["to"]
-            ctx = {**event, **params}
 
+            # Apply effects
             for action in chosen_case.get("effect_order", []):
+                ctx = {**event, **params}
+
                 if action == "event_emit":
                     obj = chosen_case["event_emit"]
                     resolved = {k: ctx.get(k) for k in obj.get("params", [])}
