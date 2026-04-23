@@ -1,634 +1,241 @@
 [
   {
-    "automaton_name": "victim_contact_ig",
-    "params": { "age": "number" },
-    "internal_vars": {},
+    "automaton_name": "register_profile_ig",
     "states": {
-      "initial": "IDLE",
-      "final": ["CONTACTED", "CONTACT_REJECTED"]
+      "initial": "START",
+      "final": ["DONE"]
     },
+    "params": {},
     "transitions": [
       {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_contact_ig",
-        "refs": {
-          "alpha": "6 - 0.05 * age",
-          "beta": "10 + 0.1 * age"
+        "from": "START",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X == true",
+            "to": "DONE",
+            "action_required": {
+              "target": "environments",
+              "method": "profile_register",
+              "params": ["env_id", "agent_id", "false"]
+            },
+            "effect_order": ["action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "follow_random_ig",
+    "states": {
+      "initial": "SELECT_TARGENT",
+      "final": ["DONE", "NO_TARGETS"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "SELECT_TARGENT",
+        "rule": { 
+          "type": "logic",
+          "query": {
+            "target": "environments",
+            "method": "get_param",
+            "params": ["env_id", "profiles_not_followed"]
+          }
         },
         "thresholds": [
           {
-            "threshold": "0.5",
-            "to": "CONTACTED",
-            "event_emit": "attacker_recruitment_router_ig"
+            "threshold": "X > 0",
+            "to": "SEND_REQUEST",
+            "update_params": {
+              "target_id": { "type": "deterministic", "value": "random.choice(targets)" }
+            },
+            "effect_order": ["update_params"]
           },
           {
-            "threshold": "1.0",
-            "to": "CONTACT_REJECTED"
+            "threshold": "X == 0",
+            "to": "NO_TARGETS",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "SEND_REQUEST",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X == true",
+            "to": "DONE",
+            "action_required": {
+              "target": "environments",
+              "method": "follow_request",
+              "params": ["env_id", "agent_id", "target_id"]
+            },
+            "effect_order": ["action_required"]
           }
         ]
       }
     ]
   },
   {
-    "automaton_name": "victim_mule_ig",
-    "params": { "age": "number" },
-    "internal_vars": {},
+    "automaton_name": "accept_pending_follows_ig",
     "states": {
-      "initial": "IDLE",
-      "final": ["ACCEPT_RECRUITMENT_IG", "RECRUITMENT_REJECT"]
+      "initial": "CHECK_PENDING",
+      "final": ["DONE", "NO_PENDING"]
     },
+    "params": {},
     "transitions": [
       {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_mule_ig",
-        "refs": {
-          "alpha": "3 - 0.03 * age",
-          "beta": "40 + 0.3 * age"
+        "from": "CHECK_PENDING",
+        "rule": { 
+          "type": "logic",
+          "query": {
+            "target": "environments",
+            "method": "get_param",
+            "params": ["env_id", "pending_follow_requests"]
+          }
         },
         "thresholds": [
           {
-            "threshold": "0.5",
-            "to": "ACCEPT_RECRUITMENT_IG"
+            "threshold": "X > 0",
+            "to": "ACCEPT_ALL",
+            "update_params": {
+              "pending_list": { "type": "deterministic", "value": "pending" }
+            },
+            "effect_order": ["update_params"]
           },
           {
-            "threshold": "1.0",
-            "to": "RECRUITMENT_REJECT"
+            "threshold": "X == 0",
+            "to": "NO_PENDING",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "ACCEPT_ALL",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "ACCEPT_ALL",
+            "action_required": {
+              "target": "environments",
+              "method": "follow_accept",
+              "params": ["env_id", "pending_list[0].from", "agent_id"]
+            },
+            "update_params": {
+              "pending_list": { "type": "deterministic", "value": "pending_list[1:]" }
+            },
+            "effect_order": ["action_required", "update_params"]
+          },
+          {
+            "threshold": "X == 0",
+            "to": "DONE",
+            "effect_order": []
           }
         ]
       }
     ]
   },
   {
-    "automaton_name": "victim_contact_wa",
-    "params": { "age": "number" },
-    "internal_vars": {},
+    "automaton_name": "unfollow_random_ig",
     "states": {
-      "initial": "IDLE",
-      "final": ["CONTACTED", "CONTACT_REJECTED"]
+      "initial": "SELECT_TO_FOLLOW",
+      "final": ["DONE", "NO_FOLLOWING"]
     },
+    "params": {},
     "transitions": [
       {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_contact_wa",
-        "refs": {
-          "alpha": "4 - 0.03 * age",
-          "beta": "12 + 0.15 * age"
+        "from": "SELECT_TO_FOLLOW",
+        "rule": { 
+          "type": "logic",
+          "query": {
+            "target": "environments",
+            "method": "get_param",
+            "params": ["env_id", "following_list"]
+          }
         },
         "thresholds": [
           {
-            "threshold": "0.5",
-            "to": "CONTACTED",
-            "event_emit": "attacker_recruitment_router_wa"
+            "threshold": "X > 0",
+            "to": "UNFOLLOW",
+            "update_params": {
+              "to_unfollow": { "type": "deterministic", "value": "random.choice(following)" }
+            },
+            "effect_order": ["update_params"]
           },
           {
-            "threshold": "1.0",
-            "to": "CONTACT_REJECTED"
+            "threshold": "X == 0",
+            "to": "NO_FOLLOWING",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "UNFOLLOW",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X == true",
+            "to": "DONE",
+            "action_required": {
+              "target": "environments",
+              "method": "follow_reject",
+              "params": ["env_id", "agent_id", "to_unfollow"]
+            },
+            "effect_order": ["action_required"]
           }
         ]
       }
     ]
   },
   {
-    "automaton_name": "victim_mule_wa",
-    "params": { "age": "number" },
-    "internal_vars": {},
+    "automaton_name": "interact_direct_ig",
     "states": {
-      "initial": "IDLE",
-      "final": ["ACCEPT_RECRUITMENT_WA", "RECRUITMENT_REJECT"]
+      "initial": "SELECT_RECIPIENT",
+      "final": ["DONE", "NO_AVAILABLE"]
     },
+    "params": {},
     "transitions": [
       {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_mule_wa",
-        "refs": {
-          "alpha": "8 - 0.06 * age",
-          "beta": "12 + 0.1 * age"
+        "from": "SELECT_RECIPIENT",
+        "rule": { 
+          "type": "logic",
+          "query": {
+            "target": "environments",
+            "method": "get_param",
+            "params": ["env_id", "available_contacts"]
+          }
         },
         "thresholds": [
           {
-            "threshold": "0.5",
-            "to": "ACCEPT_RECRUITMENT_WA"
+            "threshold": "X > 0",
+            "to": "INTERACT",
+            "update_params": {
+              "recipient": { "type": "deterministic", "value": "random.choice(contacts)" }
+            },
+            "effect_order": ["update_params"]
           },
           {
-            "threshold": "1.0",
-            "to": "RECRUITMENT_REJECT"
+            "threshold": "X == 0",
+            "to": "NO_AVAILABLE",
+            "effect_order": []
           }
         ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "victim_contact_job",
-    "params": { "age": "number" },
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CONTACTED", "CONTACT_REJECTED"]
-    },
-    "transitions": [
+      },
       {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_contact_job",
-        "refs": {
-          "alpha": "3 - 0.02 * age",
-          "beta": "25 + 0.2 * age"
-        },
+        "from": "INTERACT",
+        "rule": { "type": "deterministic", "value": true },
         "thresholds": [
           {
-            "threshold": "0.5",
-            "to": "CONTACTED",
-            "event_emit": "attacker_recruitment_router_job"
-          },
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_REJECTED"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "victim_mule_job",
-    "params": { "age": "number" },
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ACCEPT_RECRUITMENT_JOB", "RECRUITMENT_REJECT"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_mule_job",
-        "refs": {
-          "alpha": "12 - 0.08 * age",
-          "beta": "8 + 0.05 * age"
-        },
-        "thresholds": [
-          {
-            "threshold": "0.5",
-            "to": "ACCEPT_RECRUITMENT_JOB"
-          },
-          {
-            "threshold": "1.0",
-            "to": "RECRUITMENT_REJECT"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "victim_contact_romance",
-    "params": { "age": "number" },
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CONTACTED", "CONTACT_REJECTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_contact_romance",
-        "refs": {
-          "alpha": "2 - 0.01 * age",
-          "beta": "30 + 0.25 * age"
-        },
-        "thresholds": [
-          {
-            "threshold": "0.5",
-            "to": "CONTACTED",
-            "event_emit": "attacker_recruitment_router_romance"
-          },
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_REJECTED"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "victim_mule_romance",
-    "params": { "age": "number" },
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ACCEPT_RECRUITMENT_ROMANCE", "RECRUITMENT_REJECT"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_mule_romance",
-        "refs": {
-          "alpha": "15 - 0.1 * age",
-          "beta": "5 + 0.02 * age"
-        },
-        "thresholds": [
-          {
-            "threshold": "0.5",
-            "to": "ACCEPT_RECRUITMENT_ROMANCE"
-          },
-          {
-            "threshold": "1.0",
-            "to": "RECRUITMENT_REJECT"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "victim_contact_gaming",
-    "params": { "age": "number" },
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CONTACTED", "CONTACT_REJECTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_contact_gaming",
-        "refs": {
-          "alpha": "5 - 0.04 * age",
-          "beta": "20 + 0.2 * age"
-        },
-        "thresholds": [
-          {
-            "threshold": "0.5",
-            "to": "CONTACTED",
-            "event_emit": "attacker_recruitment_router_gaming"
-          },
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_REJECTED"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "victim_mule_gaming",
-    "params": { "age": "number" },
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ACCEPT_RECRUITMENT_GAMING", "RECRUITMENT_REJECT"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "probabilistic",
-        "distribution": "beta_mule_gaming",
-        "refs": {
-          "alpha": "5 - 0.03 * age",
-          "beta": "20 + 0.15 * age"
-        },
-        "thresholds": [
-          {
-            "threshold": "0.5",
-            "to": "ACCEPT_RECRUITMENT_GAMING"
-          },
-          {
-            "threshold": "1.0",
-            "to": "RECRUITMENT_REJECT"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_select_channel_ig",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CHOSEN"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CHOSEN",
-            "event_emit": "attacker_fishing_ig"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_select_channel_wa",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CHOSEN"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CHOSEN",
-            "event_emit": "attacker_fishing_wa"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_select_channel_job",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CHOSEN"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CHOSEN",
-            "event_emit": "attacker_fishing_job"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_select_channel_romance",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CHOSEN"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CHOSEN",
-            "event_emit": "attacker_fishing_romance"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_select_channel_gaming",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["CHOSEN"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CHOSEN",
-            "event_emit": "attacker_fishing_gaming"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_fishing_ig",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "FISHING",
-      "final": ["CONTACT_SENT"]
-    },
-    "transitions": [
-      {
-        "from": "FISHING",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_SENT",
-            "event_emit": "victim_contact_ig"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_fishing_wa",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "FISHING",
-      "final": ["CONTACT_SENT"]
-    },
-    "transitions": [
-      {
-        "from": "FISHING",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_SENT",
-            "event_emit": "victim_contact_wa"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_fishing_job",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "FISHING",
-      "final": ["CONTACT_SENT"]
-    },
-    "transitions": [
-      {
-        "from": "FISHING",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_SENT",
-            "event_emit": "victim_contact_job"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_fishing_romance",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "FISHING",
-      "final": ["CONTACT_SENT"]
-    },
-    "transitions": [
-      {
-        "from": "FISHING",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_SENT",
-            "event_emit": "victim_contact_romance"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_fishing_gaming",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "FISHING",
-      "final": ["CONTACT_SENT"]
-    },
-    "transitions": [
-      {
-        "from": "FISHING",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "CONTACT_SENT",
-            "event_emit": "victim_contact_gaming"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_recruitment_router_ig",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ROUTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "ROUTED",
-            "event_emit": "victim_mule_ig"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_recruitment_router_wa",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ROUTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "ROUTED",
-            "event_emit": "victim_mule_wa"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_recruitment_router_job",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ROUTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "ROUTED",
-            "event_emit": "victim_mule_job"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_recruitment_router_romance",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ROUTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "ROUTED",
-            "event_emit": "victim_mule_romance"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "automaton_name": "attacker_recruitment_router_gaming",
-    "params": {},
-    "internal_vars": {},
-    "states": {
-      "initial": "IDLE",
-      "final": ["ROUTED"]
-    },
-    "transitions": [
-      {
-        "from": "IDLE",
-        "type": "deterministic",
-        "thresholds": [
-          {
-            "threshold": "1.0",
-            "to": "ROUTED",
-            "event_emit": "victim_mule_gaming"
+            "threshold": "X == true",
+            "to": "DONE",
+            "action_required": {
+              "target": "environments",
+              "method": "direct_channels_interact",
+              "params": ["env_id", "agent_id", "recipient"]
+            },
+            "effect_order": ["action_required"]
           }
         ]
       }

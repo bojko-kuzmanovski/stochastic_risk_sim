@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 from collections import OrderedDict
+import asyncio
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -12,7 +13,7 @@ def load_json(path):
     with open(path, "r") as f:
         return json.load(f, object_pairs_hook=OrderedDict)
     
-def main():
+async def main():
     script_dir = Path(__file__).parent / 'configs'
     
     # Load all configurations
@@ -32,8 +33,8 @@ def main():
     )
     
     # Run simulation with hardcoded max time
-    sim.run_simulation(max_time=40.0)
+    await sim.run_simulation(max_time=10.0)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

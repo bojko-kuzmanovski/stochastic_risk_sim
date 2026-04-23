@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import time
 from tqdm import tqdm
+import asyncio
 
 from core.distributions import Distributions
 from core.agents import Agents
@@ -24,11 +25,14 @@ class DiscreteEventSimulator:
         self.automata.set_objects(self.agents, self.environments)
         self.agents.set_objects(self.automata)
         
-        events = Events(events_config, self.distributions)
-        static_events = [e for e in events.data if e["event_category"] == "static"]
+        self.events = Events(events_config, self.distributions)
+        static_events = [e for e in self.events.data if e["event_category"] == "static"]
         self.event_scheduler = EventScheduler(static_events, self.agents)
 
-    def run_simulation(self, max_time: float = 10000.0):
+    async def run_simulation(self, max_time: float = 10000.0):
+        # Iniciar agentes asíncronos
+        await self.agents.start()
+
         start_time = time.time()
 
         # Start async scheduler
@@ -53,7 +57,7 @@ class DiscreteEventSimulator:
             pbar.n = elapsed
             pbar.refresh()
 
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
 
         pbar.n = max_time
         pbar.refresh()
@@ -75,13 +79,16 @@ class DiscreteEventSimulator:
 
         for i, agent in enumerate(self.agents.data):
             # Passive wait: agent drains itself
-            while agent["event_queue"]:
-                time.sleep(0.1)
+            while not agent["event_queue"].empty():
+                await asyncio.sleep(0.1)
 
             pbar.n = i + 1
             pbar.refresh()
 
         pbar.close()
+
+        # Detener agentes asíncronos
+        await self.agents.stop()
 
         # Final metrics
         self.metrics_collector.print_report(self.distributions, self.environments, self.agents, self.automata, self.events)

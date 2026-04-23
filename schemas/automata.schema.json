@@ -70,7 +70,7 @@
             "type": "string",
             "enum": ["event_emit", "action_required", "update_params"]
           },
-          "minItems": 1,
+          "minItems": 0,
           "maxItems": 3,
           "uniqueItems": true
         }

@@ -20,7 +20,7 @@
       }
     },
     "else": {
-      "required": ["signal", "agent_id", "env_id"],
+      "required": ["signal", "agent_id"],
       "properties": {
         "signal": { "type": "string" },
         "agent_id": { "type": "string" },

@@ -62,7 +62,36 @@ class Environments:
                 by_type[t] = []
             by_type[t].append(env)
         return by_type
-
+    
+    def get_param(self, env_id, agent_id, param_name):
+        """Método query para obtener datos del entorno"""
+        env = next((e for e in self.data if e.get("env_id") == env_id), None)
+        if not env:
+            return None
+        
+        if param_name == "profiles_not_followed":
+            profiles = [p["agent_id"] for p in env.get("profile", [])]
+            following = [f["to_agent_id"] for f in env.get("follow", []) 
+                        if f["from_agent_id"] == agent_id and f["is_approved"]]
+            return [p for p in profiles if p != agent_id and p not in following]
+        
+        elif param_name == "pending_follow_requests":
+            return [f for f in env.get("follow", []) 
+                    if f["to_agent_id"] == agent_id and not f["is_approved"]]
+        
+        elif param_name == "following_list":
+            return [f["to_agent_id"] for f in env.get("follow", []) 
+                    if f["from_agent_id"] == agent_id and f["is_approved"]]
+        
+        elif param_name == "available_contacts":
+            # Contactos mutuos o perfiles públicos
+            following = [f["to_agent_id"] for f in env.get("follow", []) 
+                        if f["from_agent_id"] == agent_id and f["is_approved"]]
+            followers = [f["from_agent_id"] for f in env.get("follow", []) 
+                        if f["to_agent_id"] == agent_id and f["is_approved"]]
+            return list(set(following) & set(followers))
+        
+        return None
 
     def profile_register(self, env_id, agent_id, is_private):
         for env in self.data:

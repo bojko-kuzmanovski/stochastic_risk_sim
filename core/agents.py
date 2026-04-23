@@ -55,14 +55,24 @@ class Agents:
                 # Store in internal list
                 self.data.append(agent_resolved)
 
-        # start async workers per agent
+    def set_objects(self, automata):
+        self.automata = automata
+    
+    async def start(self):
+        """Start async workers for each agent."""
+        self._running = True
         for agent in self.data:
             self._tasks[agent["agent_id"]] = asyncio.create_task(
                 self._agent_loop(agent)
             )
 
-    def set_objects(self, automata):
-        self.automata = automata
+    async def stop(self):
+        """Stop all agent loops."""
+        self._running = False
+        for task in self._tasks.values():
+            task.cancel()
+        await asyncio.gather(*self._tasks.values(), return_exceptions=True)
+        self._tasks.clear()
 
     def get_by_type(self, agent_type: str):
         """Return all agents of a specific type."""
