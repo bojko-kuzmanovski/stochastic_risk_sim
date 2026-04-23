@@ -64,8 +64,9 @@ class Automata:
                 if isinstance(val, str) and val.startswith("${") and val.endswith("}"):
                     expr = val[2:-1]
                     try:
-                        return eval(expr, {"__builtins__": {}}, ctx)
-                    except:
+                        result = eval(expr, {"__builtins__": {}}, ctx)
+                        return result
+                    except Exception as e:
                         return ctx.get(expr, val)
                 return eval_expr(val, ctx)
             elif t == "probabilistic":
@@ -115,11 +116,10 @@ class Automata:
 
             # Apply transition
             state = chosen_case["to"]
+            ctx = {**event, **params}
 
             # Apply effects
             for action in chosen_case.get("effect_order", []):
-                ctx = {**event, **params}
-
                 if action == "event_emit":
                     obj = chosen_case["event_emit"]
                     resolved = {k: ctx.get(k) for k in obj.get("params", [])}
@@ -135,4 +135,5 @@ class Automata:
                     updates = {}
                     for k, v in chosen_case.get("update_params", {}).items():
                         updates[k] = resolve_value(v, ctx)
+                        ctx[k] = updates[k]
                     params.update(updates)
