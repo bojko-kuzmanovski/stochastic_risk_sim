@@ -3,6 +3,7 @@ from jsonschema import validate
 import re
 
 from core.events import Events
+from core.utils.evaluator import resolve_args, call_method, resolve_value
 
 class Automata:
     def __init__(self, config_data, distributions, metrics_collector):
@@ -35,55 +36,13 @@ class Automata:
         state = automaton["states"]["initial"]
         final_states = set(automaton["states"].get("final", []))
 
-        # Funciones internas
-        def eval_expr(expr, ctx):
-            if isinstance(expr, str):
-                try:
-                    return eval(expr, {"__builtins__": {}}, ctx)
-                except Exception:
-                    return expr
-            return expr
-
-        def resolve_refs(refs, ctx):
-            return {rk: eval_expr(rv, ctx) for rk, rv in refs.items()}
-
-        def resolve_args(keys, ctx):
-            return [ctx.get(key) for key in keys]
-
-        def call_method(target_name, method_name, args):
-            target_obj = self.agents if target_name == "agents" else self.environments
-            try:
-                return getattr(target_obj, method_name)(*args)
-            except Exception:
-                return None
-
-        def resolve_value(vdef, ctx):
-            t = vdef["type"]
-            if t == "deterministic":
-                val = vdef["value"]
-                if isinstance(val, str) and val.startswith("${") and val.endswith("}"):
-                    expr = val[2:-1]
-                    try:
-                        result = eval(expr, {"__builtins__": {}}, ctx)
-                        return result
-                    except Exception as e:
-                        return ctx.get(expr, val)
-                return eval_expr(val, ctx)
-            elif t == "probabilistic":
-                dist = vdef["distribution"]
-                refs = resolve_refs(vdef.get("refs", {}), ctx)
-                return self.distributions.sample(dist, refs) if refs else self.distributions.sample(dist)
-            elif t == "logic":
-                q = vdef["query"]
-                args = resolve_args(q.get("params", []), ctx)
-                return call_method(q["target"], q["method"], args)
-            return None
-
         # Resolve params
         params = {}
         for k, v in automaton.get("params", {}).items():
             ctx = {**event, **params}
-            params[k] = resolve_value(v, ctx)
+            params[k] = resolve_value(
+                v, ctx, self.distributions, self.agents, self.environments
+            )
 
         # Main loop / Transition Function
         while True:
@@ -98,7 +57,9 @@ class Automata:
 
             # Resolve _X_
             ctx = {**event, **params}
-            _X_ = resolve_value(transition["rule"], ctx)
+            _X_ = resolve_value(
+                transition["rule"], ctx, self.distributions, self.agents, self.environments
+            )
 
             # Evaluate thresholds
             chosen_case = None
@@ -129,11 +90,16 @@ class Automata:
                 elif action == "action_required":
                     obj = chosen_case["action_required"]
                     args = resolve_args(obj.get("params", []), ctx)
-                    call_method(obj["target"], obj["method"], args)
+                    call_method(
+                        obj["target"], obj["method"], args,
+                        self.agents, self.environments
+                    )
 
                 elif action == "update_params":
                     updates = {}
                     for k, v in chosen_case.get("update_params", {}).items():
-                        updates[k] = resolve_value(v, ctx)
+                        updates[k] = resolve_value(
+                            v, ctx, self.distributions, self.agents, self.environments
+                        )
                         ctx[k] = updates[k]
                     params.update(updates)

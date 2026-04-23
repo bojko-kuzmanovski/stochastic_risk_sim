@@ -2,6 +2,8 @@ import json
 import time
 from jsonschema import validate
 
+from core.utils.evaluator import resolve_value
+
 class Events:
     def __init__(self, config_data, distributions):
         # Load schema file
@@ -22,18 +24,12 @@ class Events:
 
             # STATIC EVENTS
             if event_entry["event_category"] == "static":
-
-                # periodicity resolution
+                # periodicity resolution using the standard evaluator
                 pdef = event_entry["periodicity"]
-                if pdef["type"] == "deterministic":
-                    periodicity = pdef["value"]
-                else:
-                    dist = pdef["distribution"]
-                    refs = pdef.get("refs", {})
-                    periodicity = distributions.sample(dist, refs) if refs else distributions.sample(dist)
-
+                # No context needed for periodicity resolution
+                periodicity = resolve_value(pdef, {}, distributions, None, None)
                 event_resolved["periodicity"] = periodicity
 
-            # DYNAMIC EVENTS
+            # DYNAMIC EVENTS (no resolution needed)
 
             self.data.append(event_resolved)

@@ -5,6 +5,8 @@ import json
 from jsonschema import validate
 from typing import Dict, List
 
+from core.utils.evaluator import eval_expr, resolve_refs
+
 class Environments:
     def __init__(self, config_data, distributions, metrics_collector):
         # Load schema file
@@ -27,14 +29,8 @@ class Environments:
                 # Assign env_id
                 env_resolved["env_id"] = f"{env_entry['environment_type']}_{n}"
                 
-                # Resolve params
+                # Resolve params usando funciones estandarizadas
                 resolved_params = {}
-                
-                def eval_expr(expr, ctx):
-                    try:
-                        return eval(expr, {"__builtins__": {}}, ctx)
-                    except:
-                        return expr
                 
                 for pname, pdef in env_entry.get("params", {}).items():
                     if pdef["type"] == "deterministic":
@@ -43,8 +39,7 @@ class Environments:
                     
                     elif pdef["type"] == "probabilistic":
                         dist = pdef["distribution"]
-                        refs = {k: eval_expr(v, resolved_params) if isinstance(v, str) else v 
-                                for k, v in pdef.get("refs", {}).items()}
+                        refs = resolve_refs(pdef.get("refs", {}), resolved_params)
                         resolved_params[pname] = distributions.sample(dist, refs) if refs else distributions.sample(dist)
                 
                 env_resolved["params"] = resolved_params
