@@ -27,18 +27,26 @@ class Environments:
                 # Assign env_id
                 env_resolved["env_id"] = f"{env_entry['environment_type']}_{n}"
                 
-                # Resolve parameters
+                # Resolve params
                 resolved_params = {}
-                for param_name, param_def in env_entry.get("params", {}).items():
-                    if param_def["type"] == "deterministic":
-                        resolved_params[param_name] = param_def["value"]
-                    
-                    elif param_def["type"] == "probabilistic":
-                        dist_name = param_def["distribution"]
-                        # Sample value from the distributions engine
-                        resolved_params[param_name] = distributions.sample(dist_name)
                 
-                # Assign resolved parameters to the environment
+                def eval_expr(expr, ctx):
+                    try:
+                        return eval(expr, {"__builtins__": {}}, ctx)
+                    except:
+                        return expr
+                
+                for pname, pdef in env_entry.get("params", {}).items():
+                    if pdef["type"] == "deterministic":
+                        val = pdef["value"]
+                        resolved_params[pname] = eval_expr(val, resolved_params) if isinstance(val, str) else val
+                    
+                    elif pdef["type"] == "probabilistic":
+                        dist = pdef["distribution"]
+                        refs = {k: eval_expr(v, resolved_params) if isinstance(v, str) else v 
+                                for k, v in pdef.get("refs", {}).items()}
+                        resolved_params[pname] = distributions.sample(dist, refs) if refs else distributions.sample(dist)
+                
                 env_resolved["params"] = resolved_params
                 
                 # Store in internal list

@@ -22,12 +22,15 @@ class Events:
 
             # STATIC EVENTS
             if event_entry["event_category"] == "static":
+
                 # periodicity resolution
-                periodicity_def = event_entry["periodicity"]
-                if periodicity_def["type"] == "deterministic":
-                    periodicity = periodicity_def["value"]
+                pdef = event_entry["periodicity"]
+                if pdef["type"] == "deterministic":
+                    periodicity = pdef["value"]
                 else:
-                    periodicity = distributions.sample(periodicity_def["distribution"])
+                    dist = pdef["distribution"]
+                    refs = pdef.get("refs", {})
+                    periodicity = distributions.sample(dist, refs) if refs else distributions.sample(dist)
 
                 event_resolved["periodicity"] = periodicity
 

@@ -29,15 +29,24 @@ class Agents:
 
                 # Resolve params
                 resolved_params = {}
-                for param_name, param_def in agent_entry.get("params", {}).items():
-                    if param_def["type"] == "deterministic":
-                        resolved_params[param_name] = param_def["value"]
-
-                    elif param_def["type"] == "probabilistic":
-                        dist_name = param_def["distribution"]
-                        resolved_params[param_name] = distributions.sample(dist_name)
-
-                # Assign resolved params
+                
+                def eval_expr(expr, ctx):
+                    try:
+                        return eval(expr, {"__builtins__": {}}, ctx)
+                    except:
+                        return expr
+                
+                for pname, pdef in agent_entry.get("params", {}).items():
+                    if pdef["type"] == "deterministic":
+                        val = pdef["value"]
+                        resolved_params[pname] = eval_expr(val, resolved_params) if isinstance(val, str) else val
+                    
+                    elif pdef["type"] == "probabilistic":
+                        dist = pdef["distribution"]
+                        refs = {k: eval_expr(v, resolved_params) if isinstance(v, str) else v 
+                                for k, v in pdef.get("refs", {}).items()}
+                        resolved_params[pname] = distributions.sample(dist, refs) if refs else distributions.sample(dist)
+                
                 agent_resolved["params"] = resolved_params
 
                 # Asyncio event_queue
