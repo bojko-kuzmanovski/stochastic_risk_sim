@@ -57,9 +57,7 @@ class Automata:
 
             # Resolve _X_
             ctx = {**event, **params}
-            _X_ = resolve_value(
-                transition["rule"], ctx, self.distributions, self.agents, self.environments
-            )
+            _X_ = resolve_value(transition["rule"], ctx, self.distributions, self.agents, self.environments)
 
             # Evaluate thresholds
             chosen_case = None
@@ -90,10 +88,7 @@ class Automata:
                 elif action == "action_required":
                     obj = chosen_case["action_required"]
                     args = resolve_args(obj.get("params", []), ctx)
-                    call_method(
-                        obj["target"], obj["method"], args,
-                        self.agents, self.environments
-                    )
+                    call_method(obj["target"], obj["method"], args, self.agents, self.environments)
 
                 elif action == "update_params":
                     updates = {}

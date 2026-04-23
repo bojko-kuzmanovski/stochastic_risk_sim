@@ -5,7 +5,8 @@ import json
 from jsonschema import validate
 from typing import Dict, List
 
-from core.utils.evaluator import eval_expr, resolve_refs
+# Importar funciones de evaluación estandarizadas
+from core.utils.evaluator import resolve_value
 
 class Environments:
     def __init__(self, config_data, distributions, metrics_collector):
@@ -29,25 +30,20 @@ class Environments:
                 # Assign env_id
                 env_resolved["env_id"] = f"{env_entry['environment_type']}_{n}"
                 
-                # Resolve params usando funciones estandarizadas
+                # Resolve params usando resolve_value
                 resolved_params = {}
+                ctx = resolved_params
                 
                 for pname, pdef in env_entry.get("params", {}).items():
-                    if pdef["type"] == "deterministic":
-                        val = pdef["value"]
-                        resolved_params[pname] = eval_expr(val, resolved_params) if isinstance(val, str) else val
-                    
-                    elif pdef["type"] == "probabilistic":
-                        dist = pdef["distribution"]
-                        refs = resolve_refs(pdef.get("refs", {}), resolved_params)
-                        resolved_params[pname] = distributions.sample(dist, refs) if refs else distributions.sample(dist)
+                    resolved_params[pname] = resolve_value(vdef=pdef, ctx=ctx, distributions=distributions, agents_obj=None, environments_obj=None)
+                    ctx[pname] = resolved_params[pname]
                 
                 env_resolved["params"] = resolved_params
                 
                 # Store in internal list
                 self.data.append(env_resolved)
 
-    
+
     def get_param(self, env_id, agent_id, param_name):
         """Método query para obtener datos del entorno"""
         env = next((e for e in self.data if e.get("env_id") == env_id), None)

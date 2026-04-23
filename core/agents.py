@@ -2,8 +2,8 @@ import json
 import asyncio
 from jsonschema import validate
 
-# Importar las funciones de evaluación estandarizadas
-from core.utils.evaluator import eval_expr, resolve_refs
+# Importar funciones de evaluación estandarizadas
+from core.utils.evaluator import resolve_value
 
 class Agents:
     def __init__(self, config_data, distributions, metrics_collector):
@@ -29,18 +29,13 @@ class Agents:
                 # Assign agent_id
                 agent_resolved["agent_id"] = f"{agent_entry['agent_type']}_{n}"
 
-                # Resolve params usando las funciones estandarizadas
+                # Resolve params usando resolve_value
                 resolved_params = {}
+                ctx = resolved_params
                 
                 for pname, pdef in agent_entry.get("params", {}).items():
-                    if pdef["type"] == "deterministic":
-                        val = pdef["value"]
-                        resolved_params[pname] = eval_expr(val, resolved_params) if isinstance(val, str) else val
-                    
-                    elif pdef["type"] == "probabilistic":
-                        dist = pdef["distribution"]
-                        refs = resolve_refs(pdef.get("refs", {}), resolved_params)
-                        resolved_params[pname] = distributions.sample(dist, refs) if refs else distributions.sample(dist)
+                    resolved_params[pname] = resolve_value(vdef=pdef, ctx=ctx, distributions=distributions, agents_obj=None, environments_obj=None)
+                    ctx[pname] = resolved_params[pname]
                 
                 agent_resolved["params"] = resolved_params
 
