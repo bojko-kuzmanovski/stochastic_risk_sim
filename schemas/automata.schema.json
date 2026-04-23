@@ -166,7 +166,25 @@
         },
         "method": {
           "type": "string",
-          "enum": ["A", "B"]
+          "enum": [
+            "set_param", 
+            "profile_register", 
+            "profile_private_change", 
+            "follow_request",
+            "follow_reject",
+            "follow_accept",
+            "connection_request",
+            "connection_reject",
+            "connection_accept",
+            "direct_channels_interact",
+            "group_channels_register",
+            "group_channels_delete",
+            "group_channels_agent_delete",
+            "group_channels_join",
+            "group_channels_interact",
+            "applications_create",
+            "applications_apply"
+          ]
         },
         "params": {
           "type": "array",
@@ -185,7 +203,9 @@
         },
         "method": {
           "type": "string",
-          "enum": ["A", "B"]
+          "enum": [
+            "get_param"
+          ]
         },
         "params": {
           "type": "array",
