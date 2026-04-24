@@ -1,0 +1,41 @@
+Methodology: Probabilistic Risk Communication (20-day cycle)
+
+Structure:
+- Duration: 20 days per use case
+- Output: 4 posts (1 every 5 days) + 1 final article
+- Goal: Explain, analyze, stress, and propose interventions on a system under uncertainty
+
+Posts:
+
+Post 1 — Phenomenon
+Question: What happens?
+- Define system
+- Identify key variables (independent)
+- Describe observed problem / pain
+
+Post 2 — Causality
+Question: Why does it happen?
+- Identify explanatory factors
+- Describe dependencies and distributions
+- Outline causal structure
+
+Post 3 — Sensitivity
+Question: Where does it break?
+- Analyze system sensitivity
+- Identify critical variables and thresholds
+- Highlight non-linear effects or failure modes
+
+Post 4 — Intervention
+Question: What do you do?
+- Propose control measures or regulators
+- Explain expected impact on system behavior
+- Address robustness under uncertainty
+
+Final Article (shared in Post 4):
+- Integrates full analysis
+- Includes deeper modeling insights
+- References sources, methods, and assumptions
+- Positions framework as reusable across domains
+
+Principle:
+From observation → explanation → instability → decision

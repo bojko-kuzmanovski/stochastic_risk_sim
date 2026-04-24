@@ -13,7 +13,7 @@ def load_json(path):
         return json.load(f, object_pairs_hook=OrderedDict)
     
 async def main():
-    script_dir = Path(__file__).parent / 'configs'
+    script_dir = Path(__file__).parent / 'configs/banking-finance/money-muling'
     
     # Load all configurations
     distributions_config = load_json(script_dir / 'distributions.json')

@@ -14,7 +14,10 @@
     "transitions": [
       {
         "from": "START",
-        "rule": { "type": "probabilistic", "distribution": "mood_register_env" },
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "mood_register_env"
+        },
         "thresholds": [
           {
             "threshold": "X > 0.5",
@@ -67,7 +70,10 @@
       },
       {
         "from": "DECIDE_PRIVACY",
-        "rule": { "type": "probabilistic", "distribution": "prefer_public_profile_env" },
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "prefer_public_profile_env"
+        },
         "thresholds": [
           {
             "threshold": "X > 0.5",
@@ -95,7 +101,10 @@
       },
       {
         "from": "PRIVACY_DECIDED",
-        "rule": { "type": "deterministic", "value": "${public_profile}" },
+        "rule": {
+          "type": "deterministic",
+          "value": "${public_profile}"
+        },
         "thresholds": [
           {
             "threshold": "X",
