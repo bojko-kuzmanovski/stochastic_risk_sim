@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
-import sys
 from collections import OrderedDict
 import asyncio
-
+import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
 from simulation_engine.discrete_event_engine import DiscreteEventSimulator
