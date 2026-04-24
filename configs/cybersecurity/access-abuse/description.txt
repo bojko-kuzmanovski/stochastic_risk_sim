@@ -1,0 +1,3 @@
+Modeling abuse of access privileges within systems.
+
+Focus on insider threats, escalation paths, and detection challenges.

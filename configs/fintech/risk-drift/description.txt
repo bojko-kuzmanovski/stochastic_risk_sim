@@ -1,0 +1,3 @@
+Modeling the gradual degradation of risk models over time.
+
+Focus on distribution shifts, model misalignment, and hidden exposure.

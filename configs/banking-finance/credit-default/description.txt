@@ -1,0 +1,3 @@
+Modeling credit default behavior under varying economic conditions.
+
+Focus on tail risk, correlated defaults, and portfolio fragility.

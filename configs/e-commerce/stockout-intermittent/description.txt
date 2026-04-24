@@ -1,0 +1,3 @@
+Simulation of intermittent stockouts driven by demand variability and supply delays.
+
+Focus on revenue impact and clustering of failure events.

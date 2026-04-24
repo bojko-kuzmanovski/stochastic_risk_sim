@@ -1,0 +1,3 @@
+Modeling sudden demand spikes and their effect on inventory, fulfillment, and system stability.
+
+Focus on extreme scenarios and response capacity.

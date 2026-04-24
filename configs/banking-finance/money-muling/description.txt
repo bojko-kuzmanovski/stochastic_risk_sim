@@ -1,0 +1,3 @@
+Simulation of money muling networks to understand transaction flows, agent roles, and detection risks.
+
+Focus on identifying patterns and systemic vulnerabilities.

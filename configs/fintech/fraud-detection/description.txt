@@ -1,0 +1,3 @@
+Simulation of fraudulent behavior patterns and detection mechanisms.
+
+Focus on evolving strategies, false negatives, and system adaptability.

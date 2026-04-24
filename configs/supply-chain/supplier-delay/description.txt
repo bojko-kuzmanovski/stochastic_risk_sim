@@ -1,0 +1,3 @@
+Simulation of supplier delays and their cascading effects across the supply chain.
+
+Focus on dependency structures and systemic disruption.

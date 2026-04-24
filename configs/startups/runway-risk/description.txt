@@ -1,0 +1,3 @@
+Simulation of startup runway under uncertain revenue and cost dynamics.
+
+Focus on survival probability and decision timing.

@@ -1,0 +1,3 @@
+Modeling sudden shifts in demand patterns and their operational impact.
+
+Focus on mismatch between supply and demand under uncertainty.

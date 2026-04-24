@@ -1,0 +1,3 @@
+Simulation of anomalous behavior in systems and networks.
+
+Focus on detection thresholds, false positives, and evolving patterns.
