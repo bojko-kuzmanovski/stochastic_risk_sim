@@ -85,7 +85,7 @@ class Automata:
                     event_data = {
                         "event_category": "dynamic",
                         "signal": obj["signal"],
-                        "agent_id": resolved.get("agent_id") or resolved.get("agent_id_capture") or event["agent_id"],
+                        "agent_id": resolved.get("to_agent_id") or resolved.get("agent_id") or resolved.get("agent_id_capture") or event["agent_id"],
                         **resolved
                     }
                     asyncio.create_task(self.agents.receive_event(event_data["agent_id"], event_data))

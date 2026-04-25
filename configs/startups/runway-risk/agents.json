@@ -49,9 +49,14 @@
       }
     },
     "automata": [
-      "burn_rate_calculator",
-      "runway_lifecycle",
-      "headcount_controller"
+      "burn_rate_calculator", 
+      "runway_lifecycle", 
+      "headcount_controller", 
+      "revenue_update", 
+      "client_lost", 
+      "exogenous_shock", 
+      "investment_offer", 
+      "startup_dead"
     ]
   },
   {
@@ -167,7 +172,8 @@
       }
     },
     "automata": [
-      "investment_decision"
+      "investment_decision",
+      "seeking_funding"
     ]
   }
 ]

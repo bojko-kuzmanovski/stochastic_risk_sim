@@ -289,7 +289,7 @@
             "to": "PREPARE_SEEKING_FUNDING",
             "update_params": {
               "cash_val": { "type": "deterministic", "value": "${X}" },
-              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+              "to_agent_id": { "type": "deterministic", "value": "Investor_1" }
             },
             "effect_order": ["update_params"]
           }
@@ -304,7 +304,7 @@
             "to": "CONSUME_CASH",
             "event_emit": {
               "signal": "seeking_funding",
-              "params": ["agent_id_capture", "cash_val"]
+              "params": ["to_agent_id", "cash_val"]
             },
             "effect_order": ["event_emit"]
           }
@@ -904,6 +904,7 @@
             "to": "SET_REVENUE_PARAM",
             "update_params": {
               "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "to_agent_id": { "type": "deterministic", "value": "Startup_1" },
               "current_revenue_key": { "type": "deterministic", "value": "current_revenue" }
             },
             "effect_order": ["update_params"]
@@ -938,7 +939,7 @@
             "to": "DONE",
             "event_emit": {
               "signal": "revenue_update",
-              "params": ["agent_id_capture", "revenue_val"]
+              "params": ["to_agent_id", "revenue_val"]
             },
             "effect_order": ["event_emit"]
           }
@@ -1078,7 +1079,8 @@
             "threshold": "not X",
             "to": "CHURN_UPDATE_FLAG",
             "update_params": {
-              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "to_agent_id": { "type": "deterministic", "value": "Startup_1" }
             },
             "effect_order": ["update_params"]
           }
@@ -1111,11 +1113,14 @@
           {
             "threshold": "X",
             "to": "CHURNED",
+            "update_params": {
+              "revenue_share_key": { "type": "deterministic", "value": "revenue_share" }
+            },
             "event_emit": {
               "signal": "client_lost",
-              "params": ["agent_id_capture"]
+              "params": ["to_agent_id", "agent_id_capture"]
             },
-            "effect_order": ["event_emit"]
+            "effect_order": ["update_params", "event_emit"]
           }
         ]
       }
@@ -1261,11 +1266,11 @@
             "threshold": "X",
             "to": "ACTIVE",
             "update_params": {
-              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+              "to_agent_id": { "type": "deterministic", "value": "Startup_1" }
             },
             "event_emit": {
               "signal": "exogenous_shock",
-              "params": ["agent_id_capture", "impact_val", "duration_val"]
+              "params": ["to_agent_id", "impact_val", "duration_val"]
             },
             "effect_order": ["update_params", "event_emit"]
           }
@@ -1302,7 +1307,7 @@
         "rule": { "type": "deterministic", "value": "${months_left} - 1" },
         "thresholds": [
           {
-            "threshold": "X",
+            "threshold": "X >= 0",
             "to": "ACTIVE",
             "update_params": {
               "months_remaining_value": { "type": "deterministic", "value": "${X}" }
@@ -1486,7 +1491,8 @@
             "threshold": "X",
             "to": "PREPARE_INVESTMENT_EMIT",
             "update_params": {
-              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "to_agent_id": { "type": "deterministic", "value": "Startup_1" }
             },
             "effect_order": ["update_params"]
           }
@@ -1510,9 +1516,337 @@
             },
             "event_emit": {
               "signal": "investment_offer",
-              "params": ["agent_id_capture", "amount_val"]
+              "params": ["to_agent_id", "amount_val"]
             },
             "effect_order": ["update_params", "action_required", "event_emit"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "seeking_funding",
+    "states": {
+      "initial": "ACTIVATE",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "ACTIVATE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "is_engaged_key": { "type": "deterministic", "value": "is_engaged" },
+              "is_engaged_value": { "type": "deterministic", "value": true }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "is_engaged_key", "is_engaged_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "revenue_update",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "UPDATE_REVENUE",
+            "update_params": {
+              "revenue_current_key": { "type": "deterministic", "value": "revenue_current" },
+              "new_revenue": { "type": "deterministic", "value": "${revenue_val}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "UPDATE_REVENUE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "revenue_current_key", "new_revenue"]
+            },
+            "effect_order": ["action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "client_lost",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_REVENUE",
+            "update_params": {
+              "revenue_current_key": { "type": "deterministic", "value": "revenue_current" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_REVENUE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "revenue_current_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_LOSS",
+            "update_params": {
+              "current_rev": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_LOSS",
+        "rule": { "type": "deterministic", "value": "${current_rev} * 0.85" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SAVE_LOSS",
+            "update_params": {
+              "new_rev": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SAVE_LOSS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "revenue_current_key", "new_rev"]
+            },
+            "effect_order": ["action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "exogenous_shock",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_REVENUE",
+            "update_params": {
+              "revenue_current_key": { "type": "deterministic", "value": "revenue_current" },
+              "impact": { "type": "deterministic", "value": "${impact_val}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_REVENUE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "revenue_current_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_SHOCK",
+            "update_params": {
+              "current_rev": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_SHOCK",
+        "rule": { "type": "deterministic", "value": "${current_rev} * (1 - ${impact})" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SAVE_SHOCK",
+            "update_params": {
+              "new_rev": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SAVE_SHOCK",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "revenue_current_key", "new_rev"]
+            },
+            "effect_order": ["action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "investment_offer",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_CASH",
+            "update_params": {
+              "cash_key": { "type": "deterministic", "value": "cash" },
+              "investment_amount": { "type": "deterministic", "value": "${amount_val}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_CASH",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cash_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "ADD_INVESTMENT",
+            "update_params": {
+              "current_cash": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "ADD_INVESTMENT",
+        "rule": { "type": "deterministic", "value": "${current_cash} + ${investment_amount}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SAVE_CASH",
+            "update_params": {
+              "new_cash": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SAVE_CASH",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "cash_key", "new_cash"]
+            },
+            "effect_order": ["action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "startup_dead",
+    "states": {
+      "initial": "SET_FLAG",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "SET_FLAG",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "alive_key": { "type": "deterministic", "value": "alive" },
+              "alive_value": { "type": "deterministic", "value": false }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "alive_key", "alive_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
           }
         ]
       }
