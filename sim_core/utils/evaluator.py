@@ -81,7 +81,7 @@ def resolve_value(
                 return str(ctx.get(var_name, m.group(0)))
             interpolated = re.sub(r'\$\{(\w+)\}', replacer, val)
             try:
-                return eval(interpolated, {"__builtins__": {}}, ctx)
+                return eval(interpolated, {"__builtins__": {}}, {**ctx, "ceil": __import__("math").ceil, "max": max})
             except Exception:
                 return interpolated
         return eval_expr(val, ctx)

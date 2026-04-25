@@ -49,8 +49,8 @@
       }
     },
     "automata": [
-      "runway_lifecycle",
       "burn_rate_calculator",
+      "runway_lifecycle",
       "headcount_controller"
     ]
   },
