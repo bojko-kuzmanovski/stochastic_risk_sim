@@ -1,6 +1,6 @@
 import json
 from jsonschema import validate
-import re
+import asyncio
 
 from sim_core.events import Events
 from sim_core.utils.evaluator import resolve_args, call_method, resolve_value
@@ -82,8 +82,13 @@ class Automata:
                 if action == "event_emit":
                     obj = chosen_case["event_emit"]
                     resolved = {k: ctx.get(k) for k in obj.get("params", [])}
-                    events = Events([{"signal": obj["signal"], **resolved}], self.distributions)
-                    await self.agents.receive_event(events[0].agent_id, events[0])
+                    event_data = {
+                        "event_category": "dynamic",
+                        "signal": obj["signal"],
+                        "agent_id": resolved.get("agent_id") or resolved.get("agent_id_capture") or event["agent_id"],
+                        **resolved
+                    }
+                    asyncio.create_task(self.agents.receive_event(event_data["agent_id"], event_data))
 
                 elif action == "action_required":
                     obj = chosen_case["action_required"]

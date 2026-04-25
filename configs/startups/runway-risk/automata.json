@@ -3,7 +3,7 @@
     "automaton_name": "runway_lifecycle",
     "states": {
       "initial": "LOAD_PARAMS",
-      "final": ["DEAD"]
+      "final": ["DEAD", "DONE_CYCLE"]
     },
     "params": {},
     "transitions": [
@@ -239,7 +239,7 @@
         "thresholds": [
           {
             "threshold": "X",
-            "to": "OPERATING",
+            "to": "DONE_CYCLE",
             "update_params": {
               "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
             },
@@ -340,7 +340,7 @@
         "thresholds": [
           {
             "threshold": "X",
-            "to": "OPERATING",
+            "to": "DONE_CYCLE",
             "update_params": {
               "cash_val": { "type": "deterministic", "value": "${X}" }
             },
