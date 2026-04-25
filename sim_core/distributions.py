@@ -30,6 +30,8 @@ class Distributions:
                     for _ in range(max_attempts):
                         if family == "categorical":
                             val = random.choices(labels, weights=p.get("probabilities"))[0]
+                        elif family == "normal":
+                            val = random.normalvariate(p["mean"], p["sigma"])
                         elif family == "exponential":
                             val = random.expovariate(p["rate"])
                         elif family == "poisson":

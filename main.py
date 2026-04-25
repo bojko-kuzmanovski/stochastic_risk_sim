@@ -6,14 +6,14 @@ import asyncio
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
 
-from simulation_engine.discrete_event_engine import DiscreteEventSimulator
+from sim_engine.discrete_event_engine import DiscreteEventSimulator
 
 def load_json(path):
     with open(path, "r") as f:
         return json.load(f, object_pairs_hook=OrderedDict)
     
 async def main():
-    script_dir = Path(__file__).parent / 'configs/banking-finance/money-muling'
+    script_dir = Path(__file__).parent / 'configs/startups/runway-risk'
     
     # Load all configurations
     distributions_config = load_json(script_dir / 'distributions.json')

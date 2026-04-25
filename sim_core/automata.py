@@ -2,8 +2,8 @@ import json
 from jsonschema import validate
 import re
 
-from core.events import Events
-from core.utils.evaluator import resolve_args, call_method, resolve_value
+from sim_core.events import Events
+from sim_core.utils.evaluator import resolve_args, call_method, resolve_value
 
 class Automata:
     def __init__(self, config_data, distributions, metrics_collector):
@@ -58,6 +58,7 @@ class Automata:
             # Resolve _X_
             ctx = {**event, **params}
             _X_ = resolve_value(transition["rule"], ctx, self.distributions, self.agents, self.environments)
+            print(f"DEBUG RULE -> automaton={automaton_name}, state={state}, _X_={repr(_X_)}")
 
             # Evaluate thresholds
             chosen_case = None
@@ -75,7 +76,7 @@ class Automata:
 
             # Apply transition
             state = chosen_case["to"]
-            ctx = {**event, **params}
+            ctx = {**event, **params, "X": _X_}
 
             # Apply effects
             for action in chosen_case.get("effect_order", []):

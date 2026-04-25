@@ -3,7 +3,7 @@ import asyncio
 from jsonschema import validate
 
 # Importar funciones de evaluación estandarizadas
-from core.utils.evaluator import resolve_value
+from sim_core.utils.evaluator import resolve_value
 
 class Agents:
     def __init__(self, config_data, distributions, metrics_collector):

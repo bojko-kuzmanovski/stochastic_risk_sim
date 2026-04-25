@@ -28,6 +28,7 @@
             "gamma",
             "beta",
             "lognormal",
+            "normal",
             "categorical"
           ]
         },
@@ -123,6 +124,25 @@
         },
         {
           "if": { "properties": { "family": { "const": "lognormal" } } },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": ["mean", "sigma"],
+                "properties": {
+                  "mean": { "type": "number" },
+                  "sigma": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "normal" } } },
           "then": {
             "properties": {
               "params": {

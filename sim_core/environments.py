@@ -6,7 +6,7 @@ from jsonschema import validate
 from typing import Dict, List
 
 # Importar funciones de evaluación estandarizadas
-from core.utils.evaluator import resolve_value
+from sim_core.utils.evaluator import resolve_value
 
 class Environments:
     def __init__(self, config_data, distributions, metrics_collector):

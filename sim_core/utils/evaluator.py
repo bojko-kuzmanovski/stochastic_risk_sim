@@ -4,6 +4,7 @@ Based on the critical logic originally inside Automata.process_event.
 """
 
 from typing import Any, Dict, List, Optional, Union
+import re
 
 
 def eval_expr(expr: Any, ctx: Dict[str, Any]) -> Any:
@@ -74,14 +75,15 @@ def resolve_value(
     
     if t == "deterministic":
         val = vdef.get("value")
-        # Handle ${...} placeholders
-        if isinstance(val, str) and val.startswith("${") and val.endswith("}"):
-            expr = val[2:-1]
+        if isinstance(val, str) and "${" in val:
+            def replacer(m):
+                var_name = m.group(1)
+                return str(ctx.get(var_name, m.group(0)))
+            interpolated = re.sub(r'\$\{(\w+)\}', replacer, val)
             try:
-                result = eval(expr, {"__builtins__": {}}, ctx)
-                return result
+                return eval(interpolated, {"__builtins__": {}}, ctx)
             except Exception:
-                return ctx.get(expr, val)
+                return interpolated
         return eval_expr(val, ctx)
     
     elif t == "probabilistic":

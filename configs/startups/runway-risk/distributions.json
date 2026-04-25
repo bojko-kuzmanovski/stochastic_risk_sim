@@ -1,0 +1,85 @@
+[
+  {
+    "distribution_name": "startup_revenue",
+    "family": "gamma",
+    "params": {
+      "shape": 5,
+      "scale": 10000
+    },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "volatility_profile",
+    "family": "beta",
+    "params": {
+      "alpha": 2,
+      "beta": 5
+    },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "growth_rate",
+    "family": "normal",
+    "params": {
+      "mean": 0.03,
+      "sigma": 0.1
+    },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "shock_arrival",
+    "family": "poisson",
+    "params": {
+      "lambda": 0.08
+    },
+    "output_type": "int"
+  },
+  {
+    "distribution_name": "shock_impact",
+    "family": "gamma",
+    "params": {
+      "shape": 1.5,
+      "scale": 0.2
+    },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "shock_duration",
+    "family": "poisson",
+    "params": {
+      "lambda": 3
+    },
+    "output_type": "int",
+    "truncation": {
+      "min": 1,
+      "max": 12
+    }
+  },
+  {
+    "distribution_name": "client_retention",
+    "family": "beta",
+    "params": {
+      "alpha": 8,
+      "beta": 2
+    },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "investor_appetite",
+    "family": "beta",
+    "params": {
+      "alpha": 3,
+      "beta": 7
+    },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "investment_size",
+    "family": "gamma",
+    "params": {
+      "shape": 3,
+      "scale": 100000
+    },
+    "output_type": "float"
+  }
+]

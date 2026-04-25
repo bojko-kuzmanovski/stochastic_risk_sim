@@ -1,0 +1,1521 @@
+[
+  {
+    "automaton_name": "runway_lifecycle",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DEAD"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "OPERATING",
+            "update_params": {
+              "cash_key": { "type": "deterministic", "value": "cash" },
+              "burn_rate_key": { "type": "deterministic", "value": "burn_rate" },
+              "runway_key": { "type": "deterministic", "value": "runway" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "OPERATING",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cash_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_BURN",
+            "update_params": {
+              "cash_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_BURN",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "burn_rate_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "CALC_RUNWAY",
+            "update_params": {
+              "burn_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "DEAD",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "CALC_RUNWAY",
+        "rule": {
+          "type": "deterministic",
+          "value": "${cash_val} / ${burn_val}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "UPDATE_AND_CHECK",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "UPDATE_AND_CHECK",
+        "rule": {
+          "type": "deterministic",
+          "value": "${runway_val}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X <= 0",
+            "to": "PREPARE_DEAD_EMIT",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X > 0 and X < 6",
+            "to": "PREPARE_CRITICAL_EMIT",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X >= 6 and X < 12",
+            "to": "PREPARE_WARNING_EMIT",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X >= 12",
+            "to": "SAVE_RUNWAY_SAFE",
+            "update_params": {
+              "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "PREPARE_DEAD_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DEAD_EMIT",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id_capture", "runway_key", "runway_val"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "DEAD_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DEAD",
+            "event_emit": {
+              "signal": "startup_dead",
+              "params": ["agent_id_capture"]
+            },
+            "effect_order": ["event_emit"]
+          }
+        ]
+      },
+      {
+        "from": "PREPARE_CRITICAL_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CRITICAL_EMIT",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id_capture", "runway_key", "runway_val"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "CRITICAL_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CRITICAL",
+            "event_emit": {
+              "signal": "runway_critical",
+              "params": ["agent_id_capture", "runway_val_copy"]
+            },
+            "effect_order": ["event_emit"]
+          }
+        ]
+      },
+      {
+        "from": "PREPARE_WARNING_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "WARNING_EMIT",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id_capture", "runway_key", "runway_val"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "WARNING_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "LOW_RUNWAY",
+            "event_emit": {
+              "signal": "runway_warning",
+              "params": ["agent_id_capture", "runway_val_copy"]
+            },
+            "effect_order": ["event_emit"]
+          }
+        ]
+      },
+      {
+        "from": "SAVE_RUNWAY_SAFE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "OPERATING",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "runway_key", "runway_val"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "LOW_RUNWAY",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cash_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CONSUME_CASH",
+            "update_params": {
+              "cash_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "CRITICAL",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cash_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "PREPARE_SEEKING_FUNDING",
+            "update_params": {
+              "cash_val": { "type": "deterministic", "value": "${X}" },
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "PREPARE_SEEKING_FUNDING",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CONSUME_CASH",
+            "event_emit": {
+              "signal": "seeking_funding",
+              "params": ["agent_id_capture", "cash_val"]
+            },
+            "effect_order": ["event_emit"]
+          }
+        ]
+      },
+      {
+        "from": "CONSUME_CASH",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "burn_rate_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "UPDATE_CASH",
+            "update_params": {
+              "burn_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "UPDATE_CASH",
+        "rule": {
+          "type": "deterministic",
+          "value": "${cash_val} - ${burn_val}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "OPERATING",
+            "update_params": {
+              "cash_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "cash_key", "cash_val"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "burn_rate_calculator",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CALCULATE",
+            "update_params": {
+              "cost_fixed_key": { "type": "deterministic", "value": "cost_fixed" },
+              "cost_variable_per_head_key": { "type": "deterministic", "value": "cost_variable_per_head" },
+              "headcount_key": { "type": "deterministic", "value": "headcount" },
+              "revenue_current_key": { "type": "deterministic", "value": "revenue_current" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "CALCULATE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cost_fixed_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_VARIABLE_COST",
+            "update_params": {
+              "fixed_cost_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_VARIABLE_COST",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cost_variable_per_head_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_HEADCOUNT",
+            "update_params": {
+              "var_cost_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_HEADCOUNT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "headcount_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_REVENUE",
+            "update_params": {
+              "headcount_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_REVENUE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "revenue_current_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X >= 0",
+            "to": "COMPUTE_BURN",
+            "update_params": {
+              "revenue_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "COMPUTE_BURN",
+        "rule": {
+          "type": "deterministic",
+          "value": "(${fixed_cost_val} + (${var_cost_val} * ${headcount_val})) - ${revenue_val}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "burn_rate_key": { "type": "deterministic", "value": "burn_rate" },
+              "burn_rate_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "burn_rate_key", "burn_rate_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "headcount_controller",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["HIRING_DONE", "LAYOFFS_DONE", "FREEZE_SET", "NO_ACTION"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "IDLE",
+            "update_params": {
+              "runway_key": { "type": "deterministic", "value": "runway" },
+              "headcount_key": { "type": "deterministic", "value": "headcount" },
+              "cost_rigidity_key": { "type": "deterministic", "value": "cost_rigidity" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "IDLE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "runway_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 18",
+            "to": "DO_HIRING",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 18 and X > 6",
+            "to": "DO_FREEZE",
+            "effect_order": []
+          },
+          {
+            "threshold": "X <= 6 and X > 0",
+            "to": "DO_LAYOFFS",
+            "update_params": {
+              "runway_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "NO_ACTION",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "DO_HIRING",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "growth_rate"
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "FETCH_HEADCOUNT",
+            "update_params": {
+              "growth_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_HEADCOUNT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "headcount_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_HIRING",
+            "update_params": {
+              "hc_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_HIRING",
+        "rule": {
+          "type": "deterministic",
+          "value": "ceil(${hc_val} * (1 + ${growth_val}))"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "HIRING_DONE",
+            "update_params": {
+              "headcount_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "headcount_key", "headcount_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "DO_FREEZE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FREEZE_SET",
+            "update_params": {
+              "cost_rigidity_value": { "type": "deterministic", "value": 0.6 }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "cost_rigidity_key", "cost_rigidity_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "DO_LAYOFFS",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "volatility_profile"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_HC_LAYOFF",
+            "update_params": {
+              "layoff_pct": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_HC_LAYOFF",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "headcount_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_RIGIDITY",
+            "update_params": {
+              "hc_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_RIGIDITY",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cost_rigidity_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_LAYOFFS",
+            "update_params": {
+              "rigidity_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_LAYOFFS",
+        "rule": {
+          "type": "deterministic",
+          "value": "max(ceil(${hc_val} * ${rigidity_val}), ceil(${hc_val} * (1 - ${layoff_pct})))"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "LAYOFFS_DONE",
+            "update_params": {
+              "headcount_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "headcount_key", "headcount_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "NO_ACTION",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "NO_ACTION",
+            "effect_order": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "revenue_generator",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "STABLE",
+            "update_params": {
+              "monthly_base_key": { "type": "deterministic", "value": "monthly_base" },
+              "volatility_factor_key": { "type": "deterministic", "value": "volatility_factor" },
+              "growth_trend_key": { "type": "deterministic", "value": "growth_trend" },
+              "shock_probability_key": { "type": "deterministic", "value": "shock_probability" },
+              "shock_magnitude_key": { "type": "deterministic", "value": "shock_magnitude" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "STABLE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "monthly_base_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_VOLATILITY",
+            "update_params": {
+              "base_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_VOLATILITY",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "volatility_factor_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_GROWTH",
+            "update_params": {
+              "vol_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_GROWTH",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "growth_trend_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CHECK_SHOCK",
+            "update_params": {
+              "growth_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "CHECK_SHOCK",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "shock_probability_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "COMPUTE_REVENUE_SHOCKED",
+            "update_params": {
+              "shock_roll": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "COMPUTE_REVENUE_NORMAL",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "COMPUTE_REVENUE_NORMAL",
+        "rule": {
+          "type": "deterministic",
+          "value": "${base_val} * (1 + ${growth_val}) * ${vol_val}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SAVE_AND_EMIT_REVENUE",
+            "update_params": {
+              "revenue_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "COMPUTE_REVENUE_SHOCKED",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "shock_magnitude_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_SHOCK",
+            "update_params": {
+              "shock_mag": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_SHOCK",
+        "rule": {
+          "type": "deterministic",
+          "value": "${base_val} * (1 + ${growth_val}) * ${vol_val} * (1 - ${shock_mag})"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SAVE_AND_EMIT_REVENUE",
+            "update_params": {
+              "revenue_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SAVE_AND_EMIT_REVENUE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_REVENUE_PARAM",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
+              "current_revenue_key": { "type": "deterministic", "value": "current_revenue" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SET_REVENUE_PARAM",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "EMIT_REVENUE",
+            "update_params": {
+              "current_revenue_value": { "type": "deterministic", "value": "${revenue_val}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id_capture", "current_revenue_key", "current_revenue_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "EMIT_REVENUE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "event_emit": {
+              "signal": "revenue_update",
+              "params": ["agent_id_capture", "revenue_val"]
+            },
+            "effect_order": ["event_emit"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "client_retention_cycle",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["CHURNED", "RENEWED"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "ACTIVE",
+            "update_params": {
+              "contract_months_remaining_key": { "type": "deterministic", "value": "contract_months_remaining" },
+              "retention_prob_key": { "type": "deterministic", "value": "retention_prob" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "ACTIVE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "contract_months_remaining_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 2",
+            "to": "DECREMENT_CONTRACT",
+            "update_params": {
+              "months_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 2 and X > 0",
+            "to": "AT_RISK",
+            "update_params": {
+              "months_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "DO_CHURN",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "DECREMENT_CONTRACT",
+        "rule": {
+          "type": "deterministic",
+          "value": "${months_val} - 1"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "ACTIVE",
+            "update_params": {
+              "contract_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "contract_months_remaining_key", "contract_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "AT_RISK",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "retention_prob_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0.5",
+            "to": "DO_RENEW",
+            "update_params": {
+              "retention_roll": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0.5",
+            "to": "DO_CHURN",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "DO_RENEW",
+        "rule": { "type": "deterministic", "value": 12 },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "RENEWED",
+            "update_params": {
+              "contract_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "contract_months_remaining_key", "contract_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "DO_CHURN",
+        "rule": { "type": "deterministic", "value": false },
+        "thresholds": [
+          {
+            "threshold": "not X",
+            "to": "CHURN_UPDATE_FLAG",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "CHURN_UPDATE_FLAG",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CHURN_EMIT",
+            "update_params": {
+              "is_active_key": { "type": "deterministic", "value": "is_active" },
+              "is_active_value": { "type": "deterministic", "value": false }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id_capture", "is_active_key", "is_active_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "CHURN_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CHURNED",
+            "event_emit": {
+              "signal": "client_lost",
+              "params": ["agent_id_capture"]
+            },
+            "effect_order": ["event_emit"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "shock_lifecycle",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DORMANT",
+            "update_params": {
+              "arrival_rate_key": { "type": "deterministic", "value": "arrival_rate" },
+              "impact_magnitude_key": { "type": "deterministic", "value": "impact_magnitude" },
+              "duration_months_key": { "type": "deterministic", "value": "duration_months" },
+              "months_remaining_key": { "type": "deterministic", "value": "months_remaining" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "DORMANT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "arrival_rate_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "FETCH_IMPACT",
+            "update_params": {
+              "arrival_roll": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "DONE",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "FETCH_IMPACT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "impact_magnitude_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_DURATION",
+            "update_params": {
+              "impact_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_DURATION",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "duration_months_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_ACTIVE_FLAG",
+            "update_params": {
+              "duration_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SET_ACTIVE_FLAG",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_DURATION",
+            "update_params": {
+              "is_active_key": { "type": "deterministic", "value": "is_active" },
+              "is_active_value": { "type": "deterministic", "value": true }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "is_active_key", "is_active_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "SET_DURATION",
+        "rule": { "type": "deterministic", "value": "${duration_val}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "EMIT_SHOCK_EVENT",
+            "update_params": {
+              "months_remaining_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "months_remaining_key", "months_remaining_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "EMIT_SHOCK_EVENT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "ACTIVE",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+            },
+            "event_emit": {
+              "signal": "exogenous_shock",
+              "params": ["agent_id_capture", "impact_val", "duration_val"]
+            },
+            "effect_order": ["update_params", "event_emit"]
+          }
+        ]
+      },
+      {
+        "from": "ACTIVE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "months_remaining_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "DECREMENT_SHOCK",
+            "update_params": {
+              "months_left": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "SET_INACTIVE_FLAG",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "DECREMENT_SHOCK",
+        "rule": { "type": "deterministic", "value": "${months_left} - 1" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "ACTIVE",
+            "update_params": {
+              "months_remaining_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "months_remaining_key", "months_remaining_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "SET_INACTIVE_FLAG",
+        "rule": { "type": "deterministic", "value": false },
+        "thresholds": [
+          {
+            "threshold": "not X",
+            "to": "RESET_DURATION",
+            "update_params": {
+              "is_active_key": { "type": "deterministic", "value": "is_active" },
+              "is_active_value": { "type": "deterministic", "value": false }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "is_active_key", "is_active_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "RESET_DURATION",
+        "rule": { "type": "deterministic", "value": 0 },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "months_remaining_value": { "type": "deterministic", "value": 0 }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "months_remaining_key", "months_remaining_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "investment_decision",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["INVESTED", "PASSED"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "WATCHING",
+            "update_params": {
+              "is_engaged_key": { "type": "deterministic", "value": "is_engaged" },
+              "investment_probability_key": { "type": "deterministic", "value": "investment_probability" },
+              "investment_amount_key": { "type": "deterministic", "value": "investment_amount" },
+              "investment_capacity_key": { "type": "deterministic", "value": "investment_capacity" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "WATCHING",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "is_engaged_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "EVALUATE",
+            "effect_order": []
+          },
+          {
+            "threshold": "not X",
+            "to": "PASSED",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "EVALUATE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "investment_probability_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0.5",
+            "to": "FETCH_AMOUNT",
+            "update_params": {
+              "prob_roll": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0.5",
+            "to": "PASSED",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "FETCH_AMOUNT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "investment_amount_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CHECK_CAPACITY",
+            "update_params": {
+              "amount_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "CHECK_CAPACITY",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "investment_capacity_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X >= ${amount_val}",
+            "to": "MAKE_OFFER",
+            "update_params": {
+              "capacity_val": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X < ${amount_val}",
+            "to": "PASSED",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "MAKE_OFFER",
+        "rule": { "type": "deterministic", "value": "${amount_val}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "PREPARE_INVESTMENT_EMIT",
+            "update_params": {
+              "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "PREPARE_INVESTMENT_EMIT",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "INVESTED",
+            "update_params": {
+              "has_invested_key": { "type": "deterministic", "value": "has_invested" },
+              "has_invested_value": { "type": "deterministic", "value": true }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id_capture", "has_invested_key", "has_invested_value"]
+            },
+            "event_emit": {
+              "signal": "investment_offer",
+              "params": ["agent_id_capture", "amount_val"]
+            },
+            "effect_order": ["update_params", "action_required", "event_emit"]
+          }
+        ]
+      }
+    ]
+  }
+]

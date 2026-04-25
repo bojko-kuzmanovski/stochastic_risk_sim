@@ -1,0 +1,173 @@
+[
+  {
+    "quantity": 1,
+    "agent_type": "Startup",
+    "params": {
+      "cash": {
+        "type": "deterministic",
+        "value": 500000
+      },
+      "revenue_base": {
+        "type": "probabilistic",
+        "distribution": "startup_revenue"
+      },
+      "revenue_volatility": {
+        "type": "probabilistic",
+        "distribution": "volatility_profile"
+      },
+      "revenue_growth_rate": {
+        "type": "probabilistic",
+        "distribution": "growth_rate"
+      },
+      "cost_fixed": {
+        "type": "deterministic",
+        "value": 40000
+      },
+      "cost_variable_per_head": {
+        "type": "deterministic",
+        "value": 6000
+      },
+      "cost_rigidity": {
+        "type": "deterministic",
+        "value": 0.3
+      },
+      "headcount": {
+        "type": "deterministic",
+        "value": 10
+      },
+      "burn_rate": {
+        "type": "deterministic",
+        "value": 0
+      },
+      "runway": {
+        "type": "deterministic",
+        "value": 0
+      },
+      "revenue_current": {
+        "type": "deterministic",
+        "value": 0
+      }
+    },
+    "automata": [
+      "runway_lifecycle",
+      "burn_rate_calculator",
+      "headcount_controller"
+    ]
+  },
+  {
+    "quantity": 1,
+    "agent_type": "RevenueStream",
+    "params": {
+      "monthly_base": {
+        "type": "deterministic",
+        "value": 50000
+      },
+      "volatility_factor": {
+        "type": "probabilistic",
+        "distribution": "volatility_profile"
+      },
+      "growth_trend": {
+        "type": "probabilistic",
+        "distribution": "growth_rate"
+      },
+      "shock_probability": {
+        "type": "probabilistic",
+        "distribution": "shock_arrival"
+      },
+      "shock_magnitude": {
+        "type": "probabilistic",
+        "distribution": "shock_impact"
+      },
+      "current_revenue": {
+        "type": "deterministic",
+        "value": 0
+      }
+    },
+    "automata": [
+      "revenue_generator"
+    ]
+  },
+  {
+    "quantity": 3,
+    "agent_type": "KeyClient",
+    "params": {
+      "revenue_share": {
+        "type": "deterministic",
+        "value": 0.15
+      },
+      "retention_prob": {
+        "type": "probabilistic",
+        "distribution": "client_retention"
+      },
+      "contract_months_remaining": {
+        "type": "deterministic",
+        "value": 6
+      },
+      "is_active": {
+        "type": "deterministic",
+        "value": true
+      }
+    },
+    "automata": [
+      "client_retention_cycle"
+    ]
+  },
+  {
+    "quantity": 1,
+    "agent_type": "ShockEvent",
+    "params": {
+      "arrival_rate": {
+        "type": "probabilistic",
+        "distribution": "shock_arrival"
+      },
+      "impact_magnitude": {
+        "type": "probabilistic",
+        "distribution": "shock_impact"
+      },
+      "duration_months": {
+        "type": "probabilistic",
+        "distribution": "shock_duration"
+      },
+      "is_active": {
+        "type": "deterministic",
+        "value": false
+      },
+      "months_remaining": {
+        "type": "deterministic",
+        "value": 0
+      }
+    },
+    "automata": [
+      "shock_lifecycle"
+    ]
+  },
+  {
+    "quantity": 2,
+    "agent_type": "Investor",
+    "params": {
+      "investment_capacity": {
+        "type": "deterministic",
+        "value": 1000000
+      },
+      "investment_probability": {
+        "type": "probabilistic",
+        "distribution": "investor_appetite"
+      },
+      "investment_amount": {
+        "type": "probabilistic",
+        "distribution": "investment_size"
+      },
+      "is_engaged": {
+        "type": "deterministic",
+        "value": false
+      },
+      "has_invested": {
+        "type": "deterministic",
+        "value": false
+      }
+    },
+    "automata": [
+      "investment_decision"
+    ]
+  }
+]

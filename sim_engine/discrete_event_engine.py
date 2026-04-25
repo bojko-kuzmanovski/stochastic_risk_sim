@@ -3,14 +3,14 @@ import time
 from tqdm import tqdm
 import asyncio
 
-from core.distributions import Distributions
-from core.agents import Agents
-from core.automata import Automata
-from core.environments import Environments
-from core.events import Events
+from sim_core.distributions import Distributions
+from sim_core.agents import Agents
+from sim_core.automata import Automata
+from sim_core.environments import Environments
+from sim_core.events import Events
 
-from simulation_engine.metrics_collector import MetricsCollector
-from simulation_engine.event_scheduler import EventScheduler
+from sim_engine.metrics_collector import MetricsCollector
+from sim_engine.event_scheduler import EventScheduler
 
 
 class DiscreteEventSimulator:

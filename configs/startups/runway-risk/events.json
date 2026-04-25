@@ -1,0 +1,65 @@
+[
+  {
+    "event_category": "static",
+    "signal": "runway_lifecycle",
+    "agent_type": "Startup",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "burn_rate_calculator",
+    "agent_type": "Startup",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "headcount_controller",
+    "agent_type": "Startup",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "revenue_generator",
+    "agent_type": "RevenueStream",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "client_retention_cycle",
+    "agent_type": "KeyClient",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "shock_lifecycle",
+    "agent_type": "ShockEvent",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "investment_decision",
+    "agent_type": "Investor",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
+  }
+]
