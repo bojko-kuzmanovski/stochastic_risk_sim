@@ -1,23 +1,23 @@
 # 🔷 Framework narrativo (alineado a posts)
 
 ## 1. 
-**¿Dónde se rompe realmente el modelo de negocio?**  
+**¿Dónde se rompe el modelo de negocio?**  
 👉 Dolor observable, síntomas claros
 
 ## 2. 
-**¿Qué está explicando hoy ese colapso… y qué se está pasando por alto?**  
+**¿Qué lo está rompiendo… y no se está viendo?**  
 👉 Transición: explicación común → gap
 
 ## 3. 
-**¿Cómo analizar este problema sin perder lo que lo hace complejo?**  
+**¿Cómo analizarlo sin perder complejidad?**  
 👉 “Caja negra” metodológica (sin revelar IP)
 
 ## 4. 
-**¿Qué decisiones cambian realmente el desenlace?**  
+**¿Qué decisiones cambian el resultado?**  
 👉 Evaluación dinámica: decisiones → efectos
 
 ## 5. 
-**¿Cómo actuar de forma consistente en entornos que no son estables?**  
+**¿Cómo operar cuando el entorno es incierto?**  
 👉 Cierre estratégico (no táctico)
 
 ---
