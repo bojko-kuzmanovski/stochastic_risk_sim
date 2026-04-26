@@ -61,5 +61,32 @@
       "type": "deterministic",
       "value": 1
     }
+  },
+  {
+    "event_category": "static",
+    "signal": "strategic_resource_allocator",
+    "agent_type": "Founder",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 6
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "belief_updater",
+    "agent_type": "Founder",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 6
+    }
+  },
+  {
+    "event_category": "static",
+    "signal": "other_investment_controller",
+    "agent_type": "Startup",
+    "periodicity": {
+      "type": "deterministic",
+      "value": 1
+    }
   }
 ]

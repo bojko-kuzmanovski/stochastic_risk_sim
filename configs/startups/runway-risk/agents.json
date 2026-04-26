@@ -46,6 +46,14 @@
       "revenue_current": {
         "type": "deterministic",
         "value": 0
+      },
+      "other_budget": {
+        "type": "deterministic",
+        "value": 0
+      },
+      "hiring_budget": {
+        "type": "deterministic",
+        "value": 0
       }
     },
     "automata": [
@@ -56,7 +64,8 @@
       "client_lost", 
       "exogenous_shock", 
       "investment_offer", 
-      "startup_dead"
+      "startup_dead",
+      "other_investment_controller"
     ]
   },
   {
@@ -175,5 +184,54 @@
       "investment_decision",
       "seeking_funding"
     ]
+  },
+  {
+    "quantity": 1,
+    "agent_type": "Founder",
+    "params": {
+      "optimism_bias": {
+        "type": "probabilistic",
+        "distribution": "founder_optimism"
+      },
+      "estimated_productivity_per_head": {
+        "type": "probabilistic",
+        "distribution": "productivity_belief"
+      },
+      "estimated_revenue_elasticity": {
+        "type": "probabilistic",
+        "distribution": "revenue_elasticity_belief"
+      },
+      "hiring_budget": {
+        "type": "deterministic",
+        "value": 0
+      },
+      "other_budget": {
+        "type": "deterministic",
+        "value": 0
+      },
+      "last_decision_tick": {
+        "type": "deterministic",
+        "value": 0
+      }
+    },
+    "automata": [
+      "strategic_resource_allocator",
+      "belief_updater"
+    ]
+  },
+  {
+    "quantity": 1,
+    "agent_type": "TalentMarket",
+    "params": {
+      "true_productivity_per_head": {
+        "type": "probabilistic",
+        "distribution": "true_productivity"
+      },
+      "true_revenue_elasticity": {
+        "type": "probabilistic",
+        "distribution": "true_elasticity"
+      }
+    },
+    "automata": []
   }
 ]

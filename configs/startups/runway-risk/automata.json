@@ -490,242 +490,6 @@
     ]
   },
   {
-    "automaton_name": "headcount_controller",
-    "states": {
-      "initial": "LOAD_PARAMS",
-      "final": ["HIRING_DONE", "LAYOFFS_DONE", "FREEZE_SET", "NO_ACTION"]
-    },
-    "params": {},
-    "transitions": [
-      {
-        "from": "LOAD_PARAMS",
-        "rule": { "type": "deterministic", "value": true },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "IDLE",
-            "update_params": {
-              "runway_key": { "type": "deterministic", "value": "runway" },
-              "headcount_key": { "type": "deterministic", "value": "headcount" },
-              "cost_rigidity_key": { "type": "deterministic", "value": "cost_rigidity" }
-            },
-            "effect_order": ["update_params"]
-          }
-        ]
-      },
-      {
-        "from": "IDLE",
-        "rule": {
-          "type": "logic",
-          "query": {
-            "target": "agents",
-            "method": "get_param",
-            "params": ["agent_id", "runway_key"]
-          }
-        },
-        "thresholds": [
-          {
-            "threshold": "X > 18",
-            "to": "DO_HIRING",
-            "update_params": {
-              "runway_val": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          },
-          {
-            "threshold": "X <= 18 and X > 6",
-            "to": "DO_FREEZE",
-            "effect_order": []
-          },
-          {
-            "threshold": "X <= 6 and X > 0",
-            "to": "DO_LAYOFFS",
-            "update_params": {
-              "runway_val": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          },
-          {
-            "threshold": "X <= 0",
-            "to": "NO_ACTION",
-            "effect_order": []
-          }
-        ]
-      },
-      {
-        "from": "DO_HIRING",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "growth_rate"
-        },
-        "thresholds": [
-          {
-            "threshold": "X > 0",
-            "to": "FETCH_HEADCOUNT",
-            "update_params": {
-              "growth_val": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          }
-        ]
-      },
-      {
-        "from": "FETCH_HEADCOUNT",
-        "rule": {
-          "type": "logic",
-          "query": {
-            "target": "agents",
-            "method": "get_param",
-            "params": ["agent_id", "headcount_key"]
-          }
-        },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "APPLY_HIRING",
-            "update_params": {
-              "hc_val": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          }
-        ]
-      },
-      {
-        "from": "APPLY_HIRING",
-        "rule": {
-          "type": "deterministic",
-          "value": "ceil(${hc_val} * (1 + ${growth_val}))"
-        },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "HIRING_DONE",
-            "update_params": {
-              "headcount_value": { "type": "deterministic", "value": "${X}" }
-            },
-            "action_required": {
-              "target": "agents",
-              "method": "set_param",
-              "params": ["agent_id", "headcount_key", "headcount_value"]
-            },
-            "effect_order": ["update_params", "action_required"]
-          }
-        ]
-      },
-      {
-        "from": "DO_FREEZE",
-        "rule": { "type": "deterministic", "value": true },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "FREEZE_SET",
-            "update_params": {
-              "cost_rigidity_value": { "type": "deterministic", "value": 0.6 }
-            },
-            "action_required": {
-              "target": "agents",
-              "method": "set_param",
-              "params": ["agent_id", "cost_rigidity_key", "cost_rigidity_value"]
-            },
-            "effect_order": ["update_params", "action_required"]
-          }
-        ]
-      },
-      {
-        "from": "DO_LAYOFFS",
-        "rule": {
-          "type": "probabilistic",
-          "distribution": "volatility_profile"
-        },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "FETCH_HC_LAYOFF",
-            "update_params": {
-              "layoff_pct": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          }
-        ]
-      },
-      {
-        "from": "FETCH_HC_LAYOFF",
-        "rule": {
-          "type": "logic",
-          "query": {
-            "target": "agents",
-            "method": "get_param",
-            "params": ["agent_id", "headcount_key"]
-          }
-        },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "FETCH_RIGIDITY",
-            "update_params": {
-              "hc_val": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          }
-        ]
-      },
-      {
-        "from": "FETCH_RIGIDITY",
-        "rule": {
-          "type": "logic",
-          "query": {
-            "target": "agents",
-            "method": "get_param",
-            "params": ["agent_id", "cost_rigidity_key"]
-          }
-        },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "APPLY_LAYOFFS",
-            "update_params": {
-              "rigidity_val": { "type": "deterministic", "value": "${X}" }
-            },
-            "effect_order": ["update_params"]
-          }
-        ]
-      },
-      {
-        "from": "APPLY_LAYOFFS",
-        "rule": {
-          "type": "deterministic",
-          "value": "max(ceil(${hc_val} * ${rigidity_val}), ceil(${hc_val} * (1 - ${layoff_pct})))"
-        },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "LAYOFFS_DONE",
-            "update_params": {
-              "headcount_value": { "type": "deterministic", "value": "${X}" }
-            },
-            "action_required": {
-              "target": "agents",
-              "method": "set_param",
-              "params": ["agent_id", "headcount_key", "headcount_value"]
-            },
-            "effect_order": ["update_params", "action_required"]
-          }
-        ]
-      },
-      {
-        "from": "NO_ACTION",
-        "rule": { "type": "deterministic", "value": true },
-        "thresholds": [
-          {
-            "threshold": "X",
-            "to": "NO_ACTION",
-            "effect_order": []
-          }
-        ]
-      }
-    ]
-  },
-  {
     "automaton_name": "revenue_generator",
     "states": {
       "initial": "LOAD_PARAMS",
@@ -1346,7 +1110,7 @@
         "rule": { "type": "deterministic", "value": 0 },
         "thresholds": [
           {
-            "threshold": "X",
+            "threshold": "X >= 0",
             "to": "DONE",
             "update_params": {
               "months_remaining_value": { "type": "deterministic", "value": 0 }
@@ -1469,15 +1233,29 @@
         },
         "thresholds": [
           {
-            "threshold": "X >= ${amount_val}",
-            "to": "MAKE_OFFER",
+            "threshold": "X",
+            "to": "COMPARE_CAPACITY",
             "update_params": {
               "capacity_val": { "type": "deterministic", "value": "${X}" }
             },
             "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "COMPARE_CAPACITY",
+        "rule": {
+          "type": "deterministic",
+          "value": "${capacity_val} >= ${amount_val}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "MAKE_OFFER",
+            "effect_order": []
           },
           {
-            "threshold": "X < ${amount_val}",
+            "threshold": "not X",
             "to": "PASSED",
             "effect_order": []
           }
@@ -1845,6 +1623,701 @@
               "target": "agents",
               "method": "set_param",
               "params": ["agent_id", "alive_key", "alive_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "strategic_resource_allocator",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_OPTIMISM",
+            "update_params": {
+              "cash_key": { "type": "deterministic", "value": "cash" },
+              "runway_key": { "type": "deterministic", "value": "runway" },
+              "headcount_key": { "type": "deterministic", "value": "headcount" },
+              "optimism_bias_key": { "type": "deterministic", "value": "optimism_bias" },
+              "estimated_productivity_key": { "type": "deterministic", "value": "estimated_productivity_per_head" },
+              "estimated_elasticity_key": { "type": "deterministic", "value": "estimated_revenue_elasticity" },
+              "startup_id": { "type": "deterministic", "value": "Startup_1" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_OPTIMISM",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "optimism_bias_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_BELIEFS",
+            "update_params": {
+              "optimism": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_BELIEFS",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "estimated_productivity_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_ELASTICITY_BELIEF",
+            "update_params": {
+              "believed_productivity": { "type": "deterministic", "value": "${X}" },
+              "adjusted_productivity": { "type": "deterministic", "value": "${X} * (1 + ${optimism})" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_ELASTICITY_BELIEF",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "estimated_elasticity_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_CURRENT_STATE",
+            "update_params": {
+              "believed_elasticity": { "type": "deterministic", "value": "${X}" },
+              "adjusted_elasticity": { "type": "deterministic", "value": "${X} * (1 + ${optimism})" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_CURRENT_STATE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["startup_id", "cash_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_RUNWAY",
+            "update_params": {
+              "current_cash": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_RUNWAY",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["startup_id", "runway_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X >= 0",
+            "to": "APPLY_DECISION_RULE",
+            "update_params": {
+              "current_runway": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_DECISION_RULE",
+        "rule": {
+          "type": "deterministic",
+          "value": "${current_cash} * 0.15"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SPLIT_BUDGET",
+            "update_params": {
+              "total_budget": { "type": "deterministic", "value": "${X}" },
+              "hiring_share": { "type": "deterministic", "value": "max(0, min(1, ${adjusted_productivity} / (${adjusted_productivity} + ${adjusted_elasticity} * 1000)))" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SPLIT_BUDGET",
+        "rule": {
+          "type": "deterministic",
+          "value": "${total_budget} * ${hiring_share}"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_BUDGETS",
+            "update_params": {
+              "hiring_budget_val": { "type": "deterministic", "value": "${X}" },
+              "other_budget_val": { "type": "deterministic", "value": "${total_budget} - ${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_BUDGETS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_HIRING_BUDGET",
+            "update_params": {
+              "hiring_budget_key": { "type": "deterministic", "value": "hiring_budget" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SET_HIRING_BUDGET",
+        "rule": { "type": "deterministic", "value": "${hiring_budget_val}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_OTHER_BUDGET",
+            "update_params": {
+              "hiring_budget_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["startup_id", "hiring_budget_key", "hiring_budget_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "SET_OTHER_BUDGET",
+        "rule": { "type": "deterministic", "value": "${other_budget_val}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "MARK_DECISION_TICK",
+            "update_params": {
+              "other_budget_key": { "type": "deterministic", "value": "other_budget" },
+              "other_budget_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["startup_id", "other_budget_key", "other_budget_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "MARK_DECISION_TICK",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "last_decision_key": { "type": "deterministic", "value": "last_decision_tick" },
+              "last_decision_value": { "type": "deterministic", "value": "${last_decision_tick}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["startup_id", "last_decision_key", "last_decision_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "belief_updater",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_CURRENT_BELIEFS",
+            "update_params": {
+              "prod_key": { "type": "deterministic", "value": "estimated_productivity_per_head" },
+              "elast_key": { "type": "deterministic", "value": "estimated_revenue_elasticity" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_CURRENT_BELIEFS",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "prod_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_CURRENT_ELASTICITY",
+            "update_params": {
+              "current_prod": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_CURRENT_ELASTICITY",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "elast_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_NOISE",
+            "update_params": {
+              "current_elast": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_NOISE",
+        "rule": {
+          "type": "probabilistic",
+          "distribution": "market_noise"
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "UPDATE_BELIEFS",
+            "update_params": {
+              "noise": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "UPDATE_BELIEFS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_PRODUCTIVITY_BELIEF",
+            "update_params": {
+              "new_productivity_belief": { "type": "deterministic", "value": "max(0, ${current_prod} * (1 + ${noise}))" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "SET_PRODUCTIVITY_BELIEF",
+        "rule": { "type": "deterministic", "value": "${new_productivity_belief}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "SET_ELASTICITY_BELIEF",
+            "update_params": {
+              "prod_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "prod_key", "prod_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "SET_ELASTICITY_BELIEF",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_ELASTICITY_UPDATE",
+            "update_params": {
+              "new_elasticity_belief": { "type": "deterministic", "value": "max(0, min(1, ${current_elast} * (1 + ${noise})))" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_ELASTICITY_UPDATE",
+        "rule": { "type": "deterministic", "value": "${new_elasticity_belief}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "elast_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "elast_key", "elast_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "headcount_controller",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["HIRING_DONE", "LAYOFFS_DONE", "FREEZE_SET", "NO_ACTION"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "IDLE",
+            "update_params": {
+              "runway_key": { "type": "deterministic", "value": "runway" },
+              "headcount_key": { "type": "deterministic", "value": "headcount" },
+              "cost_rigidity_key": { "type": "deterministic", "value": "cost_rigidity" },
+              "hiring_budget_key": { "type": "deterministic", "value": "hiring_budget" },
+              "other_budget_key": { "type": "deterministic", "value": "other_budget" },
+              "cost_variable_per_head_key": { "type": "deterministic", "value": "cost_variable_per_head" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "IDLE",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "runway_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 18",
+            "to": "DO_HIRING",
+            "effect_order": []
+          },
+          {
+            "threshold": "X <= 18 and X > 6",
+            "to": "DO_FREEZE",
+            "effect_order": []
+          },
+          {
+            "threshold": "X <= 6 and X > 0",
+            "to": "DO_LAYOFFS",
+            "effect_order": []
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "NO_ACTION",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "DO_HIRING",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "hiring_budget_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "APPLY_HIRING",
+            "update_params": {
+              "budget_for_hiring": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "NO_ACTION",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "APPLY_HIRING",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "cost_variable_per_head_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "CALC_NEW_HEADCOUNT",
+            "update_params": {
+              "cost_per_head": { "type": "deterministic", "value": "${X}" },
+              "new_headcount": { "type": "deterministic", "value": "floor(${budget_for_hiring} / ${X})" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "CALC_NEW_HEADCOUNT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "headcount_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "HIRING_DONE",
+            "update_params": {
+              "current_hc": { "type": "deterministic", "value": "${X}" },
+              "final_hc": { "type": "deterministic", "value": "${X} + ${new_headcount}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "headcount_key", "final_hc"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "DO_FREEZE",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FREEZE_SET",
+            "update_params": {
+              "cost_rigidity_value": { "type": "deterministic", "value": 0.6 }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "cost_rigidity_key", "cost_rigidity_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "DO_LAYOFFS",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "headcount_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "APPLY_LAYOFFS",
+            "update_params": {
+              "current_hc": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "APPLY_LAYOFFS",
+        "rule": { "type": "deterministic", "value": "max(1, ${current_hc} - 2)" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "LAYOFFS_DONE",
+            "update_params": {
+              "headcount_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "headcount_key", "headcount_value"]
+            },
+            "effect_order": ["update_params", "action_required"]
+          }
+        ]
+      },
+      {
+        "from": "NO_ACTION",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "NO_ACTION",
+            "effect_order": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "automaton_name": "other_investment_controller",
+    "states": {
+      "initial": "LOAD_PARAMS",
+      "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+      {
+        "from": "LOAD_PARAMS",
+        "rule": { "type": "deterministic", "value": true },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "FETCH_OTHER_BUDGET",
+            "update_params": {
+              "other_budget_key": { "type": "deterministic", "value": "other_budget" },
+              "revenue_current_key": { "type": "deterministic", "value": "revenue_current" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "FETCH_OTHER_BUDGET",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "other_budget_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X > 0",
+            "to": "APPLY_INVESTMENT",
+            "update_params": {
+              "amount": { "type": "deterministic", "value": "${X}" }
+            },
+            "effect_order": ["update_params"]
+          },
+          {
+            "threshold": "X <= 0",
+            "to": "DONE",
+            "effect_order": []
+          }
+        ]
+      },
+      {
+        "from": "APPLY_INVESTMENT",
+        "rule": {
+          "type": "logic",
+          "query": {
+            "target": "agents",
+            "method": "get_param",
+            "params": ["agent_id", "revenue_current_key"]
+          }
+        },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "UPDATE_REVENUE",
+            "update_params": {
+              "current_revenue": { "type": "deterministic", "value": "${X}" },
+              "incremental_revenue": { "type": "deterministic", "value": "${current_revenue} * 0.05" }
+            },
+            "effect_order": ["update_params"]
+          }
+        ]
+      },
+      {
+        "from": "UPDATE_REVENUE",
+        "rule": { "type": "deterministic", "value": "${current_revenue} + ${incremental_revenue}" },
+        "thresholds": [
+          {
+            "threshold": "X",
+            "to": "DONE",
+            "update_params": {
+              "revenue_current_value": { "type": "deterministic", "value": "${X}" }
+            },
+            "action_required": {
+              "target": "agents",
+              "method": "set_param",
+              "params": ["agent_id", "revenue_current_key", "revenue_current_value"]
             },
             "effect_order": ["update_params", "action_required"]
           }

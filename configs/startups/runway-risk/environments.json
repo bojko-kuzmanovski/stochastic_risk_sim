@@ -48,6 +48,14 @@
       {
         "agent_id": "Investor_2",
         "is_private": false
+      },
+      {
+        "agent_id": "Founder_1",
+        "is_private": true
+      },
+      {
+        "agent_id": "TalentMarket_1",
+        "is_private": true
       }
     ],
     "follow": [
@@ -92,6 +100,16 @@
         "from_agent_id": "ShockEvent_1",
         "to_agent_id": "Startup_1",
         "is_approved": true
+      },
+      {
+        "from_agent_id": "Founder_1",
+        "to_agent_id": "Startup_1",
+        "is_approved": true
+      },
+      {
+        "from_agent_id": "TalentMarket_1",
+        "to_agent_id": "Founder_1",
+        "is_approved": true
       }
     ],
     "direct_channels": [
@@ -105,6 +123,14 @@
       },
       {
         "agents_id": ["Startup_1", "RevenueStream_1"],
+        "interactions": []
+      },
+      {
+        "agents_id": ["Founder_1", "Startup_1"],
+        "interactions": []
+      },
+      {
+        "agents_id": ["Founder_1", "TalentMarket_1"],
         "interactions": []
       }
     ],
