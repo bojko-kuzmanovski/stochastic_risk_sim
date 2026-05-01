@@ -27,7 +27,7 @@
                 "type": "logic",
                 "query": {
                   "target": "environments",
-                  "method": "get_env_ids_by_type",
+                  "method": "get_all_envs",
                   "params": ["env_type"]
                 }
               },

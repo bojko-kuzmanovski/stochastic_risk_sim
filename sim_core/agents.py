@@ -17,103 +17,178 @@ class Agents:
 
         # Process agents attributes
         self.data = []
+        self.config_data = config_data
+        self.distributions = distributions
         self.metrics_collector = metrics_collector
         self.automata = None
         self._tasks = {}
+        self._running = False
 
         for agent_entry in config_data:
             for n in range(1, agent_entry["quantity"] + 1):
-                # Copy entry to avoid mutating original data
-                agent_resolved = agent_entry.copy()
-
-                # Assign agent_id
-                agent_resolved["agent_id"] = f"{agent_entry['agent_type']}_{n}"
-
-                # Resolve params usando resolve_value
-                resolved_params = {}
-                ctx = resolved_params
-                
-                for pname, pdef in agent_entry.get("params", {}).items():
-                    resolved_params[pname] = resolve_value(vdef=pdef, ctx=ctx, distributions=distributions, agents_obj=None, environments_obj=None)
-                    ctx[pname] = resolved_params[pname]
-                
-                agent_resolved["params"] = resolved_params
-
-                # Asyncio event_queue
-                agent_resolved["event_queue"] = asyncio.Queue()
-
-                # Store in internal list
+                agent_resolved = self._build_agent(agent_entry, n)
                 self.data.append(agent_resolved)
+
+
+    def _build_agent(self, agent_entry, n):
+        """Construye un agente resuelto a partir de una entrada de configuración y un número n."""
+        agent_type = agent_entry["agent_type"]
+        agent_resolved = {
+            "agent_id": f"{agent_type}_{n}",
+            "agent_type": agent_type,
+            "automata": agent_entry.get("automata", []),
+        }
+
+        # Resolve params
+        resolved_params = {}
+        ctx = resolved_params
+        for pname, pdef in agent_entry.get("params", {}).items():
+            resolved_params[pname] = resolve_value(
+                vdef=pdef, ctx=ctx, distributions=self.distributions,
+                agents_obj=None, environments_obj=None
+            )
+            ctx[pname] = resolved_params[pname]
+        agent_resolved["params"] = resolved_params
+
+        # Event queue
+        agent_resolved["event_queue"] = asyncio.Queue()
+
+        return agent_resolved
 
 
     def set_objects(self, automata):
         self.automata = automata
     
+
+    def _start_worker(self, agent):
+        semaphore = asyncio.Semaphore(5)
+
+        async def _process_event(agent, event):
+            async with semaphore:
+                try:
+                    signal = event.get("signal")
+                    if signal in agent.get("automata", []):
+                        await self.automata.process_event(event)
+                except Exception:
+                    pass
+
+        async def _worker():
+            while True:
+                event = await agent["event_queue"].get()
+                asyncio.create_task(_process_event(agent, event))
+
+        self._tasks[agent["agent_id"]] = asyncio.create_task(_worker())
+
+
+    def _stop_worker(self, agent_id):
+        """Cancela y limpia el worker de un agente específico."""
+        task = self._tasks.pop(agent_id, None)
+        if task:
+            task.cancel()
+            return True
+        return False
+
+
     async def start(self):
         """Start async workers for each agent."""
         self._running = True
         for agent in self.data:
-            self._tasks[agent["agent_id"]] = asyncio.create_task(
-                self._agent_loop(agent)
-            )
+            self._start_worker(agent)
+
 
     async def stop(self):
         """Stop all agent loops."""
         self._running = False
-        for task in self._tasks.values():
-            task.cancel()
-        await asyncio.gather(*self._tasks.values(), return_exceptions=True)
-        self._tasks.clear()
+        for agent_id in list(self._tasks.keys()):
+            self._stop_worker(agent_id)
 
-    def get_by_type(self, agent_type: str):
-        """Return all agents of a specific type."""
-        return [a for a in self.data if a.get('agent_type') == agent_type]
 
-    def get_all_agents(self):
-        """Return all agents."""
-        return self.data
-    
-    def set_param(self, agent_id: str, key: str, value) -> None:
-        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
-        if agent:
-            if "params" not in agent:
-                agent["params"] = {}
-            agent["params"][key] = value
-            self.metrics_collector.record_agent_action(agent["agent_type"], "set_param")
-    
-    def get_param(self, agent_id: str, key: str, default=None):
-        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
-        if not agent:
-            return default
-
-        self.metrics_collector.record_agent_action(agent["agent_type"], "get_param")
-        return agent.get("params", {}).get(key, default)
-    
     async def receive_event(self, agent_id, event):
-        agent = next(a for a in self.data if a["agent_id"] == agent_id)
+        agent = next((a for a in self.data if a["agent_id"] == agent_id), None)
+        if agent is None:
+            return
         await agent["event_queue"].put(event)
         if self.metrics_collector:
             event_category = event.get("event_category")
             signal = event.get("signal")
             self.metrics_collector.record_agent_event(event_category, signal)
 
-    async def _agent_loop(self, agent):
-        max_concurrency = 5
-        semaphore = asyncio.Semaphore(max_concurrency)
 
-        async def _process_event(event):
-            async with semaphore:
+    def get_all_agents(self, agent_type):
+        self.metrics_collector.record_agent_action(agent_type, "get_all_agents")
+        return [a["agent_id"] for a in self.data if a.get("agent_type") == agent_type]
+    
+
+    def add_agent(self, agent_type):
+        """
+        Crea un nuevo agente del tipo dado usando la definición en config_data.
+        Retorna el agent_id si se creó, None si no existe el tipo en config_data.
+        """
+        agent_entry = next((a for a in self.config_data if a["agent_type"] == agent_type), None)
+        if agent_entry is None:
+            return None
+
+        # Next agent_id
+        max_n = 0
+        for a in self.data:
+            if a["agent_type"] == agent_type:
+                suffix = a["agent_id"].split("_")[-1]
                 try:
-                    signal = event.get("signal")
-
-                    if signal not in agent.get("automata", []):
-                        return
-
-                    await self.automata.process_event(event)
-
-                except Exception as e:
+                    n = int(suffix)
+                    if n > max_n:
+                        max_n = n
+                except ValueError:
                     pass
+        n = max_n + 1
 
-        while True:
-            event = await agent["event_queue"].get()
-            asyncio.create_task(_process_event(event))
+        agent_resolved = self._build_agent(agent_entry, n)
+        self.data.append(agent_resolved)
+
+        # Start worker si ya está corriendo
+        if self._running and self.automata:
+            self._start_worker(agent_resolved)
+
+        self.metrics_collector.record_agent_action(agent_type, "add_agent")
+        return agent_resolved["agent_id"]
+
+
+    def remove_agent(self, agent_id):
+        """
+        Elimina el agente con agent_id y detiene su worker.
+        Retorna True si se eliminó, False si no existe.
+        """
+        for i, a in enumerate(self.data):
+            if a["agent_id"] == agent_id:
+                agent_type = a["agent_type"]
+                del self.data[i]
+                self._stop_worker(agent_id)
+                self.metrics_collector.record_agent_action(agent_type, "remove_agent")
+                return True
+        return False
+    
+
+    def read_agent_param(self, agent_id, param_name):
+        """
+        Lee un parámetro específico del agente.
+        Retorna el valor si existe, None si no existe el agente o el parámetro.
+        """
+        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        if agent is None:
+            return None
+        self.metrics_collector.record_agent_action(agent["agent_type"], "read_agent_param")
+        return agent.get("params", {}).get(param_name)
+
+
+    def write_agent_param(self, agent_id, param_name, value):
+        """
+        Escribe un parámetro del agente.
+        Retorna True si se escribió, False si el agente no existe.
+        """
+        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        if agent is None:
+            return False
+        if "params" not in agent:
+            agent["params"] = {}
+        agent["params"][param_name] = value
+        self.metrics_collector.record_agent_action(agent["agent_type"], "write_agent_param")
+        return True

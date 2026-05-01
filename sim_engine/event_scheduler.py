@@ -17,13 +17,13 @@ class EventScheduler:
     async def _run_event_loop(self, event):
         while self._running:
             # Select agents
-            target_agents = self._agents.get_by_type(event["agent_type"])
+            target_agents = self._agents.get_all_agents(event["agent_type"])
             
             # Emit event
-            for agent in target_agents:
+            for agent_id in target_agents:
                 event_copy = event.copy()
-                event_copy["agent_id"] = agent["agent_id"]
-                await self._agents.receive_event(agent["agent_id"], event_copy)
+                event_copy["agent_id"] = agent_id
+                await self._agents.receive_event(agent_id, event_copy)
                 
             # Periodicity
             await asyncio.sleep(event["periodicity"])

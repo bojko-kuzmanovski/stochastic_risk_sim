@@ -188,23 +188,35 @@
         "method": {
           "type": "string",
           "enum": [
-            "set_param",
-            "profile_register",
-            "profile_private_change",
-            "follow_request",
-            "follow_reject",
-            "follow_accept",
-            "connection_request",
-            "connection_reject",
-            "connection_accept",
-            "direct_channels_interact",
-            "group_channels_register",
-            "group_channels_delete",
-            "group_channels_agent_delete",
-            "group_channels_join",
-            "group_channels_interact",
-            "applications_create",
-            "applications_apply"
+            "get_all_agents",
+            "add_agent",
+            "remove_agent",
+            "read_agent_param",
+            "write_agent_param",
+
+            "get_all_envs",
+            "add_env",
+            "remove_env",
+            "read_env_param",
+            "write_env_param",
+            "read_members",
+            "write_member",
+            "read_member_param",
+            "write_member_param",
+            "read_rel",
+            "add_rel",
+            "remove_rel",
+            "read_rel_metadata",
+            "write_rel_metadata",
+            "read_ch",
+            "add_ch",
+            "remove_ch",
+            "read_ch_members",
+            "write_ch_member",
+            "read_ch_param",
+            "write_ch_param",
+            "read_ch_events",
+            "write_ch_event"
           ]
         },
         "params": {
@@ -226,7 +238,7 @@
           "type": "string",
           "enum": [
             "get_param",
-            "get_env_ids_by_type",
+            "get_all_envs",
             "profile_already_registered"
           ]
         },
