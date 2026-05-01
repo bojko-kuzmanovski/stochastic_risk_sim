@@ -1,5 +1,6 @@
 import json
 from jsonschema import validate
+from typing import Any
 import asyncio
 
 from sim_core.events import Events
@@ -43,6 +44,30 @@ class Automata:
             params[k] = resolve_value(
                 v, ctx, self.distributions, self.agents, self.environments
             )
+        
+        # Mutiple case evaluation
+        def _evaluate_threshold_conditions(X: Any, conditions: list, ctx: dict) -> bool:
+            for cond in conditions:
+                op = cond["operator"]
+                val = resolve_value(
+                    {"type": "deterministic", "value": cond["value"]},
+                    {**ctx, "X": X},
+                    self.distributions,
+                    self.agents,
+                    self.environments
+                )
+                
+                if op == "<" and not (X < val):
+                    return False
+                elif op == "<=" and not (X <= val):
+                    return False
+                elif op == ">" and not (X > val):
+                    return False
+                elif op == ">=" and not (X >= val):
+                    return False
+                elif op == "==" and not (X == val):
+                    return False
+            return True
 
         # Main loop / Transition Function
         while True:
@@ -57,13 +82,13 @@ class Automata:
 
             # Resolve _X_
             ctx = {**event, **params}
-            _X_ = resolve_value(transition["rule"], ctx, self.distributions, self.agents, self.environments)
+            _X_ = resolve_value(transition["threshold_value"], ctx, self.distributions, self.agents, self.environments)
 
             # Evaluate thresholds
             chosen_case = None
             for th in transition.get("thresholds", []):
                 try:
-                    if eval(th["threshold"], {"__builtins__": {}}, {"X": _X_}):
+                    if _evaluate_threshold_conditions(_X_, th["threshold_case"], ctx):
                         chosen_case = th
                         break
                 except Exception:

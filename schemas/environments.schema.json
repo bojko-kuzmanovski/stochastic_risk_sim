@@ -13,124 +13,70 @@
         "type": "object",
         "additionalProperties": { "$ref": "#/definitions/param_definition" }
       },
-      "profile": {
+      "members": {
         "type": "array",
         "items": {
           "type": "object",
-          "required": ["agent_id"],
+          "required": ["agent_id", "agent_rol"],
+          "additionalProperties": false,
           "properties": {
             "agent_id": { "type": "string" },
-            "is_private": { "type": "boolean" }
-          },
-          "additionalProperties": false
+            "agent_rol": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/param_definition" }
+            }
+          }
         }
       },
-      "follow": {
+      "relations": {
         "type": "array",
         "items": {
           "type": "object",
-          "required": ["from_agent_id", "to_agent_id", "is_approved"],
+          "required": ["agent_a_id", "agent_b_id", "rel_type"],
+          "additionalProperties": false,
           "properties": {
-            "from_agent_id": { "type": "string" },
-            "to_agent_id": { "type": "string" },
-            "is_approved": { "type": "boolean" }
-          },
-          "additionalProperties": false
+            "agent_a_id": { "type": "string" },
+            "agent_b_id": { "type": "string" },
+            "rel_type": { "type": "string" },
+            "rel_metadata": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/param_definition" }
+            }
+          }
         }
       },
-      "connection": {
+      "channels": {
         "type": "array",
         "items": {
           "type": "object",
-          "required": ["from_agent_id", "to_agent_id", "is_approved"],
+          "required": ["channel_type", "agents_id"],
+          "additionalProperties": false,
           "properties": {
-            "from_agent_id": { "type": "string" },
-            "to_agent_id": { "type": "string" },
-            "is_approved": { "type": "boolean" }
-          },
-          "additionalProperties": false
-        }
-      },
-      "direct_channels": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["agents_id"],
-          "properties": {
+            "channel_type": {
+              "type": "string",
+              "enum": ["directo", "grupal"]
+            },
             "agents_id": {
               "type": "array",
-              "minItems": 2,
-              "maxItems": 2,
+              "minItems": 1,
               "items": { "type": "string" }
             },
-            "interactions": {
+            "events": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": ["from_agent_id", "to_agent_id", "timestamp", "was_replied"],
-                "properties": {
-                  "from_agent_id": { "type": "string" },
-                  "to_agent_id": { "type": "string" },
-                  "timestamp": { "type": "number" },
-                  "was_replied": { "type": "boolean", "default": false }
-                },
-                "additionalProperties": false
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "group_channels": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["channel_id", "agents"],
-          "properties": {
-            "channel_id": { "type": "string" },
-            "agents": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "required": ["agent_id", "is_admin"],
+                "required": ["agent_id", "event_metadata"],
+                "additionalProperties": false,
                 "properties": {
                   "agent_id": { "type": "string" },
-                  "is_admin": { "type": "boolean" }
-                },
-                "additionalProperties": false
-              }
-            },
-            "interactions": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": ["from_agent_id", "timestamp"],
-                "properties": {
-                  "from_agent_id": { "type": "string" },
-                  "timestamp": { "type": "number" }
-                },
-                "additionalProperties": false
+                  "event_metadata": {
+                    "type": "object",
+                    "additionalProperties": { "$ref": "#/definitions/param_definition" }
+                  }
+                }
               }
             }
-          },
-          "additionalProperties": false
-        }
-      },
-      "applications": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["application_id", "publisher_agent_id", "applicants_agents_id"],
-          "properties": {
-            "application_id": { "type": "string" },
-            "publisher_agent_id": { "type": "string" },
-            "applicants_agents_id": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          },
-          "additionalProperties": false
+          }
         }
       }
     }

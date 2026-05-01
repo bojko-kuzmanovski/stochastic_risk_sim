@@ -33,24 +33,42 @@
   "definitions": {
     "transition": {
       "type": "object",
-      "required": ["from", "rule", "thresholds"],
+      "required": ["from", "threshold_value", "thresholds"],
       "properties": {
         "from": { "type": "string" },
-        "rule": {
+        "threshold_value": {
           "$ref": "#/definitions/param_value"
         },
         "thresholds": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/definitions/threshold_case" }
+          "items": { "$ref": "#/definitions/threshold_cases" }
         }
       }
     },
-    "threshold_case": {
+    "threshold_condition": {
       "type": "object",
-      "required": ["threshold", "to", "effect_order"],
+      "required": ["operator", "value"],
       "properties": {
-        "threshold": { "type": "string" },
+        "operator": {
+          "type": "string",
+          "enum": ["<", "<=", ">", ">=", "=="]
+        },
+        "value": {
+          "type": ["string", "number", "boolean"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "threshold_cases": {
+      "type": "object",
+      "required": ["threshold_case", "to", "effect_order"],
+      "properties": {
+        "threshold_case": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/threshold_condition" }
+        },
         "to": { "type": "string" },
         "event_emit": {
           "$ref": "#/definitions/event_emit_object"
@@ -170,9 +188,9 @@
         "method": {
           "type": "string",
           "enum": [
-            "set_param", 
-            "profile_register", 
-            "profile_private_change", 
+            "set_param",
+            "profile_register",
+            "profile_private_change",
             "follow_request",
             "follow_reject",
             "follow_accept",

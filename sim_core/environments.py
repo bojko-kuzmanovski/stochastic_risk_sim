@@ -39,6 +39,69 @@ class Environments:
                     ctx[pname] = resolved_params[pname]
                 
                 env_resolved["params"] = resolved_params
+
+                # Members
+                resolved_members = []
+                for member in env_entry.get("members", []):
+                    resolved_rol = {}
+                    rol_ctx = {}
+                    for rname, rdef in member.get("agent_rol", {}).items():
+                        resolved_rol[rname] = resolve_value(
+                            vdef=rdef, ctx={**resolved_params, **rol_ctx},
+                            distributions=distributions,
+                            agents_obj=None, environments_obj=None
+                        )
+                        rol_ctx[rname] = resolved_rol[rname]
+                    resolved_members.append({
+                        "agent_id": member["agent_id"],
+                        "agent_rol": resolved_rol
+                    })
+                env_resolved["members"] = resolved_members
+
+                # Relations
+                resolved_relations = []
+                for rel in env_entry.get("relations", []):
+                    resolved_meta = {}
+                    meta_ctx = {}
+                    for mname, mdef in rel.get("rel_metadata", {}).items():
+                        resolved_meta[mname] = resolve_value(
+                            vdef=mdef, ctx={**resolved_params, **meta_ctx},
+                            distributions=distributions,
+                            agents_obj=None, environments_obj=None
+                        )
+                        meta_ctx[mname] = resolved_meta[mname]
+                    resolved_relations.append({
+                        "agent_a_id": rel["agent_a_id"],
+                        "agent_b_id": rel["agent_b_id"],
+                        "rel_type": rel["rel_type"],
+                        "rel_metadata": resolved_meta
+                    })
+                env_resolved["relations"] = resolved_relations
+
+                # Channels
+                resolved_channels = []
+                for ch in env_entry.get("channels", []):
+                    resolved_events = []
+                    for ev in ch.get("events", []):
+                        resolved_ev_meta = {}
+                        ev_ctx = {}
+                        for ename, edef in ev.get("event_metadata", {}).items():
+                            resolved_ev_meta[ename] = resolve_value(
+                                vdef=edef, ctx={**resolved_params, **ev_ctx},
+                                distributions=distributions,
+                                agents_obj=None, environments_obj=None
+                            )
+                            ev_ctx[ename] = resolved_ev_meta[ename]
+                        resolved_events.append({
+                            "agent_id": ev["agent_id"],
+                            "event_metadata": resolved_ev_meta
+                        })
+                    resolved_channels.append({
+                        "channel_type": ch["channel_type"],
+                        "agents_id": ch["agents_id"],
+                        "events": resolved_events
+                    })
+                env_resolved["channels"] = resolved_channels
                 
                 # Store in internal list
                 self.data.append(env_resolved)
