@@ -62,7 +62,7 @@
     },
     "threshold_cases": {
       "type": "object",
-      "required": ["threshold_case", "to", "effect_order"],
+      "required": ["threshold_case", "to"],
       "properties": {
         "threshold_case": {
           "type": "array",
@@ -70,100 +70,26 @@
           "items": { "$ref": "#/definitions/threshold_condition" }
         },
         "to": { "type": "string" },
-        "event_emit": {
-          "$ref": "#/definitions/event_emit_object"
-        },
-        "action_required": {
-          "$ref": "#/definitions/action_required_object"
-        },
-        "update_params": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/param_value"
-          }
-        },
-        "effect_order": {
+        "actions": {
           "type": "array",
           "items": {
-            "type": "string",
-            "enum": ["event_emit", "action_required", "update_params"]
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "properties": {
+              "event_emit": { "$ref": "#/definitions/event_emit_object" },
+              "action_required": { "$ref": "#/definitions/action_required_object" },
+              "update_params": {
+                "type": "object",
+                "additionalProperties": { "$ref": "#/definitions/param_value" }
+              }
+            },
+            "additionalProperties": false
           },
           "minItems": 0,
-          "maxItems": 3,
-          "uniqueItems": true
+          "maxItems": 20
         }
-      },
-      "allOf": [
-        {
-          "if": { "required": ["event_emit"] },
-          "then": {
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "event_emit" }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["action_required"] },
-          "then": {
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "action_required" }
-              }
-            }
-          }
-        },
-        {
-          "if": { "required": ["update_params"] },
-          "then": {
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "update_params" }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "required": ["effect_order"],
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "event_emit" }
-              }
-            }
-          },
-          "then": {
-            "required": ["event_emit"]
-          }
-        },
-        {
-          "if": {
-            "required": ["effect_order"],
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "action_required" }
-              }
-            }
-          },
-          "then": {
-            "required": ["action_required"]
-          }
-        },
-        {
-          "if": {
-            "required": ["effect_order"],
-            "properties": {
-              "effect_order": {
-                "contains": { "const": "update_params" }
-              }
-            }
-          },
-          "then": {
-            "required": ["update_params"]
-          }
-        }
-      ]
+      }
     },
     "event_emit_object": {
       "type": "object",
@@ -188,34 +114,22 @@
         "method": {
           "type": "string",
           "enum": [
-            "get_all_agents",
             "add_agent",
             "remove_agent",
-            "read_agent_param",
             "write_agent_param",
 
-            "get_all_envs",
             "add_env",
             "remove_env",
-            "read_env_param",
             "write_env_param",
-            "read_members",
             "write_member",
-            "read_member_param",
             "write_member_param",
-            "read_rel",
             "add_rel",
             "remove_rel",
-            "read_rel_metadata",
             "write_rel_metadata",
-            "read_ch",
             "add_ch",
             "remove_ch",
-            "read_ch_members",
             "write_ch_member",
-            "read_ch_param",
             "write_ch_param",
-            "read_ch_events",
             "write_ch_event"
           ]
         },
@@ -237,9 +151,19 @@
         "method": {
           "type": "string",
           "enum": [
-            "get_param",
+            "get_all_agents",
+            "read_agent_param",
+
             "get_all_envs",
-            "profile_already_registered"
+            "read_env_param",
+            "read_members",
+            "read_member_param",
+            "read_rel",
+            "read_rel_metadata",
+            "read_ch",
+            "read_ch_members",
+            "read_ch_param",
+            "read_ch_events"
           ]
         },
         "params": {

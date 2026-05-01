@@ -102,27 +102,30 @@ class Automata:
             state = chosen_case["to"]
             ctx = {**event, **params, "X": _X_}
 
-            # Apply effects
-            for action in chosen_case.get("effect_order", []):
-                if action == "event_emit":
-                    obj = chosen_case["event_emit"]
+            # Apply actions in order
+            for action_obj in chosen_case.get("actions", []):
+                if "event_emit" in action_obj:
+                    obj = action_obj["event_emit"]
                     resolved = {k: ctx.get(k) for k in obj.get("params", [])}
-                    event_data = {
-                        "event_category": "dynamic",
-                        "signal": obj["signal"],
-                        "agent_id": resolved.get("to_agent_id") or resolved.get("agent_id") or resolved.get("agent_id_capture") or event["agent_id"],
-                        **resolved
-                    }
-                    asyncio.create_task(self.agents.receive_event(event_data["agent_id"], event_data))
+                    
+                    to_agent_id = resolved.get("to_agent_id")
+                    if to_agent_id is not None:
+                        event_data = {
+                            "event_category": "dynamic",
+                            "signal": obj["signal"],
+                            "to_agent_id": to_agent_id,
+                            **resolved
+                        }
+                        asyncio.create_task(self.agents.receive_event(to_agent_id, event_data))
 
-                elif action == "action_required":
-                    obj = chosen_case["action_required"]
+                elif "action_required" in action_obj:
+                    obj = action_obj["action_required"]
                     args = resolve_args(obj.get("params", []), ctx)
                     call_method(obj["target"], obj["method"], args, self.agents, self.environments)
 
-                elif action == "update_params":
+                elif "update_params" in action_obj:
                     updates = {}
-                    for k, v in chosen_case.get("update_params", {}).items():
+                    for k, v in action_obj["update_params"].items():
                         updates[k] = resolve_value(
                             v, ctx, self.distributions, self.agents, self.environments
                         )
