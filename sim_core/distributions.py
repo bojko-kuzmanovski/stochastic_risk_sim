@@ -11,6 +11,14 @@ class Distributions:
 
         validate(instance=config_data, schema=schema)
 
+        # Validate unique distribution_name
+        names = [d["distribution_name"] for d in config_data]
+        if len(names) != len(set(names)):
+            duplicates = [n for n in names if names.count(n) > 1]
+            raise ValueError(
+                f"distribution_name must be unique. Duplicates: {list(set(duplicates))}"
+            )
+
         self.metrics_collector = metrics_collector
         self.samplers = {}
 

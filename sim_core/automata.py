@@ -16,6 +16,14 @@ class Automata:
         # Validate against schema
         validate(instance=config_data, schema=schema)
 
+        # Validate unique automaton_name
+        names = [d["automaton_name"] for d in config_data]
+        if len(names) != len(set(names)):
+            duplicates = [n for n in names if names.count(n) > 1]
+            raise ValueError(
+                f"automaton_name must be unique. Duplicates: {list(set(duplicates))}"
+            )
+
         # Process automata
         self.data = config_data
         self.distributions = distributions
@@ -107,7 +115,7 @@ class Automata:
                 if "event_emit" in action_obj:
                     obj = action_obj["event_emit"]
                     resolved = {k: ctx.get(k) for k in obj.get("params", [])}
-                    
+
                     to_agent_id = resolved.get("to_agent_id")
                     if to_agent_id is not None:
                         event_data = {
