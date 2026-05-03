@@ -21,6 +21,7 @@ async def main():
     automata_config = load_json(script_dir / 'automata.json')
     agents_config = load_json(script_dir / 'agents.json')
     events_config = load_json(script_dir / 'events.json')
+    patl_config = load_json(script_dir / 'patl.json')
     
     # Create and run simulator
     sim = DiscreteEventSimulator(
@@ -28,7 +29,8 @@ async def main():
         environments_config=environments_config,
         automata_config=automata_config,
         agents_config=agents_config,
-        events_config=events_config
+        events_config=events_config,
+        patl_config=patl_config
     )
     
     # Run simulation with hardcoded max time

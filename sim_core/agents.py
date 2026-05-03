@@ -21,6 +21,7 @@ class Agents:
         self.distributions = distributions
         self.metrics_collector = metrics_collector
         self.automata = None
+        self.snapshot_manager = None
         self._tasks = {}
         self._running = False
 
@@ -56,26 +57,39 @@ class Agents:
         return agent_resolved
 
 
-    def set_objects(self, automata):
+    def set_objects(self, automata, snapshot_manager):
         self.automata = automata
-    
+        self.snapshot_manager = snapshot_manager
+
 
     def _start_worker(self, agent):
-        semaphore = asyncio.Semaphore(5)
-
-        async def _process_event(agent, event):
-            async with semaphore:
-                try:
-                    signal = event.get("signal")
-                    if signal in agent.get("automata", []):
-                        await self.automata.process_event(event)
-                except Exception:
-                    pass
-
         async def _worker():
             while True:
                 event = await agent["event_queue"].get()
-                asyncio.create_task(_process_event(agent, event))
+
+                signal = event.get("signal")
+                if signal not in agent.get("automata", []):
+                    continue
+
+                session = self.automata.create_session(signal, event)
+                if not session:
+                    continue
+
+                automaton_name = session.automaton_name
+
+                while True:
+                    # Esperar si hay muestreo en curso
+                    while self.snapshot_manager.is_sampling():
+                        await asyncio.sleep(0.01)
+
+                    self.snapshot_manager.enter_transition()
+                    new_state = session.step()
+                    self.snapshot_manager.exit_transition()
+
+                    if new_state is None:
+                        break
+
+                    await self.snapshot_manager.capture(agent["agent_id"], automaton_name, new_state)
 
         self._tasks[agent["agent_id"]] = asyncio.create_task(_worker())
 

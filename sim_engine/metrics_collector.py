@@ -24,6 +24,9 @@ class MetricsCollector:
         # Agents actions
         self._agent_action_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
+        # PATL snapshots
+        self._patl_snapshot_counts: Dict[str, int] = defaultdict(int)
+
 
     # RUNTIME HOOKS
     def record_agent_event(self, event_category: str, signal: str) -> None:
@@ -41,8 +44,11 @@ class MetricsCollector:
     def record_agent_action(self, agent_type: str, action: str) -> None:
         self._agent_action_counts[agent_type][action] += 1
 
+    def record_patl_sampling(self, automaton_name: str, state: str) -> None:
+        self._patl_snapshot_counts[automaton_name][state] += 1
+
     # REPORT
-    def print_report(self, distributions, environments, agents, automata, events):
+    def print_report(self, distributions, environments, agents, automata, events, snapshot_manager):
         print("\n" + "=" * 60)
         print("📊 SIMULATION STATISTICS")
         print("=" * 60)
@@ -113,6 +119,30 @@ class MetricsCollector:
             for agent_type in sorted(signal_agents[signal]):
                 print(f"       └── {agent_type}")
 
+        # PATL buildtime
+        data = snapshot_manager.data
+        total_predicates = sum(len(preds) for preds in data.values())
+        print(f"\n📸 PATL Predicates: {total_predicates}")
+
+        by_automaton = {}
+        for (aut, state), preds in data.items():
+            if aut not in by_automaton:
+                by_automaton[aut] = {"total_preds": 0, "states": {}}
+            by_automaton[aut]["total_preds"] += len(preds)
+            by_automaton[aut]["states"][state] = preds
+
+        for aut in sorted(by_automaton.keys()):
+            info = by_automaton[aut]
+            print(f"   └── {aut}: {info['total_preds']} predicates")
+            for state in sorted(info["states"].keys()):
+                preds = info["states"][state]
+                print(f"       └── {state}: {len(preds)} predicates")
+                for pred in preds:
+                    pred_id = pred.get("predicate_id", "?")
+                    pred_type = pred.get("type", "?")
+                    print(f"           └── {pred_id} ({pred_type})")
+
+
         # RUNTIME METRICS
         print("\n" + "*" * 60)
         print("🚀 RUNTIME METRICS")
@@ -177,5 +207,19 @@ class MetricsCollector:
         print(f"\n📅 Events Generated: {total_static + total_dynamic}")
         print(f"   └── static: {total_static}")
         print(f"   └── dynamic: {total_dynamic}")
+
+        # PATL runtime
+        total_patl = sum(
+            sum(states.values())
+            for states in self._patl_snapshot_counts.values()
+        )
+
+        print(f"\n📸 PATL Snapshots Captured: {total_patl}")
+        for aut in sorted(self._patl_snapshot_counts.keys()):
+            states = self._patl_snapshot_counts[aut]
+            total_aut = sum(states.values())
+            print(f"   └── {aut}: {total_aut}")
+            for state in sorted(states.keys()):
+                print(f"       └── {state}: {states[state]}")
 
         print("\n" + "=" * 60)

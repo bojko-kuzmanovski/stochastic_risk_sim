@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PATL Sampling Configuration",
+  "type": "object",
+  "required": ["observations"],
+  "properties": {
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["automaton_name", "trigger_state", "predicates"],
+        "properties": {
+          "automaton_name": { "type": "string" },
+          "trigger_state": { "type": "string" },
+          "predicates": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/patl_predicate" }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "patl_predicate": {
+      "type": "object",
+      "required": ["predicate_id", "type", "coalition", "property"],
+      "properties": {
+        "predicate_id": { "type": "string" },
+        "type": { 
+          "enum": ["reachability", "invariance", "bounded_reachability"] 
+        },
+        "coalition": {
+          "type": "object",
+          "properties": {
+            "by_type": { "type": "array", "items": { "type": "string" } },
+            "by_id": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "target_states": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "probability_bound": { "type": "number" },
+        "condition": {
+          "type": "object",
+          "description": "Fórmula lógica sobre parámetros de agentes en el snapshot"
+        }
+      }
+    }
+  }
+}

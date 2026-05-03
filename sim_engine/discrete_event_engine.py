@@ -3,31 +3,39 @@ import time
 from tqdm import tqdm
 import asyncio
 
+from sim_engine.metrics_collector import MetricsCollector
+from sim_engine.event_scheduler import EventScheduler
+
+from patl_engine.snapshot_manager import SnapshotManager
+
 from sim_core.distributions import Distributions
 from sim_core.agents import Agents
 from sim_core.automata import Automata
 from sim_core.environments import Environments
 from sim_core.events import Events
 
-from sim_engine.metrics_collector import MetricsCollector
-from sim_engine.event_scheduler import EventScheduler
-
 
 class DiscreteEventSimulator:
-    def __init__(self, distributions_config, environments_config, automata_config, agents_config, events_config):
+    def __init__(self, distributions_config, environments_config, automata_config, agents_config, events_config, patl_config):
+        # Metrics collector and snapshot manager
         self.metrics_collector = MetricsCollector()
+        self.snapshot_manager = SnapshotManager(patl_config, self.metrics_collector)
         
+        # Simulation objects
         self.distributions = Distributions(distributions_config, self.metrics_collector)
         self.environments = Environments(environments_config, self.distributions, self.metrics_collector)
         self.automata = Automata(automata_config, self.distributions, self.metrics_collector)
         self.agents = Agents(agents_config, self.distributions, self.metrics_collector)
         
+        # Cross objects sharing
         self.automata.set_objects(self.agents, self.environments)
-        self.agents.set_objects(self.automata)
+        self.agents.set_objects(self.automata, self.snapshot_manager)
+        self.snapshot_manager.set_objects(self.agents, self.environments)
         
+        # Static events and event scheduler
         self.events = Events(events_config, self.distributions)
         static_events = [e for e in self.events.data if e["event_category"] == "static"]
-        self.event_scheduler = EventScheduler(static_events, self.agents)
+        self.event_scheduler = EventScheduler(static_events, self.agents, self.snapshot_manager)
 
     async def run_simulation(self, max_time: float = 10000.0):
         # Start async agents
@@ -91,4 +99,4 @@ class DiscreteEventSimulator:
         await self.agents.stop()
 
         # Final metrics
-        self.metrics_collector.print_report(self.distributions, self.environments, self.agents, self.automata, self.events)
+        self.metrics_collector.print_report(self.distributions, self.environments, self.agents, self.automata, self.events, self.snapshot_manager)
