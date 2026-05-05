@@ -6,6 +6,7 @@
   "properties": {
     "observations": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": ["automaton_name", "trigger_state", "predicates"],
@@ -14,38 +15,99 @@
           "trigger_state": { "type": "string" },
           "predicates": {
             "type": "array",
+            "minItems": 1,
             "items": { "$ref": "#/definitions/patl_predicate" }
           }
-        }
+        },
+        "additionalProperties": false
       }
     }
   },
   "definitions": {
     "patl_predicate": {
       "type": "object",
-      "required": ["predicate_id", "type", "coalition", "property"],
+      "required": ["predicate_id", "type", "coalition", "probability_bound"],
       "properties": {
         "predicate_id": { "type": "string" },
-        "type": { 
-          "enum": ["reachability", "invariance", "bounded_reachability"] 
+        "type": {
+          "type": "string",
+          "enum": ["reachability", "invariance"]
         },
-        "coalition": {
-          "type": "object",
-          "properties": {
-            "by_type": { "type": "array", "items": { "type": "string" } },
-            "by_id": { "type": "array", "items": { "type": "string" } }
-          }
+        "max_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 20
         },
+        "coalition": { "$ref": "#/definitions/agent_group" },
+        "adversaries": { "$ref": "#/definitions/agent_group" },
+        "probability_bound": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "probability_operator": {
+          "type": "string",
+          "enum": ["<", "<=", ">", ">="],
+          "default": ">="
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_group": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "by_type": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/agent_automata_by_type" }
+        },
+        "by_id": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/agent_automata_by_id" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_automata_by_type": {
+      "type": "object",
+      "required": ["agent_type", "automata"],
+      "properties": {
+        "agent_type": { "type": "string" },
+        "automata": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/automaton_target" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_automata_by_id": {
+      "type": "object",
+      "required": ["agent_id", "automata"],
+      "properties": {
+        "agent_id": { "type": "string" },
+        "automata": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/automaton_target" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "automaton_target": {
+      "type": "object",
+      "required": ["automaton_name", "target_states"],
+      "properties": {
+        "automaton_name": { "type": "string" },
         "target_states": {
           "type": "array",
+          "minItems": 1,
           "items": { "type": "string" }
-        },
-        "probability_bound": { "type": "number" },
-        "condition": {
-          "type": "object",
-          "description": "Fórmula lógica sobre parámetros de agentes en el snapshot"
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }

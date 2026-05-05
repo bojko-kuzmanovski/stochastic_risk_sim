@@ -2,6 +2,7 @@ import json
 import random
 import numpy as np
 from jsonschema import validate
+from scipy import stats
 
 class Distributions:
     def __init__(self, config_data, metrics_collector):
@@ -77,7 +78,11 @@ class Distributions:
 
             self.samplers[name] = {
                 'sampler': make_sampler(name, family, output_type, params, labels, truncation),
-                'family': family
+                'family': family,
+                'params': params,
+                'labels': labels,
+                'truncation': truncation,
+                'output_type': output_type
             }
 
     def sample(self, name, bound_params=None):
@@ -86,3 +91,74 @@ class Distributions:
             raise ValueError(f"Distribution {name} not found")
 
         return entry['sampler'](bound_params)
+    
+
+    def probability_interval(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True, bound_params=None):
+        entry = self.samplers.get(name)
+        if not entry:
+            raise ValueError(f"Distribution {name} not found")
+
+        family = entry['family']
+        params = {**entry['params'], **(bound_params or {})}
+        truncation = entry['truncation']
+        labels = entry.get('labels', [])
+
+        # Intersection
+        if truncation:
+            lower = max(lower, truncation["min"])
+            upper = min(upper, truncation["max"])
+        if lower > upper:
+            return 0.0
+
+        # Categorical
+        if family == "categorical":
+            probs = params.get("probabilities", [])
+            total = 0.0
+            for label, p in zip(labels, probs):
+                try:
+                    val = float(label)
+                except (ValueError, TypeError):
+                    continue
+                if lower_inclusive and upper_inclusive:
+                    if lower <= val <= upper:
+                        total += p
+                elif lower_inclusive:
+                    if lower <= val < upper:
+                        total += p
+                elif upper_inclusive:
+                    if lower < val <= upper:
+                        total += p
+                else:
+                    if lower < val < upper:
+                        total += p
+            return total
+
+        # Poisson
+        if family == "poisson":
+            lam = params["lambda"]
+            k_min = int(np.floor(lower)) if not lower_inclusive else int(np.ceil(lower))
+            k_max = int(np.ceil(upper)) if not upper_inclusive else int(np.floor(upper))
+            if k_min > k_max:
+                return 0.0
+            return stats.poisson.cdf(k_max, mu=lam) - stats.poisson.cdf(k_min - 1, mu=lam)
+
+        # Continuous
+        if family == "normal":
+            cdf_lower = stats.norm.cdf(lower, loc=params["mean"], scale=params["sigma"])
+            cdf_upper = stats.norm.cdf(upper, loc=params["mean"], scale=params["sigma"])
+        elif family == "exponential":
+            cdf_lower = stats.expon.cdf(lower, scale=1.0 / params["rate"])
+            cdf_upper = stats.expon.cdf(upper, scale=1.0 / params["rate"])
+        elif family == "gamma":
+            cdf_lower = stats.gamma.cdf(lower, a=params["shape"], scale=params["scale"])
+            cdf_upper = stats.gamma.cdf(upper, a=params["shape"], scale=params["scale"])
+        elif family == "beta":
+            cdf_lower = stats.beta.cdf(lower, a=params["alpha"], b=params["beta"])
+            cdf_upper = stats.beta.cdf(upper, a=params["alpha"], b=params["beta"])
+        elif family == "lognormal":
+            cdf_lower = stats.lognorm.cdf(lower, s=params["sigma"], scale=np.exp(params["mean"]))
+            cdf_upper = stats.lognorm.cdf(upper, s=params["sigma"], scale=np.exp(params["mean"]))
+        else:
+            raise ValueError(f"CDF not supported for {family}")
+
+        return max(0.0, cdf_upper - cdf_lower)
