@@ -7,6 +7,7 @@ from sim_engine.metrics_collector import MetricsCollector
 from sim_engine.event_scheduler import EventScheduler
 
 from patl_engine.snapshot_manager import SnapshotManager
+from patl_engine.patl_verifier import PATLVerifier
 
 from sim_core.distributions import Distributions
 from sim_core.agents import Agents
@@ -36,6 +37,9 @@ class DiscreteEventSimulator:
         self.events = Events(events_config, self.distributions)
         static_events = [e for e in self.events.data if e["event_category"] == "static"]
         self.event_scheduler = EventScheduler(static_events, self.agents, self.snapshot_manager)
+
+        # Patl model checker
+        self.patl_verifier = PATLVerifier(self.automata, self.distributions, self.metrics_collector)
 
     async def run_simulation(self, max_time: float = 10000.0):
         # Start async agents
@@ -98,5 +102,30 @@ class DiscreteEventSimulator:
         # Detener agentes asíncronos
         await self.agents.stop()
 
+        # PATL model checker
+        snapshots = self.snapshot_manager.get_all()
+        if snapshots:
+            self.metrics_collector.set_enabled(False)
+            all_results = []
+
+            pbar = tqdm(
+                total=len(snapshots),
+                desc="PATL verification",
+                unit="snapshot",
+                bar_format="⏳ {l_bar}{bar}| {n}/{total}",
+                ncols=80
+            )
+
+            for snap in snapshots:
+                key = (snap["automaton_name"], snap["state"])
+                predicates = self.snapshot_manager.data.get(key, [])
+                if predicates:
+                    results = self.patl_verifier.verify(snap, predicates)
+                    all_results.append((snap, results))
+                pbar.update(1)
+
+            pbar.close()
+            self.metrics_collector.set_enabled(True)
+
         # Final metrics
-        self.metrics_collector.print_report(self.distributions, self.environments, self.agents, self.automata, self.events, self.snapshot_manager)
+        self.metrics_collector.print_report(self.distributions, self.environments, self.agents, self.automata, self.events, self.snapshot_manager, patl_results=all_results if snapshots else None)

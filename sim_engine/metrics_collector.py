@@ -70,7 +70,7 @@ class MetricsCollector:
         self.enabled = enabled
 
     # REPORT
-    def print_report(self, distributions, environments, agents, automata, events, snapshot_manager):
+    def print_report(self, distributions, environments, agents, automata, events, snapshot_manager, patl_results=None):
         print("\n" + "=" * 60)
         print("📊 SIMULATION STATISTICS")
         print("=" * 60)
@@ -244,4 +244,17 @@ class MetricsCollector:
             for state in sorted(states.keys()):
                 print(f"       └── {state}: {states[state]}")
 
+        # PATL Verification Results
+        if patl_results:
+            print("\n" + "*" * 60)
+            print("📸 PATL VERIFICATION RESULTS")
+            print("*" * 60)
+            for snap, results in patl_results:
+                print(f"\nSnapshot: {snap['automaton_name']} :: {snap['state']} "
+                    f"(agent={snap['agent_id']}, t={snap['timestamp']:.2f})")
+                for r in results:
+                    status = "✅" if r["result"] == "SATISFIED" else "❌"
+                    print(f"  {status} {r['predicate_id']}: {r['result']} "
+                        f"(P={r['p_value']} {r['operator']} {r['bound']})")
+        
         print("\n" + "=" * 60)
