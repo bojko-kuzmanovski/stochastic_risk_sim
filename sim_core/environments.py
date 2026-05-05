@@ -4,6 +4,7 @@ import string
 import json
 from jsonschema import validate
 from typing import Dict, List
+from copy import deepcopy
 
 # Importar funciones de evaluación estandarizadas
 from sim_core.utils.evaluator import resolve_value
@@ -117,6 +118,11 @@ class Environments:
         env_resolved["channels"] = resolved_channels
 
         return env_resolved
+
+
+    def load_snapshot(self, environments_data):
+        """Carga estado desde un snapshot (para verificación PATL)."""
+        self.data = deepcopy(environments_data) if environments_data else []
 
 
     def get_all_envs(self, env_type):

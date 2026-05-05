@@ -7,7 +7,8 @@ class MetricsCollector:
     Collects event, automata, distribution and environment metrics.
     """
 
-    def __init__(self):
+    def __init__(self, enabled=True):
+        self.enabled = enabled
 
         # Events runtime usage
         self._agent_event_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -30,22 +31,43 @@ class MetricsCollector:
 
     # RUNTIME HOOKS
     def record_agent_event(self, event_category: str, signal: str) -> None:
+        if not self.enabled:
+            return
         self._agent_event_counts[event_category][signal] += 1
 
+
     def record_automaton_execution(self, automaton_name: str, result: str, state: str) -> None:
+        if not self.enabled:
+            return
         self._automaton_execution_counts[automaton_name][result][state] += 1
 
+
     def record_distribution_sample(self, dist_name: str, family: str) -> None:
+        if not self.enabled:
+            return
         self._distribution_sample_counts[dist_name][family] += 1
 
+
     def record_environment_action(self, env_type: str, action: str) -> None:
+        if not self.enabled:
+            return
         self._environment_action_counts[env_type][action] += 1
 
+
     def record_agent_action(self, agent_type: str, action: str) -> None:
+        if not self.enabled:
+            return
         self._agent_action_counts[agent_type][action] += 1
 
+
     def record_patl_sampling(self, automaton_name: str, state: str) -> None:
+        if not self.enabled:
+            return
         self._patl_snapshot_counts[automaton_name][state] += 1
+
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
 
     # REPORT
     def print_report(self, distributions, environments, agents, automata, events, snapshot_manager):

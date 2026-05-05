@@ -1,12 +1,13 @@
 import json
 import asyncio
 from jsonschema import validate
+from copy import deepcopy
 
 # Importar funciones de evaluación estandarizadas
 from sim_core.utils.evaluator import resolve_value
 
 class Agents:
-    def __init__(self, config_data, distributions, metrics_collector):
+    def __init__(self, config_data, distributions, metrics_collector, worker_mode=True):
         # Load schema file
         schema_path = "schemas/agents.schema.json"
         with open(schema_path, 'r') as f:
@@ -22,6 +23,7 @@ class Agents:
         self.metrics_collector = metrics_collector
         self.automata = None
         self.snapshot_manager = None
+        self.worker_mode = worker_mode
         self._tasks = {}
         self._running = False
 
@@ -52,7 +54,8 @@ class Agents:
         agent_resolved["params"] = resolved_params
 
         # Event queue
-        agent_resolved["event_queue"] = asyncio.Queue()
+        if self.worker_mode:
+            agent_resolved["event_queue"] = asyncio.Queue()
 
         return agent_resolved
 
@@ -77,6 +80,8 @@ class Agents:
 
                 automaton_name = session.automaton_name
 
+                agent["current_state"] = session.current_state
+
                 while True:
                     # Esperar si hay muestreo en curso
                     while self.snapshot_manager.is_sampling():
@@ -87,7 +92,10 @@ class Agents:
                     self.snapshot_manager.exit_transition()
 
                     if new_state is None:
+                        agent.pop("current_state", None)
                         break
+                
+                    agent["current_state"] = new_state
 
                     await self.snapshot_manager.capture(agent["agent_id"], automaton_name, new_state)
 
@@ -121,11 +129,17 @@ class Agents:
         agent = next((a for a in self.data if a["agent_id"] == agent_id), None)
         if agent is None:
             return
-        await agent["event_queue"].put(event)
+        if "event_queue" in agent:
+            await agent["event_queue"].put(event)
         if self.metrics_collector:
             event_category = event.get("event_category")
             signal = event.get("signal")
             self.metrics_collector.record_agent_event(event_category, signal)
+
+
+    def load_snapshot(self, agents_data):
+        """Carga estado desde un snapshot (para verificación PATL)."""
+        self.data = deepcopy(agents_data)
 
 
     def get_all_agents(self, agent_type):
@@ -175,7 +189,8 @@ class Agents:
             if a["agent_id"] == agent_id:
                 agent_type = a["agent_type"]
                 del self.data[i]
-                self._stop_worker(agent_id)
+                if agent_id in self._tasks:
+                    self._stop_worker(agent_id)
                 self.metrics_collector.record_agent_action(agent_type, "remove_agent")
                 return True
         return False

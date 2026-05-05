@@ -76,14 +76,15 @@ class Automata:
 
 
 class AutomatonSession:
-    def __init__(self, automata: Automata, automaton_def: dict, event: dict):
+    def __init__(self, automata: Automata, automaton_def: dict, event: dict, initial_state=None, async_mode=True):
         self.automata = automata
         self.automaton_def = automaton_def
         self.automaton_name = automaton_def["automaton_name"]
         self.event = event
 
-        self.current_state = automaton_def["states"]["initial"]
+        self.current_state = initial_state if initial_state is not None else automaton_def["states"]["initial"]
         self.final_states = set(automaton_def["states"].get("final", []))
+        self.async_mode = async_mode
         self.params = self._resolve_initial_params()
 
 
@@ -169,9 +170,12 @@ class AutomatonSession:
                         "to_agent_id": to_agent_id,
                         **resolved
                     }
-                    asyncio.create_task(
-                        self.automata.agents.receive_event(to_agent_id, event_data)
-                    )
+                    if self.async_mode:
+                        asyncio.create_task(
+                            self.automata.agents.receive_event(to_agent_id, event_data)
+                        )
+                    else:
+                        pass
 
             elif "action_required" in action_obj:
                 obj = action_obj["action_required"]

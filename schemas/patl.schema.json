@@ -38,6 +38,11 @@
           "minimum": 1,
           "default": 20
         },
+        "coalition_quantifier": {
+          "type": "string",
+          "enum": ["exists", "forall"],
+          "default": "exists"
+        },
         "coalition": { "$ref": "#/definitions/agent_group" },
         "adversaries": { "$ref": "#/definitions/agent_group" },
         "probability_bound": {
