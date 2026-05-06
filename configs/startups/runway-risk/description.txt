@@ -1,3 +1,39 @@
 Simulation of startup runway under uncertain revenue and cost dynamics.
 
 Focus on survival probability and decision timing.
+
+
+📊 Del ecosistema startup (runway_lifecycle en CRITICAL):
+
+#	Predicate ID	Pregunta	Insight
+1	startup_survival_after_critical	¿Probabilidad de sobrevivir >40% aunque inversores rechacen?	Resiliencia operacional
+2	funding_before_death	¿Probabilidad de recibir funding >35% a pesar de shocks externos?	Capacidad de atraer capital en crisis
+3	critical_to_dead_without_intervention	¿Probabilidad de morir >50% sin intervención externa?	Vulnerabilidad base del sistema
+
+👥 Del ecosistema clientes (client_retention_cycle en AT_RISK):
+
+#	Predicate ID	Pregunta	Insight
+4	client_churn_before_renewal	¿Probabilidad de churn ≤60% aunque startup esté mal?	Lealtad vs dependencia financiera
+5	client_renewal_without_shock	¿Probabilidad de renovación ≥70% sin shocks externos?	Baseline de retención en entorno normal
+
+💰 Del ecosistema inversores (investment_decision en EVALUATE):
+
+#	Predicate ID	Pregunta	Insight
+6	investor_commitment_despite_capacity	¿Probabilidad de invertir ≥30% aunque startup esté CRITICAL?	Propensión al riesgo en crisis
+7	investment_rejection_due_to_shock	¿Probabilidad de rechazo ≤55% cuando hay shocks?	Sensibilidad de inversores a mercado
+
+🧠 De comportamiento interno (strategic_resource_allocator):
+
+#	Predicate ID	Pregunta	Insight
+8	optimistic_allocation_leads_to_growth	¿Probabilidad de que decisiones optimistas generen crecimiento ≥45%?	Efectividad del sesgo optimista
+
+👔 De gestión de talento (headcount_controller en IDLE):
+
+#	Predicate ID	Pregunta	Insight
+9	layoffs_triggered_by_critical_runway	¿Probabilidad de despidos ≥80% cuando runway es crítico?	Reacción automática a crisis
+10	hiring_freeze_during_market_shock	¿Probabilidad de congelar contrataciones ≥65% durante shocks?	Prudencia en tiempos volátiles
+
+🧠 De sesgos cognitivos (belief_updater en UPDATE_BELIEFS):
+
+#	Predicate ID	Pregunta	Insight
+11	overconfidence_leads_to_bad_allocation	¿Probabilidad de que el exceso de confianza lleve a malas decisiones ≥50%?	Costo del sesgo de sobreconfianza

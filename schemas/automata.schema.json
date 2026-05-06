@@ -52,7 +52,7 @@
       "properties": {
         "operator": {
           "type": "string",
-          "enum": ["<", "<=", ">", ">=", "=="]
+          "enum": ["<", "<=", ">", ">=", "==", "!="]
         },
         "value": {
           "type": ["string", "number", "boolean"]

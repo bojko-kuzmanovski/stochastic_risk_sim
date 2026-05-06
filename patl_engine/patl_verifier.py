@@ -216,6 +216,8 @@ class PATLVerifier:
             elif op == "==":
                 low = high = v
                 li = ui = True
+            elif op == "!=":
+                return None, None, False, False
         if low > high:
             return None, None, False, False
         return low, high, li, ui

@@ -73,6 +73,8 @@ class Automata:
                 return False
             elif op == "==" and not (X == val):
                 return False
+            elif op == "!=" and not (X != val):
+                return False
         return True
 
 
