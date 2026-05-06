@@ -37,7 +37,7 @@ class Automata:
         self.environments = environments
 
 
-    def create_session(self, signal: str, event: dict) -> Optional["AutomatonSession"]:
+    def create_session(self, signal: str, event: dict, async_mode=True) -> Optional["AutomatonSession"]:
         automaton_def = next(
             (a for a in self.data if a["automaton_name"] == signal), None
         )
@@ -47,7 +47,8 @@ class Automata:
         return AutomatonSession(
             automata=self,
             automaton_def=automaton_def,
-            event=event
+            event=event,
+            async_mode=async_mode
         )
 
 
@@ -101,7 +102,7 @@ class AutomatonSession:
         return params
 
 
-    def step(self) -> Optional[str]:
+    def step(self, forced_X=None) -> Optional[str]:
         # Done?
         if self.current_state in self.final_states:
             self.automata.metrics_collector.record_automaton_execution(
@@ -123,7 +124,7 @@ class AutomatonSession:
 
         # Resolve _X_
         ctx = {**self.event, **self.params}
-        _X_ = resolve_value(
+        _X_ = forced_X if forced_X is not None else resolve_value(
             transition["threshold_value"], ctx,
             self.automata.distributions,
             self.automata.agents,
