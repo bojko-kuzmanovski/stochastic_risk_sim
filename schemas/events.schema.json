@@ -24,7 +24,8 @@
       "properties": {
         "signal": { "type": "string" },
         "agent_id": { "type": "string" },
-        "env_id": { "type": "string" }
+        "env_id": { "type": "string" },
+        "channel_id": { "type": "string" }
       }
     }
   },

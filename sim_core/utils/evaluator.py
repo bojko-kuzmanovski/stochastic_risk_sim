@@ -29,11 +29,30 @@ def resolve_refs(refs: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     return {rk: eval_expr(rv, ctx) for rk, rv in refs.items()}
 
 
-def resolve_args(keys: List[str], ctx: Dict[str, Any]) -> List[Any]:
+def _resolve_single_value(value: Any, ctx: Dict[str, Any]) -> Any:
+    if isinstance(value, str):
+        if value.startswith("${") and value.endswith("}"):
+            key = value[2:-1]
+            return ctx.get(key, value)
+        elif "${" in value:
+            def replacer(m):
+                var_name = m.group(1)
+                return str(ctx.get(var_name, m.group(0)))
+            return re.sub(r'\$\{(\w+)\}', replacer, value)
+    return value
+
+
+def resolve_args(params: Union[List[str], Dict[str, Any]], ctx: Dict[str, Any]) -> List[Any]:
     """
     Extract values from context for a list of keys.
     """
-    return [ctx.get(key) for key in keys]
+    if isinstance(params, list):
+        # Array de claves: extraer de ctx
+        return [ctx.get(key) for key in params]
+    elif isinstance(params, dict):
+        # Objeto: resolver cada valor
+        return [_resolve_single_value(v, ctx) for v in params.values()]
+    return []
 
 
 def call_method(
@@ -81,7 +100,7 @@ def resolve_value(
                 return str(ctx.get(var_name, m.group(0)))
             interpolated = re.sub(r'\$\{(\w+)\}', replacer, val)
             try:
-                return eval(interpolated, {"__builtins__": {}}, {**ctx, "ceil": __import__("math").ceil, "max": max, "min": min})
+                return eval(interpolated, {"__builtins__": {}}, {**ctx, "ceil": __import__("math").ceil, "max": max, "min": min, "floor": __import__("math").floor})
             except Exception:
                 return interpolated
         return eval_expr(val, ctx)
@@ -97,8 +116,7 @@ def resolve_value(
     
     elif t == "logic":
         q = vdef.get("query", {})
-        args_keys = q.get("params", [])
-        args = resolve_args(args_keys, ctx)
+        args = resolve_args(q.get("params", {}), ctx)
         return call_method(
             q.get("target"),
             q.get("method"),
@@ -107,5 +125,4 @@ def resolve_value(
             environments_obj,
         )
     
-    # Fallback for unknown type
     return None

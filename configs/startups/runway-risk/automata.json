@@ -41,7 +41,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "cash_key"]
+                    "params": {
+                        "agent_id": "Startup_1",
+                        "param_key": "${cash_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -56,10 +59,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "cash_val": { "type": "deterministic", "value": "${cash}" }
+                                "cash_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "DEAD",
+                    "actions": []
                 }
             ]
         },
@@ -70,7 +83,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "burn_rate_key"]
+                    "params": {
+                        "agent_id": "Startup_1",
+                        "param_key": "${burn_rate_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -85,7 +101,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "burn_val": { "type": "deterministic", "value": "${burn_rate}" }
+                                "burn_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -95,6 +111,16 @@
                         {
                             "operator": "<=",
                             "value": 0
+                        }
+                    ],
+                    "to": "DEAD",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
                         }
                     ],
                     "to": "DEAD",
@@ -120,7 +146,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "runway_val": { "type": "deterministic", "value": "${result}" }
+                                "runway_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -145,8 +171,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
-                                "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+                                "runway_val_copy": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -166,8 +191,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
-                                "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+                                "runway_val_copy": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -187,8 +211,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
-                                "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+                                "runway_val_copy": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -204,7 +227,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "runway_val_copy": { "type": "deterministic", "value": "${runway_val}" }
+                                "runway_val_copy": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -229,14 +252,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" },
+                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" },
+                                "signal": { "type": "deterministic", "value": "startup_dead" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id_capture", "runway_key", "runway_val"]
+                                "params": {
+                                    "agent_id": "Startup_1",
+                                    "param_key": "${runway_key}",
+                                    "value": "${runway_val}"
+                                }
                             }
                         }
                     ]
@@ -261,8 +290,8 @@
                     "actions": [
                         {
                             "event_emit": {
-                                "signal": "startup_dead",
-                                "params": ["agent_id_capture"]
+                                "signal": "${signal}",
+                                "to_agent_id": "${to_agent_id}"
                             }
                         }
                     ]
@@ -287,14 +316,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" },
+                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" },
+                                "signal": { "type": "deterministic", "value": "runway_critical" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id_capture", "runway_key", "runway_val"]
+                                "params": {
+                                    "agent_id": "${to_agent_id}",
+                                    "param_key": "${runway_key}",
+                                    "value": "${runway_val}"
+                                }
                             }
                         }
                     ]
@@ -319,8 +354,8 @@
                     "actions": [
                         {
                             "event_emit": {
-                                "signal": "runway_critical",
-                                "params": ["agent_id_capture", "runway_val_copy"]
+                                "signal": "${signal}",
+                                "to_agent_id": "${to_agent_id}"
                             }
                         }
                     ]
@@ -345,14 +380,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
+                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" },
+                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" },
+                                "signal": { "type": "deterministic", "value": "runway_warning" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id_capture", "runway_key", "runway_val"]
+                                "params": {
+                                    "agent_id": "${to_agent_id}",
+                                    "param_key": "${runway_key}",
+                                    "value": "${runway_val}"
+                                }
                             }
                         }
                     ]
@@ -377,8 +418,8 @@
                     "actions": [
                         {
                             "event_emit": {
-                                "signal": "runway_warning",
-                                "params": ["agent_id_capture", "runway_val_copy"]
+                                "signal": "${signal}",
+                                "to_agent_id": "${to_agent_id}"
                             }
                         }
                     ]
@@ -410,7 +451,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "runway_key", "runway_val"]
+                                "params": {
+                                    "agent_id": "Startup_1",
+                                    "param_key": "${runway_key}",
+                                    "value": "${runway_val}"
+                                }
                             }
                         }
                     ]
@@ -424,7 +469,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "cash_key"]
+                    "params": {
+                        "agent_id": "Startup_1",
+                        "param_key": "${cash_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -439,7 +487,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "cash_val": { "type": "deterministic", "value": "${cash}" }
+                                "cash_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -453,7 +501,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "cash_key"]
+                    "params": {
+                        "agent_id": "Startup_1",
+                        "param_key": "${cash_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -468,8 +519,9 @@
                     "actions": [
                         {
                             "update_params": {
-                                "cash_val": { "type": "deterministic", "value": "${cash}" },
-                                "to_agent_id": { "type": "deterministic", "value": "Investor_1" }
+                                "cash_val": { "type": "deterministic", "value": "${_X_}" },
+                                "to_agent_id": { "type": "deterministic", "value": "Investor_1" },
+                                "signal": { "type": "deterministic", "value": "seeking_funding" }
                             }
                         }
                     ]
@@ -494,8 +546,8 @@
                     "actions": [
                         {
                             "event_emit": {
-                                "signal": "seeking_funding",
-                                "params": ["to_agent_id", "cash_val"]
+                                "signal": "${signal}",
+                                "to_agent_id": "${to_agent_id}"
                             }
                         }
                     ]
@@ -509,7 +561,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "burn_rate_key"]
+                    "params": {
+                        "agent_id": "Startup_1",
+                        "param_key": "${burn_rate_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -524,7 +579,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "burn_val": { "type": "deterministic", "value": "${burn_rate}" }
+                                "burn_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -549,14 +604,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "cash_val": { "type": "deterministic", "value": "${result}" }
+                                "new_cash_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "cash_key", "cash_val"]
+                                "params": {
+                                    "agent_id": "Startup_1",
+                                    "param_key": "${cash_key}",
+                                    "value": "${new_cash_val}"
+                                }
                             }
                         }
                     ]
@@ -587,14 +646,14 @@
                             "value": true
                         }
                     ],
-                    "to": "CALCULATE",
+                    "to": "FETCH_ALL",
                     "actions": [
                         {
                             "update_params": {
                                 "cost_fixed_key": { "type": "deterministic", "value": "cost_fixed" },
-                                "cost_variable_per_head_key": { "type": "deterministic", "value": "cost_variable_per_head" },
+                                "cost_variable_key": { "type": "deterministic", "value": "cost_variable_per_head" },
                                 "headcount_key": { "type": "deterministic", "value": "headcount" },
-                                "revenue_current_key": { "type": "deterministic", "value": "revenue_current" }
+                                "revenue_key": { "type": "deterministic", "value": "revenue_current" }
                             }
                         }
                     ]
@@ -602,115 +661,27 @@
             ]
         },
         {
-            "from": "CALCULATE",
+            "from": "FETCH_ALL",
             "threshold_value": {
-                "type": "logic",
-                "query": {
-                    "target": "agents",
-                    "method": "read_agent_param",
-                    "params": ["agent_id", "cost_fixed_key"]
-                }
+                "type": "deterministic",
+                "value": true
             },
             "thresholds": [
                 {
                     "threshold_case": [
                         {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
-                    "to": "FETCH_VARIABLE_COST",
-                    "actions": [
-                        {
-                            "update_params": {
-                                "fixed_cost_val": { "type": "deterministic", "value": "${cost_fixed}" }
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "from": "FETCH_VARIABLE_COST",
-            "threshold_value": {
-                "type": "logic",
-                "query": {
-                    "target": "agents",
-                    "method": "read_agent_param",
-                    "params": ["agent_id", "cost_variable_per_head_key"]
-                }
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
-                    "to": "FETCH_HEADCOUNT",
-                    "actions": [
-                        {
-                            "update_params": {
-                                "var_cost_val": { "type": "deterministic", "value": "${cost_variable_per_head}" }
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "from": "FETCH_HEADCOUNT",
-            "threshold_value": {
-                "type": "logic",
-                "query": {
-                    "target": "agents",
-                    "method": "read_agent_param",
-                    "params": ["agent_id", "headcount_key"]
-                }
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
-                    "to": "FETCH_REVENUE",
-                    "actions": [
-                        {
-                            "update_params": {
-                                "headcount_val": { "type": "deterministic", "value": "${headcount}" }
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "from": "FETCH_REVENUE",
-            "threshold_value": {
-                "type": "logic",
-                "query": {
-                    "target": "agents",
-                    "method": "read_agent_param",
-                    "params": ["agent_id", "revenue_current_key"]
-                }
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": ">=",
-                            "value": 0
+                            "operator": "==",
+                            "value": true
                         }
                     ],
                     "to": "COMPUTE_BURN",
                     "actions": [
                         {
                             "update_params": {
-                                "revenue_val": { "type": "deterministic", "value": "${revenue_current}" }
+                                "fixed_cost": { "type": "logic", "query": { "target": "agents", "method": "read_agent_param", "params": { "agent_id": "${agent_id}", "param_key": "${cost_fixed_key}" } } },
+                                "var_cost": { "type": "logic", "query": { "target": "agents", "method": "read_agent_param", "params": { "agent_id": "${agent_id}", "param_key": "${cost_variable_key}" } } },
+                                "headcount": { "type": "logic", "query": { "target": "agents", "method": "read_agent_param", "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}" } } },
+                                "revenue": { "type": "logic", "query": { "target": "agents", "method": "read_agent_param", "params": { "agent_id": "${agent_id}", "param_key": "${revenue_key}" } } }
                             }
                         }
                     ]
@@ -721,14 +692,14 @@
             "from": "COMPUTE_BURN",
             "threshold_value": {
                 "type": "deterministic",
-                "value": "(${fixed_cost_val} + (${var_cost_val} * ${headcount_val})) - ${revenue_val}"
+                "value": "(${fixed_cost} + (${var_cost} * ${headcount})) - ${revenue}"
             },
             "thresholds": [
                 {
                     "threshold_case": [
                         {
-                            "operator": "!=",
-                            "value": null
+                            "operator": ">",
+                            "value": 0
                         }
                     ],
                     "to": "DONE",
@@ -736,14 +707,46 @@
                         {
                             "update_params": {
                                 "burn_rate_key": { "type": "deterministic", "value": "burn_rate" },
-                                "burn_rate_value": { "type": "deterministic", "value": "${result}" }
+                                "burn_rate_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "burn_rate_key", "burn_rate_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${burn_rate_key}",
+                                    "value": "${burn_rate_value}"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "<=",
+                            "value": 0
+                        }
+                    ],
+                    "to": "DONE",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "burn_rate_key": { "type": "deterministic", "value": "burn_rate" },
+                                "burn_rate_value": { "type": "deterministic", "value": 0 }
+                            }
+                        },
+                        {
+                            "action_required": {
+                                "target": "agents",
+                                "method": "write_agent_param",
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${burn_rate_key}",
+                                    "value": 0
+                                }
                             }
                         }
                     ]
@@ -796,7 +799,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "monthly_base_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${monthly_base_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -811,10 +817,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "base_val": { "type": "deterministic", "value": "${monthly_base}" }
+                                "base_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "DONE",
+                    "actions": []
                 }
             ]
         },
@@ -825,7 +841,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "volatility_factor_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${volatility_factor_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -840,10 +859,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "vol_val": { "type": "deterministic", "value": "${volatility_factor}" }
+                                "vol_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "DONE",
+                    "actions": []
                 }
             ]
         },
@@ -854,7 +883,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "growth_trend_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${growth_trend_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -869,10 +901,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "growth_val": { "type": "deterministic", "value": "${growth_trend}" }
+                                "growth_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "DONE",
+                    "actions": []
                 }
             ]
         },
@@ -883,7 +925,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "shock_probability_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${shock_probability_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -898,7 +943,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "shock_roll": { "type": "deterministic", "value": "${shock_probability}" }
+                                "shock_roll": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -908,6 +953,16 @@
                         {
                             "operator": "<=",
                             "value": 0
+                        }
+                    ],
+                    "to": "COMPUTE_REVENUE_NORMAL",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
                         }
                     ],
                     "to": "COMPUTE_REVENUE_NORMAL",
@@ -929,11 +984,11 @@
                             "value": null
                         }
                     ],
-                    "to": "SAVE_AND_EMIT_REVENUE",
+                    "to": "SAVE_REVENUE",
                     "actions": [
                         {
                             "update_params": {
-                                "revenue_val": { "type": "deterministic", "value": "${result}" }
+                                "revenue_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -947,7 +1002,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "shock_magnitude_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${shock_magnitude_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -962,10 +1020,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "shock_mag": { "type": "deterministic", "value": "${shock_magnitude}" }
+                                "shock_mag": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "COMPUTE_REVENUE_NORMAL",
+                    "actions": []
                 }
             ]
         },
@@ -983,11 +1051,11 @@
                             "value": null
                         }
                     ],
-                    "to": "SAVE_AND_EMIT_REVENUE",
+                    "to": "SAVE_REVENUE",
                     "actions": [
                         {
                             "update_params": {
-                                "revenue_val": { "type": "deterministic", "value": "${result}" }
+                                "revenue_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -995,66 +1063,7 @@
             ]
         },
         {
-            "from": "SAVE_AND_EMIT_REVENUE",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
-                    "to": "SET_REVENUE_PARAM",
-                    "actions": [
-                        {
-                            "update_params": {
-                                "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
-                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" },
-                                "current_revenue_key": { "type": "deterministic", "value": "current_revenue" }
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "from": "SET_REVENUE_PARAM",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
-                    "to": "EMIT_REVENUE",
-                    "actions": [
-                        {
-                            "update_params": {
-                                "current_revenue_value": { "type": "deterministic", "value": "${revenue_val}" }
-                            }
-                        },
-                        {
-                            "action_required": {
-                                "target": "agents",
-                                "method": "write_agent_param",
-                                "params": ["agent_id_capture", "current_revenue_key", "current_revenue_value"]
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "from": "EMIT_REVENUE",
+            "from": "SAVE_REVENUE",
             "threshold_value": {
                 "type": "deterministic",
                 "value": true
@@ -1070,9 +1079,14 @@
                     "to": "DONE",
                     "actions": [
                         {
-                            "event_emit": {
-                                "signal": "revenue_update",
-                                "params": ["to_agent_id", "revenue_val"]
+                            "action_required": {
+                                "target": "agents",
+                                "method": "write_agent_param",
+                                "params": {
+                                    "agent_id": "Startup_1",
+                                    "param_key": "revenue_current",
+                                    "value": "${revenue_val}"
+                                }
                             }
                         }
                     ]
@@ -1122,7 +1136,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "contract_months_remaining_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${contract_months_remaining_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1137,7 +1154,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "months_val": { "type": "deterministic", "value": "${contract_months_remaining}" }
+                                "months_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1171,6 +1188,16 @@
                     ],
                     "to": "DO_CHURN",
                     "actions": []
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "DO_CHURN",
+                    "actions": []
                 }
             ]
         },
@@ -1192,14 +1219,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "contract_value": { "type": "deterministic", "value": "${result}" }
+                                "contract_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "contract_months_remaining_key", "contract_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${contract_months_remaining_key}",
+                                    "value": "${contract_value}"
+                                }
                             }
                         }
                     ]
@@ -1213,7 +1244,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "retention_prob_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${retention_prob_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1263,14 +1297,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "contract_value": { "type": "deterministic", "value": "${result}" }
+                                "contract_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "contract_months_remaining_key", "contract_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${contract_months_remaining_key}",
+                                    "value": "${contract_value}"
+                                }
                             }
                         }
                     ]
@@ -1295,8 +1333,9 @@
                     "actions": [
                         {
                             "update_params": {
-                                "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
-                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" }
+                                "client_id": { "type": "deterministic", "value": "${agent_id}" },
+                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" },
+                                "signal": { "type": "deterministic", "value": "client_lost" }
                             }
                         }
                     ]
@@ -1329,7 +1368,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id_capture", "is_active_key", "is_active_value"]
+                                "params": {
+                                    "agent_id": "${client_id}",
+                                    "param_key": "${is_active_key}",
+                                    "value": false
+                                }
                             }
                         }
                     ]
@@ -1359,8 +1402,8 @@
                         },
                         {
                             "event_emit": {
-                                "signal": "client_lost",
-                                "params": ["to_agent_id", "agent_id_capture"]
+                                "signal": "${signal}",
+                                "to_agent_id": "${to_agent_id}"
                             }
                         }
                     ]
@@ -1412,7 +1455,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "arrival_rate_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${arrival_rate_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1427,7 +1473,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "arrival_roll": { "type": "deterministic", "value": "${arrival_rate}" }
+                                "arrival_roll": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1451,7 +1497,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "impact_magnitude_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${impact_magnitude_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1466,7 +1515,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "impact_val": { "type": "deterministic", "value": "${impact_magnitude}" }
+                                "impact_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1480,7 +1529,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "duration_months_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${duration_months_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1495,7 +1547,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "duration_val": { "type": "deterministic", "value": "${duration_months}" }
+                                "duration_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1528,7 +1580,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "is_active_key", "is_active_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${is_active_key}",
+                                    "value": true
+                                }
                             }
                         }
                     ]
@@ -1553,14 +1609,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "months_remaining_value": { "type": "deterministic", "value": "${result}" }
+                                "months_remaining_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "months_remaining_key", "months_remaining_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${months_remaining_key}",
+                                    "value": "${months_remaining_value}"
+                                }
                             }
                         }
                     ]
@@ -1591,7 +1651,9 @@
                         {
                             "event_emit": {
                                 "signal": "exogenous_shock",
-                                "params": ["to_agent_id", "impact_val", "duration_val"]
+                                "to_agent_id": "${to_agent_id}",
+                                "env_id": "${impact_val}",
+                                "channel_id": "${duration_val}"
                             }
                         }
                     ]
@@ -1605,7 +1667,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "months_remaining_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${months_remaining_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1620,7 +1685,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "months_left": { "type": "deterministic", "value": "${months_remaining}" }
+                                "months_left": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1655,14 +1720,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "months_remaining_value": { "type": "deterministic", "value": "${result}" }
+                                "months_remaining_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "months_remaining_key", "months_remaining_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${months_remaining_key}",
+                                    "value": "${months_remaining_value}"
+                                }
                             }
                         }
                     ]
@@ -1695,7 +1764,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "is_active_key", "is_active_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${is_active_key}",
+                                    "value": false
+                                }
                             }
                         }
                     ]
@@ -1727,7 +1800,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "months_remaining_key", "months_remaining_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${months_remaining_key}",
+                                    "value": 0
+                                }
                             }
                         }
                     ]
@@ -1779,7 +1856,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "is_engaged_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${is_engaged_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1802,6 +1882,16 @@
                     ],
                     "to": "PASSED",
                     "actions": []
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "PASSED",
+                    "actions": []
                 }
             ]
         },
@@ -1812,7 +1902,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "investment_probability_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${investment_probability_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1827,7 +1920,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "prob_roll": { "type": "deterministic", "value": "${investment_probability}" }
+                                "prob_roll": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1851,7 +1944,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "investment_amount_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${investment_amount_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1866,7 +1962,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "amount_val": { "type": "deterministic", "value": "${investment_amount}" }
+                                "amount_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1880,7 +1976,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "investment_capacity_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${investment_capacity_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -1895,7 +1994,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "capacity_val": { "type": "deterministic", "value": "${investment_capacity}" }
+                                "capacity_val": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -1949,8 +2048,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "agent_id_capture": { "type": "deterministic", "value": "${agent_id}" },
-                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" }
+                                "investor_id": { "type": "deterministic", "value": "${agent_id}" }
                             }
                         }
                     ]
@@ -1983,13 +2081,19 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id_capture", "has_invested_key", "has_invested_value"]
+                                "params": {
+                                    "agent_id": "${investor_id}",
+                                    "param_key": "${has_invested_key}",
+                                    "value": true
+                                }
                             }
                         },
                         {
                             "event_emit": {
                                 "signal": "investment_offer",
-                                "params": ["to_agent_id", "amount_val"]
+                                "to_agent_id": "Startup_1",
+                                "env_id": "${investor_id}",
+                                "channel_id": "${amount_val}"
                             }
                         }
                     ]
@@ -2032,70 +2136,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "is_engaged_key", "is_engaged_value"]
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-  },
-  {
-    "automaton_name": "revenue_update",
-    "states": {
-        "initial": "LOAD_PARAMS",
-        "final": ["DONE"]
-    },
-    "params": {},
-    "transitions": [
-        {
-            "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
-                    "to": "UPDATE_REVENUE",
-                    "actions": [
-                        {
-                            "update_params": {
-                                "revenue_current_key": { "type": "deterministic", "value": "revenue_current" },
-                                "new_revenue": { "type": "deterministic", "value": "${revenue_val}" }
-                            }
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "from": "UPDATE_REVENUE",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
-                    "to": "DONE",
-                    "actions": [
-                        {
-                            "action_required": {
-                                "target": "agents",
-                                "method": "write_agent_param",
-                                "params": ["agent_id", "revenue_current_key", "new_revenue"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${is_engaged_key}",
+                                    "value": true
+                                }
                             }
                         }
                     ]
@@ -2144,7 +2189,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "revenue_current_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${revenue_current_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2159,7 +2207,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_rev": { "type": "deterministic", "value": "${revenue_current}" }
+                                "current_rev": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2184,7 +2232,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "new_rev": { "type": "deterministic", "value": "${result}" }
+                                "new_rev": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2211,7 +2259,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "revenue_current_key", "new_rev"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${revenue_current_key}",
+                                    "value": "${new_rev}"
+                                }
                             }
                         }
                     ]
@@ -2247,7 +2299,7 @@
                         {
                             "update_params": {
                                 "revenue_current_key": { "type": "deterministic", "value": "revenue_current" },
-                                "impact": { "type": "deterministic", "value": "${impact_val}" }
+                                "impact": { "type": "deterministic", "value": "${env_id}" }
                             }
                         }
                     ]
@@ -2261,7 +2313,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "revenue_current_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${revenue_current_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2276,7 +2331,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_rev": { "type": "deterministic", "value": "${revenue_current}" }
+                                "current_rev": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2301,7 +2356,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "new_rev": { "type": "deterministic", "value": "${result}" }
+                                "new_rev": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2328,7 +2383,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "revenue_current_key", "new_rev"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${revenue_current_key}",
+                                    "value": "${new_rev}"
+                                }
                             }
                         }
                     ]
@@ -2364,7 +2423,7 @@
                         {
                             "update_params": {
                                 "cash_key": { "type": "deterministic", "value": "cash" },
-                                "investment_amount": { "type": "deterministic", "value": "${amount_val}" }
+                                "investment_amount": { "type": "deterministic", "value": "${channel_id}" }
                             }
                         }
                     ]
@@ -2378,7 +2437,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "cash_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${cash_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2393,7 +2455,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_cash": { "type": "deterministic", "value": "${cash}" }
+                                "current_cash": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2418,7 +2480,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "new_cash": { "type": "deterministic", "value": "${result}" }
+                                "new_cash": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2445,7 +2507,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "cash_key", "new_cash"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${cash_key}",
+                                    "value": "${new_cash}"
+                                }
                             }
                         }
                     ]
@@ -2488,7 +2554,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "alive_key", "alive_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${alive_key}",
+                                    "value": false
+                                }
                             }
                         }
                     ]
@@ -2543,7 +2613,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "optimism_bias_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${optimism_bias_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2558,10 +2631,20 @@
                     "actions": [
                         {
                             "update_params": {
-                                "optimism": { "type": "deterministic", "value": "${optimism_bias}" }
+                                "optimism": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
+                        }
+                    ],
+                    "to": "DONE",
+                    "actions": []
                 }
             ]
         },
@@ -2572,7 +2655,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "estimated_productivity_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${estimated_productivity_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2587,8 +2673,8 @@
                     "actions": [
                         {
                             "update_params": {
-                                "believed_productivity": { "type": "deterministic", "value": "${estimated_productivity_per_head}" },
-                                "adjusted_productivity": { "type": "deterministic", "value": "${estimated_productivity_per_head} * (1 + ${optimism})" }
+                                "believed_productivity": { "type": "deterministic", "value": "${_X_}" },
+                                "adjusted_productivity": { "type": "deterministic", "value": "${_X_} * (1 + ${optimism})" }
                             }
                         }
                     ]
@@ -2602,7 +2688,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "estimated_elasticity_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${estimated_elasticity_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2617,8 +2706,8 @@
                     "actions": [
                         {
                             "update_params": {
-                                "believed_elasticity": { "type": "deterministic", "value": "${estimated_revenue_elasticity}" },
-                                "adjusted_elasticity": { "type": "deterministic", "value": "${estimated_revenue_elasticity} * (1 + ${optimism})" }
+                                "believed_elasticity": { "type": "deterministic", "value": "${_X_}" },
+                                "adjusted_elasticity": { "type": "deterministic", "value": "${_X_} * (1 + ${optimism})" }
                             }
                         }
                     ]
@@ -2632,7 +2721,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["startup_id", "cash_key"]
+                    "params": {
+                        "agent_id": "${startup_id}",
+                        "param_key": "${cash_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2647,7 +2739,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_cash": { "type": "deterministic", "value": "${cash}" }
+                                "current_cash": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2661,7 +2753,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["startup_id", "runway_key"]
+                    "params": {
+                        "agent_id": "${startup_id}",
+                        "param_key": "${runway_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2676,7 +2771,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_runway": { "type": "deterministic", "value": "${runway}" }
+                                "current_runway": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2701,7 +2796,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "total_budget": { "type": "deterministic", "value": "${result}" },
+                                "total_budget": { "type": "deterministic", "value": "${_X_}" },
                                 "hiring_share": { "type": "deterministic", "value": "max(0, min(1, ${adjusted_productivity} / (${adjusted_productivity} + ${adjusted_elasticity} * 1000)))" }
                             }
                         }
@@ -2727,8 +2822,8 @@
                     "actions": [
                         {
                             "update_params": {
-                                "hiring_budget_val": { "type": "deterministic", "value": "${result}" },
-                                "other_budget_val": { "type": "deterministic", "value": "${total_budget} - ${result}" }
+                                "hiring_budget_val": { "type": "deterministic", "value": "${_X_}" },
+                                "other_budget_val": { "type": "deterministic", "value": "${total_budget} - ${_X_}" }
                             }
                         }
                     ]
@@ -2778,14 +2873,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "hiring_budget_value": { "type": "deterministic", "value": "${result}" }
+                                "hiring_budget_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["startup_id", "hiring_budget_key", "hiring_budget_value"]
+                                "params": {
+                                    "agent_id": "${startup_id}",
+                                    "param_key": "${hiring_budget_key}",
+                                    "value": "${hiring_budget_value}"
+                                }
                             }
                         }
                     ]
@@ -2811,14 +2910,18 @@
                         {
                             "update_params": {
                                 "other_budget_key": { "type": "deterministic", "value": "other_budget" },
-                                "other_budget_value": { "type": "deterministic", "value": "${result}" }
+                                "other_budget_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["startup_id", "other_budget_key", "other_budget_value"]
+                                "params": {
+                                    "agent_id": "${startup_id}",
+                                    "param_key": "${other_budget_key}",
+                                    "value": "${other_budget_value}"
+                                }
                             }
                         }
                     ]
@@ -2851,7 +2954,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["startup_id", "last_decision_key", "last_decision_value"]
+                                "params": {
+                                    "agent_id": "${startup_id}",
+                                    "param_key": "${last_decision_key}",
+                                    "value": "${last_decision_value}"
+                                }
                             }
                         }
                     ]
@@ -2901,7 +3008,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "prod_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${prod_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2916,7 +3026,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_prod": { "type": "deterministic", "value": "${estimated_productivity_per_head}" }
+                                "current_prod": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2930,7 +3040,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "elast_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${elast_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -2945,7 +3058,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_elast": { "type": "deterministic", "value": "${estimated_revenue_elasticity}" }
+                                "current_elast": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -2970,7 +3083,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "noise": { "type": "deterministic", "value": "${value}" }
+                                "noise": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -3020,14 +3133,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "prod_value": { "type": "deterministic", "value": "${result}" }
+                                "prod_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "prod_key", "prod_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${prod_key}",
+                                    "value": "${prod_value}"
+                                }
                             }
                         }
                     ]
@@ -3077,14 +3194,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "elast_value": { "type": "deterministic", "value": "${result}" }
+                                "elast_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "elast_key", "elast_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${elast_key}",
+                                    "value": "${elast_value}"
+                                }
                             }
                         }
                     ]
@@ -3138,7 +3259,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "runway_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${runway_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3199,7 +3323,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "hiring_budget_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${hiring_budget_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3214,7 +3341,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "budget_for_hiring": { "type": "deterministic", "value": "${hiring_budget}" }
+                                "budget_for_hiring": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -3238,7 +3365,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "cost_variable_per_head_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${cost_variable_per_head_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3253,8 +3383,8 @@
                     "actions": [
                         {
                             "update_params": {
-                                "cost_per_head": { "type": "deterministic", "value": "${cost_variable_per_head}" },
-                                "new_headcount": { "type": "deterministic", "value": "floor(${budget_for_hiring} / ${cost_variable_per_head})" }
+                                "cost_per_head": { "type": "deterministic", "value": "${_X_}" },
+                                "new_headcount": { "type": "deterministic", "value": "floor(${budget_for_hiring} / ${_X_})" }
                             }
                         }
                     ]
@@ -3268,7 +3398,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "headcount_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${headcount_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3283,15 +3416,19 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_hc": { "type": "deterministic", "value": "${headcount}" },
-                                "final_hc": { "type": "deterministic", "value": "${headcount} + ${new_headcount}" }
+                                "current_hc": { "type": "deterministic", "value": "${_X_}" },
+                                "final_hc": { "type": "deterministic", "value": "${_X_} + ${new_headcount}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "headcount_key", "final_hc"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${headcount_key}",
+                                    "value": "${final_hc}"
+                                }
                             }
                         }
                     ]
@@ -3323,7 +3460,11 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "cost_rigidity_key", "cost_rigidity_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${cost_rigidity_key}",
+                                    "value": 0.6
+                                }
                             }
                         }
                     ]
@@ -3337,7 +3478,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "headcount_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${headcount_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3352,7 +3496,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_hc": { "type": "deterministic", "value": "${headcount}" }
+                                "current_hc": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -3377,36 +3521,21 @@
                     "actions": [
                         {
                             "update_params": {
-                                "headcount_value": { "type": "deterministic", "value": "${result}" }
+                                "headcount_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "headcount_key", "headcount_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${headcount_key}",
+                                    "value": "${headcount_value}"
+                                }
                             }
                         }
                     ]
-                }
-            ]
-        },
-        {
-            "from": "NO_ACTION",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
-            "thresholds": [
-                {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
-                    "to": "NO_ACTION",
-                    "actions": []
                 }
             ]
         }
@@ -3453,7 +3582,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "other_budget_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${other_budget_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3468,7 +3600,7 @@
                     "actions": [
                         {
                             "update_params": {
-                                "amount": { "type": "deterministic", "value": "${other_budget}" }
+                                "amount": { "type": "deterministic", "value": "${_X_}" }
                             }
                         }
                     ]
@@ -3478,6 +3610,16 @@
                         {
                             "operator": "<=",
                             "value": 0
+                        }
+                    ],
+                    "to": "DONE",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [
+                        {
+                            "operator": "==",
+                            "value": null
                         }
                     ],
                     "to": "DONE",
@@ -3492,7 +3634,10 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": ["agent_id", "revenue_current_key"]
+                    "params": {
+                        "agent_id": "${agent_id}",
+                        "param_key": "${revenue_current_key}"
+                    }
                 }
             },
             "thresholds": [
@@ -3507,8 +3652,8 @@
                     "actions": [
                         {
                             "update_params": {
-                                "current_revenue": { "type": "deterministic", "value": "${revenue_current}" },
-                                "incremental_revenue": { "type": "deterministic", "value": "${revenue_current} * 0.05" }
+                                "current_revenue": { "type": "deterministic", "value": "${_X_}" },
+                                "incremental_revenue": { "type": "deterministic", "value": "${_X_} * 0.05" }
                             }
                         }
                     ]
@@ -3533,14 +3678,18 @@
                     "actions": [
                         {
                             "update_params": {
-                                "revenue_current_value": { "type": "deterministic", "value": "${result}" }
+                                "revenue_current_value": { "type": "deterministic", "value": "${_X_}" }
                             }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": ["agent_id", "revenue_current_key", "revenue_current_value"]
+                                "params": {
+                                    "agent_id": "${agent_id}",
+                                    "param_key": "${revenue_current_key}",
+                                    "value": "${revenue_current_value}"
+                                }
                             }
                         }
                     ]

@@ -52,7 +52,7 @@ class DiscreteEventSimulator:
 
         pbar = tqdm(
             total=max_time,
-            desc="Simulation time",
+            desc="DES simulation",
             unit="s",
             bar_format="⏳ {l_bar}{bar}| {n:.2f}/{total:.2f}s",
             ncols=80
@@ -78,32 +78,11 @@ class DiscreteEventSimulator:
         # Stop async scheduler
         await self.event_scheduler.stop()
 
-        # Draining phase
-        total_agents = len(self.agents.data)
-
-        pbar = tqdm(
-            total=total_agents,
-            desc="Draining agent queues",
-            unit="agent",
-            bar_format="⏳ {l_bar}{bar}| {n}/{total}",
-            ncols=80
-        )
-
-        for i, agent in enumerate(self.agents.data):
-            # Passive wait: agent drains itself
-            while not agent["event_queue"].empty():
-                await asyncio.sleep(0.1)
-
-            pbar.n = i + 1
-            pbar.refresh()
-
-        pbar.close()
-
         # Detener agentes asíncronos
         await self.agents.stop()
 
         # PATL model checker
-        snapshots = self.snapshot_manager.get_all()
+        snapshots = self.snapshot_manager.get_all_snapshots()
         if snapshots:
             self.metrics_collector.set_enabled(False)
             all_results = []

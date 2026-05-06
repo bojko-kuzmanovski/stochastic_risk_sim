@@ -60,7 +60,6 @@
       "burn_rate_calculator", 
       "runway_lifecycle", 
       "headcount_controller", 
-      "revenue_update", 
       "client_lost", 
       "exogenous_shock", 
       "investment_offer", 
@@ -115,7 +114,7 @@
       },
       "contract_months_remaining": {
         "type": "deterministic",
-        "value": 6
+        "value": 12
       },
       "is_active": {
         "type": "deterministic",

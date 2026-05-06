@@ -67,48 +67,54 @@ class Agents:
 
     def _start_worker(self, agent):
         async def _worker():
-            while True:
-                event = await agent["event_queue"].get()
+            try:
+                while self._running:
+                    try:
+                        event = await asyncio.wait_for(
+                            agent["event_queue"].get(), timeout=0.5
+                        )
+                    except asyncio.TimeoutError:
+                        continue
 
-                signal = event.get("signal")
-                if signal not in agent.get("automata", []):
-                    continue
+                    signal = event.get("signal")
+                    if signal not in agent.get("automata", []):
+                        continue
 
-                session = self.automata.create_session(signal, event)
-                if not session:
-                    continue
+                    session = self.automata.create_session(signal, event)
+                    if not session:
+                        continue
 
-                automaton_name = session.automaton_name
+                    automaton_name = session.automaton_name
+                    agent["current_state"] = session.current_state
 
-                agent["current_state"] = session.current_state
+                    while self._running:
+                        while self.snapshot_manager.is_sampling():
+                            await asyncio.sleep(0.01)
 
-                while True:
-                    # Esperar si hay muestreo en curso
-                    while self.snapshot_manager.is_sampling():
-                        await asyncio.sleep(0.01)
+                        self.snapshot_manager.enter_transition()
+                        new_state = session.step()
+                        self.snapshot_manager.exit_transition()
 
-                    self.snapshot_manager.enter_transition()
-                    new_state = session.step()
-                    self.snapshot_manager.exit_transition()
+                        if new_state is None:
+                            agent.pop("current_state", None)
+                            break
 
-                    if new_state is None:
-                        agent.pop("current_state", None)
-                        break
-                
-                    agent["current_state"] = new_state
-
-                    await self.snapshot_manager.capture(agent["agent_id"], automaton_name, new_state)
+                        agent["current_state"] = new_state
+                        await self.snapshot_manager.capture(
+                            agent["agent_id"], automaton_name, new_state
+                        )
+            except asyncio.CancelledError:
+                pass
 
         self._tasks[agent["agent_id"]] = asyncio.create_task(_worker())
 
 
     def _stop_worker(self, agent_id):
-        """Cancela y limpia el worker de un agente específico."""
         task = self._tasks.pop(agent_id, None)
-        if task:
+        if task and not task.done():
             task.cancel()
-            return True
-        return False
+            return task
+        return None
 
 
     async def start(self):
@@ -119,12 +125,16 @@ class Agents:
 
 
     async def stop(self):
-        """Stop all agent loops."""
         self._running = False
+        tasks_to_cancel = []
         for agent_id in list(self._tasks.keys()):
-            self._stop_worker(agent_id)
+            task = self._stop_worker(agent_id)
+            if task:
+                tasks_to_cancel.append(task)
+        if tasks_to_cancel:
+            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
 
-
+    
     async def receive_event(self, agent_id, event):
         agent = next((a for a in self.data if a["agent_id"] == agent_id), None)
         if agent is None:

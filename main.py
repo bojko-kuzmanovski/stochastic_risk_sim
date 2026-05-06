@@ -1,9 +1,23 @@
-#!/usr/bin/env python3
+import asyncio
+import sys
+
+if sys.version_info >= (3, 14):
+    original_del = asyncio.BaseEventLoop.__del__
+    
+    def safe_del(self):
+        try:
+            if hasattr(self, '_closed'):
+                original_del(self)
+        except AttributeError:
+            pass
+    
+    asyncio.BaseEventLoop.__del__ = safe_del
+
+
 import json
 from pathlib import Path
 from collections import OrderedDict
-import asyncio
-import sys
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 from sim_engine.discrete_event_engine import DiscreteEventSimulator
@@ -11,7 +25,7 @@ from sim_engine.discrete_event_engine import DiscreteEventSimulator
 def load_json(path):
     with open(path, "r") as f:
         return json.load(f, object_pairs_hook=OrderedDict)
-    
+
 async def main():
     script_dir = Path(__file__).parent / 'configs/startups/runway-risk'
     

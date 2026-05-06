@@ -153,7 +153,7 @@ class AutomatonSession:
 
         # Apply actions
         self.current_state = chosen_case["to"]
-        ctx = {**self.event, **self.params, "X": _X_}
+        ctx = {**self.event, **self.params, "_X_": _X_}
         self._execute_actions(chosen_case.get("actions", []), ctx)
 
         return self.current_state
@@ -163,16 +163,31 @@ class AutomatonSession:
         for action_obj in actions:
             if "event_emit" in action_obj:
                 obj = action_obj["event_emit"]
-                resolved = {k: ctx.get(k) for k in obj.get("params", [])}
-
-                to_agent_id = resolved.get("to_agent_id")
+                
+                fields_to_resolve = {
+                    "signal": obj["signal"],
+                    "to_agent_id": obj["to_agent_id"]
+                }
+                if "env_id" in obj:
+                    fields_to_resolve["env_id"] = obj["env_id"]
+                if "channel_id" in obj:
+                    fields_to_resolve["channel_id"] = obj["channel_id"]
+                
+                resolved = resolve_args(fields_to_resolve, ctx)
+                
+                signal = resolved[0]
+                to_agent_id = resolved[1]
+                
+                event_data = {"event_category": "dynamic", "signal": signal, "agent_id": to_agent_id}
+                
+                idx = 2
+                if "env_id" in obj:
+                    event_data["env_id"] = resolved[idx]
+                    idx += 1
+                if "channel_id" in obj:
+                    event_data["channel_id"] = resolved[idx]
+                
                 if to_agent_id is not None:
-                    event_data = {
-                        "event_category": "dynamic",
-                        "signal": obj["signal"],
-                        "to_agent_id": to_agent_id,
-                        **resolved
-                    }
                     if self.async_mode:
                         asyncio.create_task(
                             self.automata.agents.receive_event(to_agent_id, event_data)
@@ -182,7 +197,7 @@ class AutomatonSession:
 
             elif "action_required" in action_obj:
                 obj = action_obj["action_required"]
-                args = resolve_args(obj.get("params", []), ctx)
+                args = resolve_args(obj.get("params", {}), ctx)
                 call_method(
                     obj["target"], obj["method"], args,
                     self.automata.agents,

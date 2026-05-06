@@ -24,18 +24,20 @@ class PATLVerifier:
         agents, environments = self._load_snapshot(snapshot)
         coalition = self._resolve_agents(agents, pred["coalition"])
         adversaries = self._resolve_agents(agents, pred.get("adversaries", {}))
+        bound = pred["probability_bound"]
+        operator = pred.get("probability_operator", ">=")
+        predicate_id = pred["predicate_id"]
 
         if not coalition:
-            return {"predicate_id": pred["predicate_id"], "result": "ERROR",
-                    "p_value": 0.0, "reason": "No coalition agents"}
+            return {"predicate_id": predicate_id, "result": "ERROR",
+                    "p_value": 0.0, "bound": bound, "operator": operator,
+                    "reason": "No coalition agents"}
 
         c_strats = list(self._strategies(coalition))
         a_strats = list(self._strategies(adversaries)) if adversaries else [{}]
         max_depth = pred.get("max_depth", 20)
         target_states = self._target_set(coalition, c_strats[0] if c_strats else {})
         pred_type = pred["type"]
-        bound = pred["probability_bound"]
-        operator = pred.get("probability_operator", ">=")
         quantifier = pred.get("coalition_quantifier", "exists")
 
         original_agents = self.automata.agents
@@ -47,8 +49,8 @@ class PATLVerifier:
             for a_strat in a_strats:
                 full = {**c_strat, **a_strat}
                 p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
-                               full, self._target_set(coalition, c_strat),
-                               max_depth, pred_type)
+                            full, self._target_set(coalition, c_strat),
+                            max_depth, pred_type)
                 if p < worst:
                     worst = p
             if worst > p_game:
@@ -61,11 +63,11 @@ class PATLVerifier:
         if quantifier == "forall":
             satisfied = not satisfied
 
-        return {"predicate_id": pred["predicate_id"],
+        return {"predicate_id": predicate_id,
                 "result": "SATISFIED" if satisfied else "VIOLATED",
                 "p_value": round(p_game, 6), "bound": bound, "operator": operator}
 
-
+    
     def _load_snapshot(self, snap):
         a = Agents([], self.distributions, self.metrics_collector, worker_mode=False)
         a.load_snapshot(snap["agents_data"])
@@ -166,6 +168,8 @@ class PATLVerifier:
                 for th in trans.get("thresholds", []):
                     conds = th["threshold_case"]
                     low, high, li, ui = self._interval(conds)
+                    if low is None or high is None:
+                        continue
                     low, high = max(low, remaining_low), min(high, remaining_high)
                     if low > high:
                         continue
@@ -175,7 +179,8 @@ class PATLVerifier:
                         p = 1.0
                     if p > 0:
                         mid = (low + high) / 2 if low != float("-inf") and high != float("inf") else (low if low != float("-inf") else high)
-                        session = self.automata.create_session(aut_name, {"signal": aut_name}, async_mode=False)
+                        event_data = { "signal": aut_name, "agent_id": agent["agent_id"]}
+                        session = self.automata.create_session(aut_name, event_data, async_mode=False)
                         session.current_state = state
                         session.params = agent.get("params", {}).copy()
                         ns = session.step(forced_X=mid)
@@ -217,7 +222,7 @@ class PATLVerifier:
                 low = high = v
                 li = ui = True
             elif op == "!=":
-                return None, None, False, False
+                continue
         if low > high:
             return None, None, False, False
         return low, high, li, ui

@@ -29,16 +29,16 @@
       { "agent_id": "TalentMarket_1", "agent_rol": { "is_private": { "type": "deterministic", "value": true } } }
     ],
     "relations": [
-      { "agent_a_id": "Investor_1", "agent_b_id": "Startup_1", "rel_metadata": { "type": "follow", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "Investor_2", "agent_b_id": "Startup_1", "rel_metadata": { "type": "follow", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "Startup_1", "agent_b_id": "RevenueStream_1", "rel_metadata": { "type": "follow", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "RevenueStream_1", "agent_b_id": "Startup_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "KeyClient_1", "agent_b_id": "Startup_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "KeyClient_2", "agent_b_id": "Startup_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "KeyClient_3", "agent_b_id": "Startup_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "ShockEvent_1", "agent_b_id": "Startup_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "Founder_1", "agent_b_id": "Startup_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "TalentMarket_1", "agent_b_id": "Founder_1", "rel_metadata": { "type": "connection", "is_approved": { "type": "deterministic", "value": true } } }
+      { "agent_a_id": "Investor_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "Investor_2", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "Startup_1", "agent_b_id": "RevenueStream_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "RevenueStream_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "KeyClient_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "KeyClient_2", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "KeyClient_3", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "ShockEvent_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "Founder_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "TalentMarket_1", "agent_b_id": "Founder_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } }
     ],
     "channels": [
       { "channel_id": "startup_investor_1", "members": ["Startup_1", "Investor_1"], "events": [], "channel_metadata": {} },

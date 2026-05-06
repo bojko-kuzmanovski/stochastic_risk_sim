@@ -26,7 +26,7 @@ class MetricsCollector:
         self._agent_action_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         # PATL snapshots
-        self._patl_snapshot_counts: Dict[str, int] = defaultdict(int)
+        self._patl_snapshot_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
 
     # RUNTIME HOOKS
