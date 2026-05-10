@@ -44,24 +44,36 @@ class PATLVerifier:
         original_envs = self.automata.environments
 
         p_game = 0.0
-        for c_strat in c_strats:
-            worst = 1.0
-            for a_strat in a_strats:
-                full = {**c_strat, **a_strat}
-                p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
-                            full, self._target_set(coalition, c_strat),
-                            max_depth, pred_type)
-                if p < worst:
-                    worst = p
-            if worst > p_game:
-                p_game = worst
+        if quantifier == "exists":
+            for c_strat in c_strats:
+                worst = 1.0
+                for a_strat in a_strats:
+                    full = {**c_strat, **a_strat}
+                    p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
+                                full, self._target_set(coalition, c_strat),
+                                max_depth, pred_type)
+                    if p < worst:
+                        worst = p
+                if worst > p_game:
+                    p_game = worst
+        else:  # forall
+            p_game = 1.0
+            for c_strat in c_strats:
+                worst = 1.0
+                for a_strat in a_strats:
+                    full = {**c_strat, **a_strat}
+                    p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
+                                full, self._target_set(coalition, c_strat),
+                                max_depth, pred_type)
+                    if p < worst:
+                        worst = p
+                if worst < p_game:
+                    p_game = worst
+
+        satisfied = self._compare(p_game, bound, operator)
 
         self.automata.agents = original_agents
         self.automata.environments = original_envs
-
-        satisfied = self._compare(p_game, bound, operator)
-        if quantifier == "forall":
-            satisfied = not satisfied
 
         return {"predicate_id": predicate_id,
                 "result": "SATISFIED" if satisfied else "VIOLATED",

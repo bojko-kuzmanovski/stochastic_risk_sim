@@ -48,7 +48,7 @@ async def main():
     )
     
     # Run simulation with hardcoded max time
-    await sim.run_simulation(max_time=10.0)
+    await sim.run_simulation(max_time=60.0)
 
 
 if __name__ == "__main__":

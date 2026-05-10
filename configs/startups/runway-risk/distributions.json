@@ -135,5 +135,37 @@
       "sigma": 0.15
     },
     "output_type": "float"
+  },
+  {
+    "distribution_name": "revenue_volatility",
+    "family": "normal",
+    "params": { "mean": 0.85, "sigma": 0.25 },
+    "output_type": "float",
+    "truncation": { "min": 0.1, "max": 1.8 }
+  },
+  {
+    "distribution_name": "cost_inflation",
+    "family": "normal",
+    "params": { "mean": 1.02, "sigma": 0.04 },
+    "output_type": "float",
+    "truncation": { "min": 0.9, "max": 1.2 }
+  },
+  {
+    "distribution_name": "layoff_severity",
+    "family": "beta",
+    "params": { "alpha": 3, "beta": 2 },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "market_sentiment",
+    "family": "beta",
+    "params": { "alpha": 4, "beta": 3 },
+    "output_type": "float"
+  },
+  {
+    "distribution_name": "hiring_success",
+    "family": "beta",
+    "params": { "alpha": 5, "beta": 3 },
+    "output_type": "float"
   }
 ]

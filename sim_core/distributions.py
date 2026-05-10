@@ -136,6 +136,16 @@ class Distributions:
         # Poisson
         if family == "poisson":
             lam = params["lambda"]
+            
+            # Handle infinite bounds
+            if lower == float("-inf"):
+                lower = 0
+                lower_inclusive = True
+            if upper == float("inf"):
+                # Use 99.99th percentile as practical bound
+                upper = stats.poisson.ppf(0.9999, lam)
+                upper_inclusive = True
+            
             k_min = int(np.floor(lower)) if not lower_inclusive else int(np.ceil(lower))
             k_max = int(np.ceil(upper)) if not upper_inclusive else int(np.floor(upper))
             if k_min > k_max:
