@@ -131,6 +131,7 @@ def _run_patl_sync(snapshots, snapshot_manager, patl_verifier):
             patl_results.append((snap, results))
     return patl_results
 
+
 async def main():
     args = parse_args()
     validate_args(args)
