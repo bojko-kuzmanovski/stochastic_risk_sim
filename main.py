@@ -28,11 +28,11 @@ from core.automata import Automata
 from core.environments import Environments
 from core.events import Events
 
-from sim_engine.discrete_event_engine import DiscreteEventSimulator
-from sim_engine.event_scheduler import EventScheduler
+from des.discrete_event_engine import DiscreteEventSimulator
+from des.event_scheduler import EventScheduler
 
-from patl_engine.patl_verifier import PATLVerifier
-from patl_engine.snapshot_manager import SnapshotManager
+from patl.patl_verifier import PATLVerifier
+from patl.snapshot_manager import SnapshotManager
 
 from metrics.metrics_collector import MetricsCollector
 from metrics.metrics_writer import MetricsWriter
