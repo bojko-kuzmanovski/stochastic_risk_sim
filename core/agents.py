@@ -4,7 +4,7 @@ from jsonschema import validate
 from copy import deepcopy
 
 # Importar funciones de evaluación estandarizadas
-from sim_core.utils.evaluator import resolve_value
+from core.utils.evaluator import resolve_value
 
 class Agents:
     def __init__(self, config_data, distributions, metrics_collector, worker_mode=True):

@@ -3,7 +3,7 @@ from jsonschema import validate
 from typing import Any, Optional
 import asyncio
 
-from sim_core.utils.evaluator import resolve_args, call_method, resolve_value
+from core.utils.evaluator import resolve_args, call_method, resolve_value
 
 
 class Automata:

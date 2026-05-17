@@ -7,7 +7,7 @@ from typing import Dict, List
 from copy import deepcopy
 
 # Importar funciones de evaluación estandarizadas
-from sim_core.utils.evaluator import resolve_value
+from core.utils.evaluator import resolve_value
 
 class Environments:
     def __init__(self, config_data, distributions, metrics_collector):

@@ -258,3 +258,79 @@ class MetricsCollector:
                         f"(P={r['p_value']} {r['operator']} {r['bound']})")
         
         print("\n" + "=" * 60)
+
+
+    def to_dict(self) -> dict:
+        """
+        Return all runtime metrics as a nested dict for CSV serialization.
+        Structure: {metric_type: {key: {subkey: value}}}
+        """
+        result = {}
+
+        # Distribution usage: {dist_name: {family: count}}
+        dist_data = {}
+        for dist_name, fams in self._distribution_sample_counts.items():
+            dist_data[dist_name] = dict(fams)
+        result["distribution_usage"] = dist_data
+
+        # Environment actions: {env_type: {action: count}}
+        env_data = {}
+        for env, actions in self._environment_action_counts.items():
+            env_data[env] = dict(actions)
+        result["environment_actions"] = env_data
+
+        # Agent actions: {agent_type: {action: count}}
+        agent_data = {}
+        for agent, actions in self._agent_action_counts.items():
+            agent_data[agent] = dict(actions)
+        result["agent_actions"] = agent_data
+
+        # Automaton executions: {aut_name: {result: {state: count}}}
+        aut_data = {}
+        for aut_name, results in self._automaton_execution_counts.items():
+            aut_data[aut_name] = {}
+            for result_type, states in results.items():
+                aut_data[aut_name][result_type] = dict(states)
+        result["automaton_executions"] = aut_data
+
+        # Events generated: {static: count, dynamic: count}
+        result["events_generated"] = {
+            "static": sum(self._agent_event_counts.get("static", {}).values()),
+            "dynamic": sum(self._agent_event_counts.get("dynamic", {}).values())
+        }
+
+        # PATL snapshots: {aut_name: {state: count}}
+        snap_data = {}
+        for aut, states in self._patl_snapshot_counts.items():
+            snap_data[aut] = dict(states)
+        result["snapshots_captured"] = snap_data
+
+        return result
+
+
+    def get_summary(self) -> dict:
+        """
+        Return high-level aggregate metrics for the summary CSV.
+        """
+        return {
+            "actions_total": sum(
+                sum(actions.values())
+                for actions in self._agent_action_counts.values()
+            ),
+            "automata_exec_total": sum(
+                sum(sum(states.values()) for states in result.values())
+                for result in self._automaton_execution_counts.values()
+            ),
+            "distrib_samples_total": sum(
+                sum(fams.values())
+                for fams in self._distribution_sample_counts.values()
+            ),
+            "events_total": sum(
+                sum(self._agent_event_counts[cat].values())
+                for cat in self._agent_event_counts
+            ),
+            "snapshots_total": sum(
+                sum(states.values())
+                for states in self._patl_snapshot_counts.values()
+            )
+        }

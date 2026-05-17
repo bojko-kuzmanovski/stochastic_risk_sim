@@ -2,7 +2,7 @@ import json
 import time
 from jsonschema import validate
 
-from sim_core.utils.evaluator import resolve_value
+from core.utils.evaluator import resolve_value
 
 class Events:
     def __init__(self, config_data, distributions):

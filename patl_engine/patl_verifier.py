@@ -5,8 +5,8 @@ PATL Semantic Predicates Verifier.
 from copy import deepcopy
 from itertools import product
 
-from sim_core.agents import Agents
-from sim_core.environments import Environments
+from core.agents import Agents
+from core.environments import Environments
 
 
 class PATLVerifier:
