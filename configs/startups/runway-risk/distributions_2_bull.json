@@ -8,19 +8,19 @@
   {
     "distribution_name": "volatility_profile",
     "family": "beta",
-    "params": { "alpha": 1, "beta": 8 },
+    "params": { "alpha": 3, "beta": 2 },
     "output_type": "float"
   },
   {
     "distribution_name": "growth_rate",
     "family": "normal",
-    "params": { "mean": -0.05, "sigma": 0.25 },
+    "params": { "mean": 0.08, "sigma": 0.06 },
     "output_type": "float"
   },
   {
     "distribution_name": "shock_arrival",
     "family": "poisson",
-    "params": { "lambda": 6.0 },
+    "params": { "lambda": 0.5 },
     "output_type": "int"
   },
   {
@@ -39,7 +39,7 @@
   {
     "distribution_name": "client_retention",
     "family": "beta",
-    "params": { "alpha": 2, "beta": 6 },
+    "params": { "alpha": 9, "beta": 2 },
     "output_type": "float"
   },
   {
@@ -57,7 +57,7 @@
   {
     "distribution_name": "founder_optimism",
     "family": "beta",
-    "params": { "alpha": 2, "beta": 5 },
+    "params": { "alpha": 8, "beta": 1 },
     "output_type": "float"
   },
   {
@@ -100,7 +100,7 @@
   {
     "distribution_name": "cost_inflation",
     "family": "normal",
-    "params": { "mean": 1.08, "sigma": 0.04 },
+    "params": { "mean": 1.01, "sigma": 0.04 },
     "output_type": "float",
     "truncation": { "min": 0.9, "max": 1.2 }
   },
@@ -113,7 +113,7 @@
   {
     "distribution_name": "market_sentiment",
     "family": "beta",
-    "params": { "alpha": 2, "beta": 5 },
+    "params": { "alpha": 6, "beta": 2 },
     "output_type": "float"
   },
   {
