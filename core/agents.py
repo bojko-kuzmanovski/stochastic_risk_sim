@@ -86,7 +86,7 @@ class Agents:
 
                     automaton_name = session.automaton_name
                     agent["current_state"] = session.current_state
-
+                    
                     while self._running:
                         while self.snapshot_manager.is_sampling():
                             await asyncio.sleep(0.01)

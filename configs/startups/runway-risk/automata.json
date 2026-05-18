@@ -294,7 +294,7 @@
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": "!=", "value": null }],
-                    "to": "CONSUME_CASH",
+                    "to": "FETCH_TAX_INFO",
                     "actions": [
                         { "update_params": { "cash_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
@@ -2202,6 +2202,18 @@
                             "update_params": {
                                 "believed_elasticity": { "type": "deterministic", "value": "${_X_}" },
                                 "adjusted_elasticity": { "type": "deterministic", "value": "${_X_} * (1 + ${optimism})" }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "FETCH_CURRENT_STATE",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "believed_elasticity": { "type": "deterministic", "value": 0.5 },
+                                "adjusted_elasticity": { "type": "deterministic", "value": "0.5 * (1 + ${optimism})" }
                             }
                         }
                     ]

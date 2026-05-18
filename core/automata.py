@@ -153,6 +153,7 @@ class AutomatonSession:
 
         # Apply actions
         self.current_state = chosen_case["to"]
+
         ctx = {**self.event, **self.params, "_X_": _X_}
         self._execute_actions(chosen_case.get("actions", []), ctx)
 

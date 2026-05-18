@@ -1,7 +1,3 @@
-"""
-PATL Semantic Predicates Verifier.
-"""
-
 from copy import deepcopy
 from itertools import product
 
@@ -151,7 +147,8 @@ class PATLVerifier:
         self.automata.agents = agents_obj
         self.automata.environments = envs_obj
 
-        for agent in agents_data:
+        agents_to_expand = [a for a in agents_data if a["agent_id"] in strat]
+        for agent in agents_to_expand:
             state = agent.get("current_state")
             aut_name = strat.get(agent["agent_id"], (agent.get("automata") or [None])[0])
             if not state or not aut_name:
