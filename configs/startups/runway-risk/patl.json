@@ -92,6 +92,40 @@
           },
           "probability_bound": 0.5,
           "probability_operator": ">="
+        },
+        {
+          "predicate_id": "compliance_and_tax_induce_death",
+          "type": "reachability",
+          "max_depth": 10,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["DEAD"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Regulator",
+                "automata": [
+                  {
+                    "automaton_name": "regulatory_intervention",
+                    "target_states": ["DONE"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.4,
+          "probability_operator": ">="
         }
       ]
     },
@@ -240,6 +274,40 @@
           },
           "probability_bound": 0.55,
           "probability_operator": "<="
+        },
+        {
+          "predicate_id": "investor_breaks_relation_after_rejection",
+          "type": "reachability",
+          "max_depth": 6,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "Investor",
+                "automata": [
+                  {
+                    "automaton_name": "investment_decision",
+                    "target_states": ["REMOVE_RELATION"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["CRITICAL", "DEAD"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.4,
+          "probability_operator": ">="
         }
       ]
     },
@@ -401,6 +469,210 @@
             ]
           },
           "probability_bound": 0.5,
+          "probability_operator": ">="
+        }
+      ]
+    },
+    {
+      "automaton_name": "investor_exit",
+      "trigger_state": "REMOVE_FROM_ECOSYSTEM",
+      "predicates": [
+        {
+          "predicate_id": "investor_exits_ecosystem_due_to_patience",
+          "type": "reachability",
+          "max_depth": 8,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "Investor",
+                "automata": [
+                  {
+                    "automaton_name": "investor_exit",
+                    "target_states": ["EXITED"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["CRITICAL"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.2,
+          "probability_operator": "<="
+        }
+      ]
+    },
+    {
+      "automaton_name": "regulatory_intervention",
+      "trigger_state": "APPLY_REGULATION",
+      "predicates": [
+        {
+          "predicate_id": "regulator_increases_pressure_during_downturn",
+          "type": "reachability",
+          "max_depth": 10,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "Regulator",
+                "automata": [
+                  {
+                    "automaton_name": "regulatory_intervention",
+                    "target_states": ["WRITE_ENV_PARAMS"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["CRITICAL", "DEAD"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.3,
+          "probability_operator": ">="
+        }
+      ]
+    },
+    {
+      "automaton_name": "compliance_burden",
+      "trigger_state": "APPLY_COMPLIANCE_COST",
+      "predicates": [
+        {
+          "predicate_id": "compliance_costs_accelerate_death",
+          "type": "reachability",
+          "max_depth": 6,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["DEAD"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Regulator",
+                "automata": [
+                  {
+                    "automaton_name": "regulatory_intervention",
+                    "target_states": ["DONE"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.5,
+          "probability_operator": ">="
+        }
+      ]
+    },
+    {
+      "automaton_name": "client_replacement",
+      "trigger_state": "REGISTER_IN_ENV",
+      "predicates": [
+        {
+          "predicate_id": "client_replacement_succeeds_despite_crisis",
+          "type": "reachability",
+          "max_depth": 8,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "KeyClient",
+                "automata": [
+                  {
+                    "automaton_name": "client_replacement",
+                    "target_states": ["REPLACED"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["CRITICAL", "DEAD"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.25,
+          "probability_operator": ">="
+        }
+      ]
+    },
+    {
+      "automaton_name": "headcount_controller",
+      "trigger_state": "CHECK_HIRING_SUCCESS",
+      "predicates": [
+        {
+          "predicate_id": "hiring_success_boosts_growth",
+          "type": "reachability",
+          "max_depth": 10,
+          "coalition_quantifier": "exists",
+          "coalition": {
+            "by_type": [
+              {
+                "agent_type": "Startup",
+                "automata": [
+                  {
+                    "automaton_name": "headcount_controller",
+                    "target_states": ["HIRING_DONE"]
+                  },
+                  {
+                    "automaton_name": "runway_lifecycle",
+                    "target_states": ["OPERATING"]
+                  }
+                ]
+              }
+            ]
+          },
+          "adversaries": {
+            "by_type": [
+              {
+                "agent_type": "Investor",
+                "automata": [
+                  {
+                    "automaton_name": "investment_decision",
+                    "target_states": ["PASSED"]
+                  }
+                ]
+              }
+            ]
+          },
+          "probability_bound": 0.35,
           "probability_operator": ">="
         }
       ]

@@ -1,13 +1,15 @@
 import json
 import time
+import os
 from copy import deepcopy
 from jsonschema import validate
 import asyncio
 import pickle
+from pathlib import Path
 
 
 class SnapshotManager:
-    def __init__(self, patl_config, metrics_collector):
+    def __init__(self, patl_config, metrics_collector, disk_dir=None):
         schema_path = "schemas/patl.schema.json"
         with open(schema_path, "r") as f:
             schema = json.load(f)
@@ -27,7 +29,12 @@ class SnapshotManager:
         self.agents = None
         self.environments = None
 
-        self._snapshots = []
+        # Disk storage
+        if disk_dir is None:
+            disk_dir = Path(__file__).parent.parent / "data" / ".snapshots"
+        self._disk_dir = Path(disk_dir)
+        self._disk_dir.mkdir(parents=True, exist_ok=True)
+        self._snapshot_index = 0
 
 
     def set_objects(self, agents, environments):
@@ -56,19 +63,15 @@ class SnapshotManager:
         if depth > max_depth:
             return None
         
-        # Skip asyncio objects that can't be pickled
-        if isinstance(obj, (asyncio.Future, asyncio.Task, asyncio.Queue, asyncio.Event, asyncio.Lock)):
+        if isinstance(obj, (asyncio.Future, asyncio.Task, asyncio.Queue, asyncio.Event, asyncio.Lock, asyncio.Semaphore)):
             return None
         
-        # Skip common non-picklable types
         if hasattr(obj, '__class__') and obj.__class__.__name__ in ['_UnixSelectorEventLoop', 'ProactorEventLoop']:
             return None
         
         try:
-            # Try normal deepcopy first
             return deepcopy(obj)
         except (TypeError, pickle.PicklingError) as e:
-            # If deepcopy fails, try to recursively copy dictionaries and lists
             if isinstance(obj, dict):
                 result = {}
                 for k, v in obj.items():
@@ -87,11 +90,14 @@ class SnapshotManager:
             elif isinstance(obj, (str, int, float, bool)) or obj is None:
                 return obj
             else:
-                # For other types, return None or a string representation
                 return str(obj) if obj else None
 
 
     async def capture(self, agent_id, automaton_name, state):
+        """
+        Capture a snapshot and WRITE it to disk immediately.
+        Does NOT keep the snapshot in memory.
+        """
         if (automaton_name, state) not in self.data:
             return
 
@@ -101,18 +107,23 @@ class SnapshotManager:
             while self._active_transitions > 0:
                 await asyncio.sleep(0.01)
 
-            # Use safe deepcopy
             agents_data = self._safe_deepcopy(self.agents.data) if self.agents else None
             environments_data = self._safe_deepcopy(self.environments.data) if self.environments else None
 
-            self._snapshots.append({
+            snapshot = {
                 "timestamp": time.time(),
                 "agent_id": agent_id,
                 "automaton_name": automaton_name,
                 "state": state,
                 "agents_data": agents_data,
                 "environments_data": environments_data
-            })
+            }
+
+            # Write to disk
+            filepath = self._disk_dir / f"snap_{self._snapshot_index:010d}.json"
+            with open(filepath, "w") as f:
+                json.dump(snapshot, f, default=str)
+            self._snapshot_index += 1
 
             if self.metrics_collector:
                 self.metrics_collector.record_patl_sampling(automaton_name, state)
@@ -120,11 +131,56 @@ class SnapshotManager:
             self._sampling = False
 
 
-    def get_all_snapshots(self):
-        """Return all captured snapshots"""
-        return self._snapshots
+    def read_and_delete(self, batch_size=50):
+        """
+        Generator that reads snapshots from disk in batches,
+        yields them, and DELETES each file after reading.
+        Nothing is kept in memory between batches.
+        """
+        files = sorted(
+            [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
+        )
+        
+        for i in range(0, len(files), batch_size):
+            batch = []
+            batch_files = files[i:i + batch_size]
+            
+            for filename in batch_files:
+                filepath = self._disk_dir / filename
+                try:
+                    with open(filepath, "r") as f:
+                        batch.append(json.load(f))
+                    os.remove(filepath)
+                except (OSError, json.JSONDecodeError):
+                    pass
+            
+            if batch:
+                yield batch
+
+
+    def get_snapshot_filepaths(self):
+        """Return list of snapshot file paths sorted by creation order."""
+        files = sorted(
+            [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
+        )
+        return [str(self._disk_dir / f) for f in files]
+    
+
+    def get_snapshot_count(self):
+        """Return number of snapshots currently on disk."""
+        files = [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
+        return len(files)
 
 
     def clear_all_snapshots(self):
-        """Clear all captured snapshots"""
-        self._snapshots = []
+        """Delete all remaining snapshot files from disk."""
+        for filename in os.listdir(self._disk_dir):
+            if filename.startswith("snap_") and filename.endswith(".json"):
+                try:
+                    os.remove(self._disk_dir / filename)
+                except OSError:
+                    pass
+        try:
+            self._disk_dir.rmdir()
+        except OSError:
+            pass

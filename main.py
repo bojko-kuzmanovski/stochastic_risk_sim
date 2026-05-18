@@ -1,5 +1,11 @@
 import asyncio
 import sys
+import json
+import time
+import argparse
+from datetime import datetime
+from pathlib import Path
+from collections import OrderedDict
 import concurrent.futures
 
 if sys.version_info >= (3, 14):
@@ -13,12 +19,6 @@ if sys.version_info >= (3, 14):
     
     asyncio.BaseEventLoop.__del__ = safe_del
 
-
-import argparse
-import time
-from datetime import datetime
-from pathlib import Path
-from collections import OrderedDict
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -63,7 +63,6 @@ def validate_args(args):
 
 
 def load_configs(config_dir: Path) -> dict:
-    import json
     configs = {}
     for name in ["distributions", "environments", "automata", "agents", "events", "patl"]:
         path = config_dir / f"{name}.json"
@@ -72,7 +71,7 @@ def load_configs(config_dir: Path) -> dict:
     return configs
 
 
-async def run_single_simulation(run_id: int, configs: dict, max_time: float, writer: MetricsWriter):
+async def run_single_simulation(run_id: int, configs: dict, max_time: float, writer: MetricsWriter, output_dir: str):
     seed = int(time.time() * 1000) + run_id
 
     metrics = MetricsCollector(enabled=True)
@@ -83,7 +82,7 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
 
     automata.set_objects(agents, environments)
 
-    snapshot_manager = SnapshotManager(configs["patl"], metrics)
+    snapshot_manager = SnapshotManager(configs["patl"], metrics, disk_dir=output_dir / ".snapshots" / f"run_{run_id}")
     snapshot_manager.set_objects(agents, environments)
     agents.set_objects(automata, snapshot_manager)
 
@@ -101,35 +100,57 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
     await sim.run_simulation(max_time=max_time)
     elapsed_des = time.time() - t0
 
-    # --- PATL (run in thread executor to avoid blocking event loop) ---
-    snapshots = snapshot_manager.get_all_snapshots()
-    patl_verifier = PATLVerifier(automata, distributions, metrics)
-
-    t0 = time.time()
-    loop = asyncio.get_running_loop()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        patl_results = await loop.run_in_executor(
-            pool,
-            lambda: _run_patl_sync(snapshots, snapshot_manager, patl_verifier)
-        )
-    elapsed_patl = time.time() - t0
-
-    # --- WRITE (thread-safe) ---
-    await writer.write_summary_rows(run_id, seed, elapsed_des, elapsed_patl, metrics, configs)
+    # --- WRITE summary and des IMMEDIATELY, free memory ---
+    await writer.write_summary_rows(run_id, seed, elapsed_des, 0.0, metrics, configs)
     await writer.write_des_rows(run_id, metrics)
-    await writer.write_patl_rows(run_id, patl_results)
+    metrics_for_report = metrics
 
-
-def _run_patl_sync(snapshots, snapshot_manager, patl_verifier):
-    """Synchronous PATL verification for thread executor."""
-    patl_results = []
-    for snap in snapshots:
+    # --- PATL ---
+    t0 = time.time()
+    
+    def _verify_single(snap, automata_obj, dists, snapshot_data):
+        verifier = PATLVerifier(automata_obj, dists)
         key = (snap["automaton_name"], snap["state"])
-        predicates = snapshot_manager.data.get(key, [])
-        if predicates:
-            results = patl_verifier.verify(snap, predicates)
-            patl_results.append((snap, results))
-    return patl_results
+        predicates = snapshot_data.get(key, [])
+        if not predicates:
+            return None
+        results = verifier.verify(snap, predicates)
+        return (snap, results)
+
+    loop = asyncio.get_running_loop()
+    total_processed = 0
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+        for batch in snapshot_manager.read_and_delete(batch_size=50):
+            futures = [
+                loop.run_in_executor(pool, _verify_single, snap, automata, distributions, snapshot_manager.data)
+                for snap in batch
+            ]
+            batch_results = []
+            for coro in asyncio.as_completed(futures):
+                result = await coro
+                if result is not None:
+                    batch_results.append(result)
+            
+            if batch_results:
+                await writer.write_patl_rows(run_id, batch_results)
+                total_processed += len(batch_results)
+    
+    elapsed_patl = time.time() - t0
+    snapshot_manager.clear_all_snapshots()
+
+    return {
+        "metrics": metrics_for_report,
+        "distributions": distributions,
+        "environments": environments,
+        "agents": agents,
+        "automata": automata,
+        "events": events,
+        "snapshot_manager": snapshot_manager,
+        "elapsed_des": elapsed_des,
+        "elapsed_patl": elapsed_patl,
+        "snapshots_processed": total_processed
+    }
 
 
 async def main():
@@ -157,11 +178,14 @@ async def main():
     spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     sem = asyncio.Semaphore(args.threads)
 
+    last_objects = {}
+
     async def run_with_semaphore(run_id):
         async with sem:
-            await run_single_simulation(run_id, configs, args.time, writer)
+            result = await run_single_simulation(run_id, configs, args.time, writer, output_dir)
         pbar.update(1)
-        pbar.refresh()
+        if args.runs == 1:
+            last_objects["result"] = result
 
     spin_idx = 0
 
@@ -173,10 +197,10 @@ async def main():
             spin_idx += 1
             await asyncio.sleep(0.06)
 
-    tasks = [asyncio.create_task(run_with_semaphore(i)) for i in range(1, args.runs + 1)]
     all_tasks_done = False
-
     spin_task = asyncio.create_task(spinner_loop())
+
+    tasks = [asyncio.create_task(run_with_semaphore(i)) for i in range(1, args.runs + 1)]
     await asyncio.gather(*tasks)
     all_tasks_done = True
     spin_task.cancel()
@@ -187,6 +211,20 @@ async def main():
 
     pbar.set_description("✔ Simulations")
     pbar.close()
+
+    if args.runs == 1 and "result" in last_objects:
+        result = last_objects["result"]
+        result["metrics"].print_report(
+            result["distributions"],
+            result["environments"],
+            result["agents"],
+            result["automata"],
+            result["events"],
+            result["snapshot_manager"]
+        )
+        print(f"\nSnapshots processed: {result['snapshots_processed']}")
+        print(f"DES: {result['elapsed_des']:.1f}s | PATL: {result['elapsed_patl']:.1f}s")
+
     print(f"\nResults written to: data/{base_name}_summary.csv, data/{base_name}_des.csv, data/{base_name}_patl.csv")
 
 

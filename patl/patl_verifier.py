@@ -10,15 +10,12 @@ from core.environments import Environments
 
 
 class PATLVerifier:
-    def __init__(self, automata, distributions, metrics_collector):
+    def __init__(self, automata, distributions):
         self.automata = automata
         self.distributions = distributions
-        self.metrics_collector = metrics_collector
-
 
     def verify(self, snapshot, predicates):
         return [self._verify_predicate(snapshot, p) for p in predicates]
-
 
     def _verify_predicate(self, snapshot, pred):
         agents, environments = self._load_snapshot(snapshot)
@@ -36,7 +33,6 @@ class PATLVerifier:
         c_strats = list(self._strategies(coalition))
         a_strats = list(self._strategies(adversaries)) if adversaries else [{}]
         max_depth = pred.get("max_depth", 20)
-        target_states = self._target_set(coalition, c_strats[0] if c_strats else {})
         pred_type = pred["type"]
         quantifier = pred.get("coalition_quantifier", "exists")
 
@@ -50,21 +46,21 @@ class PATLVerifier:
                 for a_strat in a_strats:
                     full = {**c_strat, **a_strat}
                     p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
-                                full, self._target_set(coalition, c_strat),
-                                max_depth, pred_type)
+                                    full, self._target_set(coalition, c_strat),
+                                    max_depth, pred_type)
                     if p < worst:
                         worst = p
                 if worst > p_game:
                     p_game = worst
-        else:  # forall
+        else:
             p_game = 1.0
             for c_strat in c_strats:
                 worst = 1.0
                 for a_strat in a_strats:
                     full = {**c_strat, **a_strat}
                     p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
-                                full, self._target_set(coalition, c_strat),
-                                max_depth, pred_type)
+                                    full, self._target_set(coalition, c_strat),
+                                    max_depth, pred_type)
                     if p < worst:
                         worst = p
                 if worst < p_game:
@@ -79,14 +75,12 @@ class PATLVerifier:
                 "result": "SATISFIED" if satisfied else "VIOLATED",
                 "p_value": round(p_game, 6), "bound": bound, "operator": operator}
 
-    
     def _load_snapshot(self, snap):
-        a = Agents([], self.distributions, self.metrics_collector, worker_mode=False)
+        a = Agents([], self.distributions, None, worker_mode=False)
         a.load_snapshot(snap["agents_data"])
-        e = Environments([], self.distributions, self.metrics_collector)
+        e = Environments([], self.distributions, None)
         e.load_snapshot(snap.get("environments_data"))
         return a, e
-
 
     def _resolve_agents(self, agents, spec):
         r = []
@@ -103,7 +97,6 @@ class PATLVerifier:
                 r.append({"id": entry["agent_id"], "opts": opts, "targets": tmap})
         return r
 
-
     def _strategies(self, agents):
         if not agents:
             yield {}
@@ -112,7 +105,6 @@ class PATLVerifier:
         for combo in product(*[a["opts"] for a in agents]):
             yield dict(zip(ids, combo))
 
-
     def _target_set(self, coalition, strat):
         t = set()
         for a in coalition:
@@ -120,7 +112,6 @@ class PATLVerifier:
             if chosen and chosen in a["targets"]:
                 t |= a["targets"][chosen]
         return t
-
 
     def _reach(self, agents_data, env_data, strat, targets, depth, pred_type):
         memo = {}
@@ -152,7 +143,6 @@ class PATLVerifier:
 
         result = dp(agents_data, env_data, depth)
         return 1.0 - result if pred_type == "invariance" else result
-
 
     def _expand(self, agents_data, env_data, strat):
         branches = [(1.0, {}, deepcopy(env_data))]
@@ -191,7 +181,7 @@ class PATLVerifier:
                         p = 1.0
                     if p > 0:
                         mid = (low + high) / 2 if low != float("-inf") and high != float("inf") else (low if low != float("-inf") else high)
-                        event_data = { "signal": aut_name, "agent_id": agent["agent_id"]}
+                        event_data = {"signal": aut_name, "agent_id": agent["agent_id"]}
                         session = self.automata.create_session(aut_name, event_data, async_mode=False)
                         session.current_state = state
                         session.params = agent.get("params", {}).copy()
@@ -204,24 +194,25 @@ class PATLVerifier:
             branches = new_branches or branches
         return branches
 
-
     def _make_agents(self, data):
-        a = Agents([], self.distributions, self.metrics_collector, worker_mode=False)
+        a = Agents([], self.distributions, None, worker_mode=False)
         a.data = data
         return a
 
-
     def _make_envs(self, data):
-        e = Environments([], self.distributions, self.metrics_collector)
+        e = Environments([], self.distributions, None)
         e.data = data
         return e
-
 
     def _interval(self, conditions):
         low, high = float("-inf"), float("inf")
         li = ui = True
         for c in conditions:
             op, v = c["operator"], c["value"]
+            if isinstance(v, str):
+                return None, None, False, False
+            if v is None:
+                continue
             if op == ">":
                 low, li = max(low, v), False
             elif op == ">=":
@@ -235,10 +226,12 @@ class PATLVerifier:
                 li = ui = True
             elif op == "!=":
                 continue
-        if low > high:
+        if low is None or high is None:
             return None, None, False, False
+        if isinstance(low, (int, float)) and isinstance(high, (int, float)):
+            if low > high:
+                return None, None, False, False
         return low, high, li, ui
-
 
     def _hash(self, agents_data, env_data):
         items = tuple((a["agent_id"], a.get("current_state"), tuple(sorted(a.get("params", {}).items())))
@@ -246,14 +239,12 @@ class PATLVerifier:
         env_items = tuple((e.get("env_id"), tuple(sorted(e.get("params", {}).items()))) for e in env_data)
         return (items, env_items)
 
-
     def _is_final(self, agent):
         aut_name = (agent.get("automata") or [None])[0]
         if not aut_name:
             return True
         aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
         return aut_def and agent.get("current_state") in aut_def["states"].get("final", []) if aut_def else True
-
 
     def _compare(self, value, bound, operator):
         if operator == ">=": return value >= bound

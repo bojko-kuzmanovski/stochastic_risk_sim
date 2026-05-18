@@ -9,25 +9,19 @@
     "transitions": [
         {
             "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "OPERATING",
                     "actions": [
                         {
                             "update_params": {
                                 "cash_key": { "type": "deterministic", "value": "cash" },
                                 "burn_rate_key": { "type": "deterministic", "value": "burn_rate" },
-                                "runway_key": { "type": "deterministic", "value": "runway" }
+                                "runway_key": { "type": "deterministic", "value": "runway" },
+                                "tax_rate_key": { "type": "deterministic", "value": "tax_rate" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" }
                             }
                         }
                     ]
@@ -41,36 +35,19 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "Startup_1",
-                        "param_key": "${cash_key}"
-                    }
+                    "params": { "agent_id": "Startup_1", "param_key": "${cash_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "FETCH_BURN",
                     "actions": [
-                        {
-                            "update_params": {
-                                "cash_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "cash_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": null }],
                     "to": "DEAD",
                     "actions": []
                 }
@@ -83,46 +60,24 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "Startup_1",
-                        "param_key": "${burn_rate_key}"
-                    }
+                    "params": { "agent_id": "Startup_1", "param_key": "${burn_rate_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 0 }],
                     "to": "CALC_RUNWAY",
                     "actions": [
-                        {
-                            "update_params": {
-                                "burn_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "burn_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 0 }],
                     "to": "DEAD",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": null }],
                     "to": "DEAD",
                     "actions": []
                 }
@@ -130,35 +85,20 @@
         },
         {
             "from": "CALC_RUNWAY",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${cash_val} / ${burn_val}"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${cash_val} / ${burn_val}" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "UPDATE_AND_CHECK",
                     "actions": [
-                        {
-                            "update_params": {
-                                "runway_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "runway_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
         },
         {
             "from": "UPDATE_AND_CHECK",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "market_sentiment"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "market_sentiment" },
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": "<=", "value": 0.15 }],
@@ -198,18 +138,10 @@
         },
         {
             "from": "PREPARE_DEAD_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "DEAD_EMIT",
                     "actions": [
                         {
@@ -223,11 +155,7 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "Startup_1",
-                                    "param_key": "${runway_key}",
-                                    "value": "${runway_val}"
-                                }
+                                "params": { "agent_id": "Startup_1", "param_key": "${runway_key}", "value": "${runway_val}" }
                             }
                         }
                     ]
@@ -236,25 +164,14 @@
         },
         {
             "from": "DEAD_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "DEAD",
                     "actions": [
                         {
-                            "event_emit": {
-                                "signal": "${signal}",
-                                "to_agent_id": "${to_agent_id}"
-                            }
+                            "event_emit": { "signal": "${signal}", "to_agent_id": "${to_agent_id}" }
                         }
                     ]
                 }
@@ -262,18 +179,10 @@
         },
         {
             "from": "PREPARE_CRITICAL_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "CRITICAL_EMIT",
                     "actions": [
                         {
@@ -287,11 +196,7 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "${to_agent_id}",
-                                    "param_key": "${runway_key}",
-                                    "value": "${runway_val}"
-                                }
+                                "params": { "agent_id": "${to_agent_id}", "param_key": "${runway_key}", "value": "${runway_val}" }
                             }
                         }
                     ]
@@ -300,25 +205,14 @@
         },
         {
             "from": "CRITICAL_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "CRITICAL",
                     "actions": [
                         {
-                            "event_emit": {
-                                "signal": "${signal}",
-                                "to_agent_id": "${to_agent_id}"
-                            }
+                            "event_emit": { "signal": "${signal}", "to_agent_id": "${to_agent_id}" }
                         }
                     ]
                 }
@@ -326,18 +220,10 @@
         },
         {
             "from": "PREPARE_WARNING_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "WARNING_EMIT",
                     "actions": [
                         {
@@ -351,11 +237,7 @@
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "${to_agent_id}",
-                                    "param_key": "${runway_key}",
-                                    "value": "${runway_val}"
-                                }
+                                "params": { "agent_id": "${to_agent_id}", "param_key": "${runway_key}", "value": "${runway_val}" }
                             }
                         }
                     ]
@@ -364,25 +246,14 @@
         },
         {
             "from": "WARNING_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "LOW_RUNWAY",
                     "actions": [
                         {
-                            "event_emit": {
-                                "signal": "${signal}",
-                                "to_agent_id": "${to_agent_id}"
-                            }
+                            "event_emit": { "signal": "${signal}", "to_agent_id": "${to_agent_id}" }
                         }
                     ]
                 }
@@ -390,34 +261,20 @@
         },
         {
             "from": "SAVE_RUNWAY_SAFE",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "DONE_CYCLE",
                     "actions": [
                         {
-                            "update_params": {
-                                "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" }
-                            }
+                            "update_params": { "runway_val": { "type": "deterministic", "value": "${runway_val_copy}" } }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "Startup_1",
-                                    "param_key": "${runway_key}",
-                                    "value": "${runway_val}"
-                                }
+                                "params": { "agent_id": "Startup_1", "param_key": "${runway_key}", "value": "${runway_val}" }
                             }
                         }
                     ]
@@ -431,27 +288,15 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "Startup_1",
-                        "param_key": "${cash_key}"
-                    }
+                    "params": { "agent_id": "Startup_1", "param_key": "${cash_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "CONSUME_CASH",
                     "actions": [
-                        {
-                            "update_params": {
-                                "cash_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "cash_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
@@ -463,20 +308,12 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "Startup_1",
-                        "param_key": "${cash_key}"
-                    }
+                    "params": { "agent_id": "Startup_1", "param_key": "${cash_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "PREPARE_SEEKING_FUNDING",
                     "actions": [
                         {
@@ -492,26 +329,69 @@
         },
         {
             "from": "PREPARE_SEEKING_FUNDING",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "FETCH_TAX_INFO",
+                    "actions": [
+                        {
+                            "event_emit": { "signal": "${signal}", "to_agent_id": "${to_agent_id}" }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_TAX_INFO",
             "threshold_value": {
-                "type": "deterministic",
-                "value": true
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "tax_rate" }
+                }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "FETCH_COMPLIANCE_INFO",
+                    "actions": [
+                        { "update_params": { "tax_rate_val": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
                     "to": "CONSUME_CASH",
                     "actions": [
-                        {
-                            "event_emit": {
-                                "signal": "${signal}",
-                                "to_agent_id": "${to_agent_id}"
-                            }
-                        }
+                        { "update_params": { "tax_rate_val": { "type": "deterministic", "value": 0.15 } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_COMPLIANCE_INFO",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "compliance_cost_index" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "CONSUME_CASH",
+                    "actions": [
+                        { "update_params": { "compliance_idx": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "CONSUME_CASH",
+                    "actions": [
+                        { "update_params": { "compliance_idx": { "type": "deterministic", "value": 1.0 } } }
                     ]
                 }
             ]
@@ -523,27 +403,15 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "Startup_1",
-                        "param_key": "${burn_rate_key}"
-                    }
+                    "params": { "agent_id": "Startup_1", "param_key": "${burn_rate_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "UPDATE_CASH",
                     "actions": [
-                        {
-                            "update_params": {
-                                "burn_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "burn_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
@@ -552,32 +420,21 @@
             "from": "UPDATE_CASH",
             "threshold_value": {
                 "type": "deterministic",
-                "value": "${cash_val} - ${burn_val}"
+                "value": "${cash_val} - (${burn_val} * (1 + ${tax_rate_val}) * ${compliance_idx})"
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "DONE_CYCLE",
                     "actions": [
                         {
-                            "update_params": {
-                                "new_cash_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
+                            "update_params": { "new_cash_val": { "type": "deterministic", "value": "${_X_}" } }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "Startup_1",
-                                    "param_key": "${cash_key}",
-                                    "value": "${new_cash_val}"
-                                }
+                                "params": { "agent_id": "Startup_1", "param_key": "${cash_key}", "value": "${new_cash_val}" }
                             }
                         }
                     ]
@@ -947,24 +804,17 @@
     "transitions": [
         {
             "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "ACTIVE",
                     "actions": [
                         {
                             "update_params": {
                                 "contract_months_remaining_key": { "type": "deterministic", "value": "contract_months_remaining" },
-                                "retention_prob_key": { "type": "deterministic", "value": "retention_prob" }
+                                "retention_prob_key": { "type": "deterministic", "value": "retention_prob" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" }
                             }
                         }
                     ]
@@ -978,66 +828,34 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${contract_months_remaining_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${contract_months_remaining_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 2
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 2 }],
                     "to": "DECREMENT_CONTRACT",
                     "actions": [
-                        {
-                            "update_params": {
-                                "months_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "months_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 },
                 {
                     "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 2
-                        },
-                        {
-                            "operator": ">",
-                            "value": 0
-                        }
+                        { "operator": "<=", "value": 2 },
+                        { "operator": ">", "value": 0 }
                     ],
                     "to": "AT_RISK",
                     "actions": [
-                        {
-                            "update_params": {
-                                "months_val": { "type": "deterministic", "value": "${contract_months_remaining}" }
-                            }
-                        }
+                        { "update_params": { "months_val": { "type": "deterministic", "value": "${contract_months_remaining}" } } }
                     ]
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 0 }],
                     "to": "DO_CHURN",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": null }],
                     "to": "DO_CHURN",
                     "actions": []
                 }
@@ -1045,24 +863,14 @@
         },
         {
             "from": "DECREMENT_CONTRACT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${months_val} - 1"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${months_val} - 1" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "ACTIVE",
                     "actions": [
                         {
-                            "update_params": {
-                                "contract_value": { "type": "deterministic", "value": "${_X_}" }
-                            }
+                            "update_params": { "contract_value": { "type": "deterministic", "value": "${_X_}" } }
                         },
                         {
                             "action_required": {
@@ -1081,28 +889,15 @@
         },
         {
             "from": "AT_RISK",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "client_retention"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "client_retention" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 0.5
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 0.5 }],
                     "to": "DO_RENEW",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 0.5
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 0.5 }],
                     "to": "DO_CHURN",
                     "actions": []
                 }
@@ -1110,24 +905,14 @@
         },
         {
             "from": "DO_RENEW",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": 12
-            },
+            "threshold_value": { "type": "deterministic", "value": 12 },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "RENEWED",
                     "actions": [
                         {
-                            "update_params": {
-                                "contract_value": { "type": "deterministic", "value": "${_X_}" }
-                            }
+                            "update_params": { "contract_value": { "type": "deterministic", "value": "${_X_}" } }
                         },
                         {
                             "action_required": {
@@ -1146,18 +931,10 @@
         },
         {
             "from": "DO_CHURN",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": false
-            },
+            "threshold_value": { "type": "deterministic", "value": false },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": false
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": false }],
                     "to": "CHURN_UPDATE_FLAG",
                     "actions": [
                         {
@@ -1173,18 +950,10 @@
         },
         {
             "from": "CHURN_UPDATE_FLAG",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "CHURN_EMIT",
                     "actions": [
                         {
@@ -1210,19 +979,11 @@
         },
         {
             "from": "CHURN_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
-                    "to": "CHURNED",
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "TRIGGER_REPLACEMENT",
                     "actions": [
                         {
                             "update_params": {
@@ -1233,6 +994,40 @@
                             "event_emit": {
                                 "signal": "${signal}",
                                 "to_agent_id": "${to_agent_id}"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "TRIGGER_REPLACEMENT",
+            "threshold_value": { "type": "probabilistic", "distribution": "market_sentiment" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.3 }],
+                    "to": "EMIT_REPLACEMENT",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.3 }],
+                    "to": "CHURNED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "EMIT_REPLACEMENT",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "CHURNED",
+                    "actions": [
+                        {
+                            "event_emit": {
+                                "signal": "client_replacement",
+                                "to_agent_id": "${client_id}"
                             }
                         }
                     ]
@@ -1251,18 +1046,10 @@
     "transitions": [
         {
             "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "DORMANT",
                     "actions": [
                         {
@@ -1270,7 +1057,8 @@
                                 "arrival_rate_key": { "type": "deterministic", "value": "arrival_rate" },
                                 "impact_magnitude_key": { "type": "deterministic", "value": "impact_magnitude" },
                                 "duration_months_key": { "type": "deterministic", "value": "duration_months" },
-                                "months_remaining_key": { "type": "deterministic", "value": "months_remaining" }
+                                "months_remaining_key": { "type": "deterministic", "value": "months_remaining" },
+                                "shock_type_key": { "type": "deterministic", "value": "shock_type" }
                             }
                         }
                     ]
@@ -1279,28 +1067,15 @@
         },
         {
             "from": "DORMANT",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "shock_arrival"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_arrival" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 1.5
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 1.5 }],
                     "to": "FETCH_IMPACT",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 1.5
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 1.5 }],
                     "to": "DONE",
                     "actions": []
                 }
@@ -1308,10 +1083,7 @@
         },
         {
             "from": "FETCH_IMPACT",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "shock_impact"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_impact" },
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": "!=", "value": null }],
@@ -1324,14 +1096,11 @@
         },
         {
             "from": "FETCH_DURATION",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "shock_duration"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_duration" },
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": "!=", "value": null }],
-                    "to": "SET_ACTIVE_FLAG",
+                    "to": "CLASSIFY_TYPE",
                     "actions": [
                         { "update_params": { "duration_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
@@ -1339,19 +1108,111 @@
             ]
         },
         {
-            "from": "SET_ACTIVE_FLAG",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "from": "CLASSIFY_TYPE",
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_type" },
             "thresholds": [
                 {
-                    "threshold_case": [
+                    "threshold_case": [{ "operator": "==", "value": "regulatory" }],
+                    "to": "EMIT_REGULATORY_SHOCK",
+                    "actions": [
                         {
-                            "operator": "==",
-                            "value": true
+                            "update_params": {
+                                "shock_type_val": { "type": "deterministic", "value": "regulatory" }
+                            }
                         }
-                    ],
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": "compound" }],
+                    "to": "EMIT_COMPOUND_SHOCK",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "shock_type_val": { "type": "deterministic", "value": "compound" }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": "market" }],
+                    "to": "SET_ACTIVE_FLAG",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "shock_type_val": { "type": "deterministic", "value": "market" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "EMIT_REGULATORY_SHOCK",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "SET_ACTIVE_FLAG",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_ch_event",
+                                "params": {
+                                    "env_id": "StartupEcosystem_1",
+                                    "channel_id": "shock_regulator",
+                                    "agent_id": "ShockEvent_1",
+                                    "signal": "regulatory_shock"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "EMIT_COMPOUND_SHOCK",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "SET_ACTIVE_FLAG",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_ch_event",
+                                "params": {
+                                    "env_id": "StartupEcosystem_1",
+                                    "channel_id": "shock_regulator",
+                                    "agent_id": "ShockEvent_1",
+                                    "signal": "regulatory_shock"
+                                }
+                            }
+                        },
+                        {
+                            "update_params": {
+                                "to_agent_id": { "type": "deterministic", "value": "Startup_1" }
+                            }
+                        },
+                        {
+                            "event_emit": {
+                                "signal": "exogenous_shock",
+                                "to_agent_id": "Startup_1",
+                                "env_id": "${impact_val}",
+                                "channel_id": "${duration_val}"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "SET_ACTIVE_FLAG",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "SET_DURATION",
                     "actions": [
                         {
@@ -1377,18 +1238,10 @@
         },
         {
             "from": "SET_DURATION",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${duration_val}"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${duration_val}" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "EMIT_SHOCK_EVENT",
                     "actions": [
                         {
@@ -1413,18 +1266,10 @@
         },
         {
             "from": "EMIT_SHOCK_EVENT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "ACTIVE",
                     "actions": [
                         {
@@ -1451,36 +1296,19 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${months_remaining_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${months_remaining_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 0 }],
                     "to": "DECREMENT_SHOCK",
                     "actions": [
-                        {
-                            "update_params": {
-                                "months_left": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "months_left": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 0 }],
                     "to": "SET_INACTIVE_FLAG",
                     "actions": []
                 }
@@ -1488,24 +1316,14 @@
         },
         {
             "from": "DECREMENT_SHOCK",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${months_left} - 1"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${months_left} - 1" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">=",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">=", "value": 0 }],
                     "to": "ACTIVE",
                     "actions": [
                         {
-                            "update_params": {
-                                "months_remaining_value": { "type": "deterministic", "value": "${_X_}" }
-                            }
+                            "update_params": { "months_remaining_value": { "type": "deterministic", "value": "${_X_}" } }
                         },
                         {
                             "action_required": {
@@ -1524,18 +1342,10 @@
         },
         {
             "from": "SET_INACTIVE_FLAG",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": false
-            },
+            "threshold_value": { "type": "deterministic", "value": false },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": false
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": false }],
                     "to": "RESET_DURATION",
                     "actions": [
                         {
@@ -1561,24 +1371,14 @@
         },
         {
             "from": "RESET_DURATION",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": 0
-            },
+            "threshold_value": { "type": "deterministic", "value": 0 },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">=",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">=", "value": 0 }],
                     "to": "DONE",
                     "actions": [
                         {
-                            "update_params": {
-                                "months_remaining_value": { "type": "deterministic", "value": 0 }
-                            }
+                            "update_params": { "months_remaining_value": { "type": "deterministic", "value": 0 } }
                         },
                         {
                             "action_required": {
@@ -1607,18 +1407,10 @@
     "transitions": [
         {
             "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "WATCHING",
                     "actions": [
                         {
@@ -1626,7 +1418,9 @@
                                 "is_engaged_key": { "type": "deterministic", "value": "is_engaged" },
                                 "investment_probability_key": { "type": "deterministic", "value": "investment_probability" },
                                 "investment_amount_key": { "type": "deterministic", "value": "investment_amount" },
-                                "investment_capacity_key": { "type": "deterministic", "value": "investment_capacity" }
+                                "investment_capacity_key": { "type": "deterministic", "value": "investment_capacity" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" },
+                                "startup_id": { "type": "deterministic", "value": "Startup_1" }
                             }
                         }
                     ]
@@ -1640,80 +1434,46 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${is_engaged_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${is_engaged_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "EVALUATE",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": false
-                        }
-                    ],
-                    "to": "PASSED",
+                    "threshold_case": [{ "operator": "==", "value": false }],
+                    "to": "CHECK_RELATION",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": null
-                        }
-                    ],
-                    "to": "PASSED",
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "CHECK_RELATION",
                     "actions": []
                 }
             ]
         },
         {
             "from": "EVALUATE",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "investor_appetite"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "investor_appetite" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 0.5
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 0.5 }],
                     "to": "FETCH_AMOUNT",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 0.5
-                        }
-                    ],
-                    "to": "PASSED",
+                    "threshold_case": [{ "operator": "<=", "value": 0.5 }],
+                    "to": "CHECK_RELATION",
                     "actions": []
                 }
             ]
         },
         {
             "from": "FETCH_AMOUNT",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "investment_size"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "investment_size" },
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": "!=", "value": null }],
@@ -1731,99 +1491,54 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${investment_capacity_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${investment_capacity_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "COMPARE_CAPACITY",
                     "actions": [
-                        {
-                            "update_params": {
-                                "capacity_val": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "capacity_val": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
         },
         {
             "from": "COMPARE_CAPACITY",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${capacity_val} >= ${amount_val}"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${capacity_val} >= ${amount_val}" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "MAKE_OFFER",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": false
-                        }
-                    ],
-                    "to": "PASSED",
+                    "threshold_case": [{ "operator": "==", "value": false }],
+                    "to": "CHECK_RELATION",
                     "actions": []
                 }
             ]
         },
         {
             "from": "MAKE_OFFER",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${amount_val}"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${amount_val}" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "PREPARE_INVESTMENT_EMIT",
                     "actions": [
-                        {
-                            "update_params": {
-                                "investor_id": { "type": "deterministic", "value": "${agent_id}" }
-                            }
-                        }
+                        { "update_params": { "investor_id": { "type": "deterministic", "value": "${agent_id}" } } }
                     ]
                 }
             ]
         },
         {
             "from": "PREPARE_INVESTMENT_EMIT",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "INVESTED",
                     "actions": [
                         {
@@ -1849,6 +1564,56 @@
                                 "to_agent_id": "Startup_1",
                                 "env_id": "${investor_id}",
                                 "channel_id": "${amount_val}"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "CHECK_RELATION",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_rel",
+                    "params": {
+                        "env_id": "${env_id}",
+                        "agent_a_id": "${agent_id}",
+                        "agent_b_id": "${startup_id}"
+                    }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "REMOVE_RELATION",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": false }],
+                    "to": "PASSED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "REMOVE_RELATION",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "PASSED",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "remove_rel",
+                                "params": {
+                                    "env_id": "${env_id}",
+                                    "agent_a_id": "${agent_id}",
+                                    "agent_b_id": "${startup_id}"
+                                }
                             }
                         }
                     ]
@@ -2723,24 +2488,17 @@
     "transitions": [
         {
             "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "FETCH_CURRENT_BELIEFS",
                     "actions": [
                         {
                             "update_params": {
                                 "prod_key": { "type": "deterministic", "value": "estimated_productivity_per_head" },
-                                "elast_key": { "type": "deterministic", "value": "estimated_revenue_elasticity" }
+                                "elast_key": { "type": "deterministic", "value": "estimated_revenue_elasticity" },
+                                "talent_id": { "type": "deterministic", "value": "TalentMarket_1" }
                             }
                         }
                     ]
@@ -2754,27 +2512,15 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${prod_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${prod_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "FETCH_CURRENT_ELASTICITY",
                     "actions": [
-                        {
-                            "update_params": {
-                                "current_prod": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "current_prod": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
@@ -2786,50 +2532,72 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${elast_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${elast_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "FETCH_TRUE_PRODUCTIVITY",
+                    "actions": [
+                        { "update_params": { "current_elast": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_TRUE_PRODUCTIVITY",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "agents",
+                    "method": "read_agent_param",
+                    "params": { "agent_id": "${talent_id}", "param_key": "true_productivity_per_head" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "FETCH_TRUE_ELASTICITY",
+                    "actions": [
+                        { "update_params": { "true_prod": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_TRUE_ELASTICITY",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "agents",
+                    "method": "read_agent_param",
+                    "params": { "agent_id": "${talent_id}", "param_key": "true_revenue_elasticity" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "FETCH_NOISE",
                     "actions": [
-                        {
-                            "update_params": {
-                                "current_elast": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "true_elast": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
         },
         {
             "from": "FETCH_NOISE",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "market_noise"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "market_noise" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "UPDATE_BELIEFS",
                     "actions": [
                         {
                             "update_params": {
-                                "noise": { "type": "deterministic", "value": "${_X_}" }
+                                "noise": { "type": "deterministic", "value": "${_X_}" },
+                                "prod_gap": { "type": "deterministic", "value": "(${true_prod} - ${current_prod}) / max(1, ${true_prod})" },
+                                "elast_gap": { "type": "deterministic", "value": "(${true_elast} - ${current_elast}) / max(0.01, ${true_elast})" }
                             }
                         }
                     ]
@@ -2838,23 +2606,15 @@
         },
         {
             "from": "UPDATE_BELIEFS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "SET_PRODUCTIVITY_BELIEF",
                     "actions": [
                         {
                             "update_params": {
-                                "new_productivity_belief": { "type": "deterministic", "value": "max(0, ${current_prod} * (1 + ${noise}))" }
+                                "new_productivity_belief": { "type": "deterministic", "value": "max(0, ${current_prod} * (1 + ${noise} + 0.5 * ${prod_gap}))" }
                             }
                         }
                     ]
@@ -2863,34 +2623,20 @@
         },
         {
             "from": "SET_PRODUCTIVITY_BELIEF",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${new_productivity_belief}"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${new_productivity_belief}" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "SET_ELASTICITY_BELIEF",
                     "actions": [
                         {
-                            "update_params": {
-                                "prod_value": { "type": "deterministic", "value": "${_X_}" }
-                            }
+                            "update_params": { "prod_value": { "type": "deterministic", "value": "${_X_}" } }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "${agent_id}",
-                                    "param_key": "${prod_key}",
-                                    "value": "${prod_value}"
-                                }
+                                "params": { "agent_id": "${agent_id}", "param_key": "${prod_key}", "value": "${prod_value}" }
                             }
                         }
                     ]
@@ -2899,23 +2645,15 @@
         },
         {
             "from": "SET_ELASTICITY_BELIEF",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "APPLY_ELASTICITY_UPDATE",
                     "actions": [
                         {
                             "update_params": {
-                                "new_elasticity_belief": { "type": "deterministic", "value": "max(0, min(1, ${current_elast} * (1 + ${noise})))" }
+                                "new_elasticity_belief": { "type": "deterministic", "value": "max(0, min(1, ${current_elast} * (1 + ${noise} + 0.5 * ${elast_gap})))" }
                             }
                         }
                     ]
@@ -2924,34 +2662,20 @@
         },
         {
             "from": "APPLY_ELASTICITY_UPDATE",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": "${new_elasticity_belief}"
-            },
+            "threshold_value": { "type": "deterministic", "value": "${new_elasticity_belief}" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "DONE",
                     "actions": [
                         {
-                            "update_params": {
-                                "elast_value": { "type": "deterministic", "value": "${_X_}" }
-                            }
+                            "update_params": { "elast_value": { "type": "deterministic", "value": "${_X_}" } }
                         },
                         {
                             "action_required": {
                                 "target": "agents",
                                 "method": "write_agent_param",
-                                "params": {
-                                    "agent_id": "${agent_id}",
-                                    "param_key": "${elast_key}",
-                                    "value": "${elast_value}"
-                                }
+                                "params": { "agent_id": "${agent_id}", "param_key": "${elast_key}", "value": "${elast_value}" }
                             }
                         }
                     ]
@@ -2970,18 +2694,10 @@
     "transitions": [
         {
             "from": "LOAD_PARAMS",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "IDLE",
                     "actions": [
                         {
@@ -2991,7 +2707,8 @@
                                 "cost_rigidity_key": { "type": "deterministic", "value": "cost_rigidity" },
                                 "hiring_budget_key": { "type": "deterministic", "value": "hiring_budget" },
                                 "other_budget_key": { "type": "deterministic", "value": "other_budget" },
-                                "cost_variable_per_head_key": { "type": "deterministic", "value": "cost_variable_per_head" }
+                                "cost_variable_per_head_key": { "type": "deterministic", "value": "cost_variable_per_head" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" }
                             }
                         }
                     ]
@@ -3000,42 +2717,23 @@
         },
         {
             "from": "IDLE",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "shock_arrival"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_arrival" },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 3.0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": ">", "value": 3.0 }],
                     "to": "DO_LAYOFFS",
                     "actions": []
                 },
                 {
                     "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 1.5
-                        },
-                        {
-                            "operator": "<=",
-                            "value": 3.0
-                        }
+                        { "operator": ">", "value": 1.5 },
+                        { "operator": "<=", "value": 3.0 }
                     ],
                     "to": "DO_FREEZE",
                     "actions": []
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 1.5
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 1.5 }],
                     "to": "DO_HIRING",
                     "actions": []
                 }
@@ -3048,38 +2746,46 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${hiring_budget_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${hiring_budget_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": ">",
-                            "value": 0
-                        }
-                    ],
-                    "to": "APPLY_HIRING",
+                    "threshold_case": [{ "operator": ">", "value": 0 }],
+                    "to": "CHECK_HIRING_SUCCESS",
                     "actions": [
-                        {
-                            "update_params": {
-                                "budget_for_hiring": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "budget_for_hiring": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 },
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "<=",
-                            "value": 0
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "<=", "value": 0 }],
                     "to": "NO_ACTION",
                     "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "NO_ACTION",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "CHECK_HIRING_SUCCESS",
+            "threshold_value": { "type": "probabilistic", "distribution": "hiring_success" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.4 }],
+                    "to": "APPLY_HIRING",
+                    "actions": [
+                        { "update_params": { "success_factor": { "type": "deterministic", "value": 1.0 } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.4 }],
+                    "to": "APPLY_HIRING",
+                    "actions": [
+                        { "update_params": { "success_factor": { "type": "deterministic", "value": 0.5 } } }
+                    ]
                 }
             ]
         },
@@ -3090,26 +2796,18 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${cost_variable_per_head_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${cost_variable_per_head_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "CALC_NEW_HEADCOUNT",
                     "actions": [
                         {
                             "update_params": {
                                 "cost_per_head": { "type": "deterministic", "value": "${_X_}" },
-                                "new_headcount": { "type": "deterministic", "value": "floor(${budget_for_hiring} / ${_X_})" }
+                                "new_headcount": { "type": "deterministic", "value": "floor((${budget_for_hiring} * ${success_factor}) / ${_X_})" }
                             }
                         }
                     ]
@@ -3123,20 +2821,12 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${headcount_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "HIRING_DONE",
                     "actions": [
                         {
@@ -3162,24 +2852,14 @@
         },
         {
             "from": "DO_FREEZE",
-            "threshold_value": {
-                "type": "deterministic",
-                "value": true
-            },
+            "threshold_value": { "type": "deterministic", "value": true },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "==",
-                            "value": true
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "==", "value": true }],
                     "to": "FREEZE_SET",
                     "actions": [
                         {
-                            "update_params": {
-                                "cost_rigidity_value": { "type": "deterministic", "value": 0.6 }
-                            }
+                            "update_params": { "cost_rigidity_value": { "type": "deterministic", "value": 0.6 } }
                         },
                         {
                             "action_required": {
@@ -3203,58 +2883,53 @@
                 "query": {
                     "target": "agents",
                     "method": "read_agent_param",
-                    "params": {
-                        "agent_id": "${agent_id}",
-                        "param_key": "${headcount_key}"
-                    }
+                    "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}" }
                 }
             },
             "thresholds": [
                 {
-                    "threshold_case": [
-                        {
-                            "operator": "!=",
-                            "value": null
-                        }
-                    ],
+                    "threshold_case": [{ "operator": "!=", "value": null }],
                     "to": "APPLY_LAYOFFS",
                     "actions": [
-                        {
-                            "update_params": {
-                                "current_hc": { "type": "deterministic", "value": "${_X_}" }
-                            }
-                        }
+                        { "update_params": { "current_hc": { "type": "deterministic", "value": "${_X_}" } } }
                     ]
                 }
             ]
         },
         {
             "from": "APPLY_LAYOFFS",
-            "threshold_value": {
-                "type": "probabilistic",
-                "distribution": "layoff_severity"
-            },
+            "threshold_value": { "type": "probabilistic", "distribution": "layoff_severity" },
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": ">", "value": 0.6 }],
                     "to": "LAYOFFS_DONE",
                     "actions": [
-                        { "update_params": { "headcount_value": { "type": "deterministic", "value": "max(1, floor(${current_hc} * (1 - ${_X_})))" } } },
-                        { "action_required": {
-                            "target": "agents", "method": "write_agent_param",
-                            "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}", "value": "${headcount_value}" }
-                        }}
+                        {
+                            "update_params": { "headcount_value": { "type": "deterministic", "value": "max(1, floor(${current_hc} * (1 - ${_X_})))" } }
+                        },
+                        {
+                            "action_required": {
+                                "target": "agents",
+                                "method": "write_agent_param",
+                                "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}", "value": "${headcount_value}" }
+                            }
+                        }
                     ]
                 },
                 {
                     "threshold_case": [{ "operator": "<=", "value": 0.6 }],
                     "to": "LAYOFFS_DONE",
                     "actions": [
-                        { "update_params": { "headcount_value": { "type": "deterministic", "value": "max(1, ${current_hc} - 1)" } } },
-                        { "action_required": {
-                            "target": "agents", "method": "write_agent_param",
-                            "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}", "value": "${headcount_value}" }
-                        }}
+                        {
+                            "update_params": { "headcount_value": { "type": "deterministic", "value": "max(1, ${current_hc} - 1)" } }
+                        },
+                        {
+                            "action_required": {
+                                "target": "agents",
+                                "method": "write_agent_param",
+                                "params": { "agent_id": "${agent_id}", "param_key": "${headcount_key}", "value": "${headcount_value}" }
+                            }
+                        }
                     ]
                 }
             ]
@@ -3396,6 +3071,782 @@
                                     "param_key": "${revenue_current_key}",
                                     "value": "${revenue_current_value}"
                                 }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+  },
+  {
+    "automaton_name": "regulatory_intervention",
+    "states": {
+        "initial": "LOAD_PARAMS",
+        "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+        {
+            "from": "LOAD_PARAMS",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "MONITOR",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "intervention_rate_key": { "type": "deterministic", "value": "intervention_rate" },
+                                "compliance_cost_mean_key": { "type": "deterministic", "value": "compliance_cost_mean" },
+                                "tax_rate_volatility_key": { "type": "deterministic", "value": "tax_rate_volatility" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "MONITOR",
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_arrival" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 2.0 }],
+                    "to": "ASSESS_MARKET",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 2.0 }],
+                    "to": "DONE",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "ASSESS_MARKET",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "market_condition" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "DETERMINE_PRESSURE",
+                    "actions": [
+                        { "update_params": { "market_val": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "DETERMINE_PRESSURE",
+                    "actions": [
+                        { "update_params": { "market_val": { "type": "deterministic", "value": 0.5 } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "DETERMINE_PRESSURE",
+            "threshold_value": { "type": "probabilistic", "distribution": "market_noise" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.2 }],
+                    "to": "INCREASE_PRESSURE",
+                    "actions": [
+                        { "update_params": { "volatility": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.2 }],
+                    "to": "MAINTAIN_PRESSURE",
+                    "actions": [
+                        { "update_params": { "volatility": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "INCREASE_PRESSURE",
+            "threshold_value": { "type": "probabilistic", "distribution": "shock_impact" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "APPLY_REGULATION",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "new_pressure": { "type": "deterministic", "value": "min(1.0, ${market_val} + ${volatility})" },
+                                "new_compliance": { "type": "deterministic", "value": "1.0 + ${_X_}" },
+                                "new_tax": { "type": "deterministic", "value": "min(0.35, 0.15 + ${volatility})" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "MAINTAIN_PRESSURE",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "APPLY_REGULATION",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "new_pressure": { "type": "deterministic", "value": "${market_val}" },
+                                "new_compliance": { "type": "deterministic", "value": 1.0 },
+                                "new_tax": { "type": "deterministic", "value": 0.15 }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "APPLY_REGULATION",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "WRITE_ENV_PARAMS",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "WRITE_ENV_PARAMS",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "NOTIFY_STARTUP",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_env_param",
+                                "params": { "env_id": "${env_id}", "param_name": "regulatory_pressure", "value": "${new_pressure}" }
+                            }
+                        },
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_env_param",
+                                "params": { "env_id": "${env_id}", "param_name": "tax_rate", "value": "${new_tax}" }
+                            }
+                        },
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_env_param",
+                                "params": { "env_id": "${env_id}", "param_name": "compliance_cost_index", "value": "${new_compliance}" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "NOTIFY_STARTUP",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "DONE",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_ch_event",
+                                "params": {
+                                    "env_id": "${env_id}",
+                                    "channel_id": "regulator_startup",
+                                    "agent_id": "Regulator_1",
+                                    "signal": "compliance_burden"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+  },
+  {
+    "automaton_name": "compliance_burden",
+    "states": {
+        "initial": "LOAD_PARAMS",
+        "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+        {
+            "from": "LOAD_PARAMS",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "FETCH_COMPLIANCE_COST",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "cash_key": { "type": "deterministic", "value": "cash" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_COMPLIANCE_COST",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "compliance_cost_index" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "FETCH_REGULATORY_PRESSURE",
+                    "actions": [
+                        { "update_params": { "compliance_idx": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "DONE",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "FETCH_REGULATORY_PRESSURE",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "regulatory_pressure" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "FETCH_CASH",
+                    "actions": [
+                        { "update_params": { "pressure": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "FETCH_CASH",
+                    "actions": [
+                        { "update_params": { "pressure": { "type": "deterministic", "value": 0.0 } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_CASH",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "agents",
+                    "method": "read_agent_param",
+                    "params": { "agent_id": "Startup_1", "param_key": "${cash_key}" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "APPLY_COMPLIANCE_COST",
+                    "actions": [
+                        { "update_params": { "current_cash": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "DONE",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "APPLY_COMPLIANCE_COST",
+            "threshold_value": {
+                "type": "deterministic",
+                "value": "${current_cash} - (10000 * ${compliance_idx} * (1 + ${pressure}))"
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "SAVE_CASH",
+                    "actions": [
+                        { "update_params": { "new_cash": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "SAVE_CASH",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "DONE",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "agents",
+                                "method": "write_agent_param",
+                                "params": { "agent_id": "Startup_1", "param_key": "${cash_key}", "value": "${new_cash}" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+  },
+  {
+    "automaton_name": "investor_exit",
+    "states": {
+        "initial": "LOAD_PARAMS",
+        "final": ["EXITED", "REMAINED"]
+    },
+    "params": {},
+    "transitions": [
+        {
+            "from": "LOAD_PARAMS",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "CHECK_PATIENCE",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "patience_key": { "type": "deterministic", "value": "patience" },
+                                "has_invested_key": { "type": "deterministic", "value": "has_invested" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" },
+                                "startup_id": { "type": "deterministic", "value": "Startup_1" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "CHECK_PATIENCE",
+            "threshold_value": { "type": "probabilistic", "distribution": "market_sentiment" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.2 }],
+                    "to": "CHECK_INVESTMENT_STATUS",
+                    "actions": [
+                        { "update_params": { "patience_val": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.2 }],
+                    "to": "REMAINED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "CHECK_INVESTMENT_STATUS",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "agents",
+                    "method": "read_agent_param",
+                    "params": { "agent_id": "${agent_id}", "param_key": "${has_invested_key}" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "DETERMINE_EXIT_REASON",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": false }],
+                    "to": "DETERMINE_EXIT_REASON",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "DETERMINE_EXIT_REASON",
+            "threshold_value": { "type": "probabilistic", "distribution": "investor_exit_reason" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": "patience_exhausted" }],
+                    "to": "BREAK_RELATION",
+                    "actions": [
+                        { "update_params": { "exit_reason": { "type": "deterministic", "value": "patience_exhausted" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": "regulatory_risk" }],
+                    "to": "BREAK_RELATION",
+                    "actions": [
+                        { "update_params": { "exit_reason": { "type": "deterministic", "value": "regulatory_risk" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": "market_downturn" }],
+                    "to": "BREAK_RELATION",
+                    "actions": [
+                        { "update_params": { "exit_reason": { "type": "deterministic", "value": "market_downturn" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "BREAK_RELATION",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_rel",
+                    "params": { "env_id": "${env_id}", "agent_a_id": "${agent_id}", "agent_b_id": "${startup_id}" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "REMOVE_INVESTOR_RELATION",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": false }],
+                    "to": "EXITED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "REMOVE_INVESTOR_RELATION",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "REMOVE_FROM_ECOSYSTEM",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "remove_rel",
+                                "params": { "env_id": "${env_id}", "agent_a_id": "${agent_id}", "agent_b_id": "${startup_id}" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "REMOVE_FROM_ECOSYSTEM",
+            "threshold_value": { "type": "probabilistic", "distribution": "investor_appetite" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.3 }],
+                    "to": "EXECUTE_EXIT",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.3 }],
+                    "to": "EXITED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "EXECUTE_EXIT",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "EXITED",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "agents",
+                                "method": "remove_agent",
+                                "params": { "agent_id": "${agent_id}" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+  },
+  {
+    "automaton_name": "client_replacement",
+    "states": {
+        "initial": "LOAD_PARAMS",
+        "final": ["REPLACED", "FAILED"]
+    },
+    "params": {},
+    "transitions": [
+        {
+            "from": "LOAD_PARAMS",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "CHECK_MARKET_CONDITION",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" },
+                                "client_type": { "type": "deterministic", "value": "KeyClient" },
+                                "founder_id": { "type": "deterministic", "value": "Founder_1" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "CHECK_MARKET_CONDITION",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "market_condition" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.2 }],
+                    "to": "DETERMINE_CHANNEL",
+                    "actions": [
+                        { "update_params": { "market_val": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.2 }],
+                    "to": "FAILED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "DETERMINE_CHANNEL",
+            "threshold_value": { "type": "probabilistic", "distribution": "client_acquisition_channel" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": "organic" }],
+                    "to": "CHECK_FOUNDER_REPUTATION",
+                    "actions": [
+                        { "update_params": { "channel": { "type": "deterministic", "value": "organic" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": "referral" }],
+                    "to": "CHECK_FOUNDER_REPUTATION",
+                    "actions": [
+                        { "update_params": { "channel": { "type": "deterministic", "value": "referral" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": "paid" }],
+                    "to": "CHECK_FOUNDER_REPUTATION",
+                    "actions": [
+                        { "update_params": { "channel": { "type": "deterministic", "value": "paid" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "CHECK_FOUNDER_REPUTATION",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "agents",
+                    "method": "read_agent_param",
+                    "params": { "agent_id": "${founder_id}", "param_key": "reputation" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.3 }],
+                    "to": "CREATE_NEW_CLIENT",
+                    "actions": [
+                        { "update_params": { "reputation": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.3 }],
+                    "to": "FAILED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "CREATE_NEW_CLIENT",
+            "threshold_value": { "type": "probabilistic", "distribution": "market_sentiment" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0.2 }],
+                    "to": "ADD_TO_ECOSYSTEM",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 0.2 }],
+                    "to": "FAILED",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "ADD_TO_ECOSYSTEM",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "REGISTER_IN_ENV",
+                    "actions": [
+                        {
+                            "action_required": {
+                                "target": "agents",
+                                "method": "add_agent",
+                                "params": { "agent_type": "${client_type}" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "REGISTER_IN_ENV",
+            "threshold_value": { "type": "deterministic", "value": "${_Y_}" },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "REPLACED",
+                    "actions": [
+                        {
+                            "update_params": { "new_client_id": { "type": "deterministic", "value": "${_Y_}" } }
+                        },
+                        {
+                            "action_required": {
+                                "target": "environments",
+                                "method": "write_member",
+                                "params": { "env_id": "${env_id}", "agent_id": "${new_client_id}" }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "FAILED",
+                    "actions": []
+                }
+            ]
+        }
+    ]
+  },
+  {
+    "automaton_name": "regulatory_shock",
+    "states": {
+        "initial": "LOAD_PARAMS",
+        "final": ["DONE"]
+    },
+    "params": {},
+    "transitions": [
+        {
+            "from": "LOAD_PARAMS",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "FETCH_REGULATOR",
+                    "actions": [
+                        {
+                            "update_params": {
+                                "regulator_id": { "type": "deterministic", "value": "Regulator_1" },
+                                "env_id": { "type": "deterministic", "value": "StartupEcosystem_1" }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "FETCH_REGULATOR",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_members",
+                    "params": { "env_id": "${env_id}" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "!=", "value": null }],
+                    "to": "CHECK_REGULATOR_ACTIVE",
+                    "actions": [
+                        { "update_params": { "members": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                },
+                {
+                    "threshold_case": [{ "operator": "==", "value": null }],
+                    "to": "DONE",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "CHECK_REGULATOR_ACTIVE",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "environments",
+                    "method": "read_env_param",
+                    "params": { "env_id": "${env_id}", "param_name": "regulatory_pressure" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "<", "value": 0.8 }],
+                    "to": "TRIGGER_INTERVENTION",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": ">=", "value": 0.8 }],
+                    "to": "DONE",
+                    "actions": []
+                }
+            ]
+        },
+        {
+            "from": "TRIGGER_INTERVENTION",
+            "threshold_value": { "type": "deterministic", "value": true },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": "==", "value": true }],
+                    "to": "DONE",
+                    "actions": [
+                        {
+                            "event_emit": {
+                                "signal": "regulatory_intervention",
+                                "to_agent_id": "${regulator_id}"
                             }
                         }
                     ]

@@ -14,38 +14,52 @@
       "tick_duration_months": {
         "type": "deterministic",
         "value": 1
+      },
+      "regulatory_pressure": {
+        "type": "deterministic",
+        "value": 0.0
+      },
+      "tax_rate": {
+        "type": "deterministic",
+        "value": 0.15
+      },
+      "compliance_cost_index": {
+        "type": "deterministic",
+        "value": 1.0
       }
     },
     "members": [
-      { "agent_id": "Startup_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
+      { "agent_id": "Startup_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false }, "sector": { "type": "deterministic", "value": "tech" } } },
       { "agent_id": "RevenueStream_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
-      { "agent_id": "KeyClient_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
-      { "agent_id": "KeyClient_2", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
-      { "agent_id": "KeyClient_3", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
       { "agent_id": "ShockEvent_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
-      { "agent_id": "Investor_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
-      { "agent_id": "Investor_2", "agent_rol": { "is_private": { "type": "deterministic", "value": false } } },
-      { "agent_id": "Founder_1", "agent_rol": { "is_private": { "type": "deterministic", "value": true } } },
+      { "agent_id": "Regulator_1", "agent_rol": { "is_private": { "type": "deterministic", "value": false }, "jurisdiction": { "type": "deterministic", "value": "national" } } },
+      { "agent_id": "Founder_1", "agent_rol": { "is_private": { "type": "deterministic", "value": true }, "equity_stake": { "type": "deterministic", "value": 0.6 } } },
       { "agent_id": "TalentMarket_1", "agent_rol": { "is_private": { "type": "deterministic", "value": true } } }
     ],
     "relations": [
-      { "agent_a_id": "Investor_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "Investor_2", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "Investor_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true }, "commitment_level": { "type": "deterministic", "value": "full" } } },
+      { "agent_a_id": "Investor_2", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true }, "commitment_level": { "type": "deterministic", "value": "partial" } } },
+      { "agent_a_id": "Investor_3", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true }, "commitment_level": { "type": "deterministic", "value": "partial" } } },
+      { "agent_a_id": "Investor_4", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true }, "commitment_level": { "type": "deterministic", "value": "exploratory" } } },
+      { "agent_a_id": "Investor_5", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true }, "commitment_level": { "type": "deterministic", "value": "exploratory" } } },
       { "agent_a_id": "Startup_1", "agent_b_id": "RevenueStream_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
       { "agent_a_id": "RevenueStream_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "KeyClient_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "KeyClient_2", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
-      { "agent_a_id": "KeyClient_3", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
       { "agent_a_id": "ShockEvent_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
+      { "agent_a_id": "Regulator_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true }, "audit_probability": { "type": "probabilistic", "distribution": "market_sentiment" } } },
       { "agent_a_id": "Founder_1", "agent_b_id": "Startup_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } },
       { "agent_a_id": "TalentMarket_1", "agent_b_id": "Founder_1", "rel_metadata": { "is_approved": { "type": "deterministic", "value": true } } }
     ],
     "channels": [
       { "channel_id": "startup_investor_1", "members": ["Startup_1", "Investor_1"], "events": [], "channel_metadata": {} },
       { "channel_id": "startup_investor_2", "members": ["Startup_1", "Investor_2"], "events": [], "channel_metadata": {} },
+      { "channel_id": "startup_investor_3", "members": ["Startup_1", "Investor_3"], "events": [], "channel_metadata": {} },
+      { "channel_id": "startup_investor_4", "members": ["Startup_1", "Investor_4"], "events": [], "channel_metadata": {} },
+      { "channel_id": "startup_investor_5", "members": ["Startup_1", "Investor_5"], "events": [], "channel_metadata": {} },
       { "channel_id": "startup_revenue", "members": ["Startup_1", "RevenueStream_1"], "events": [], "channel_metadata": {} },
+      { "channel_id": "regulator_startup", "members": ["Regulator_1", "Startup_1"], "events": [], "channel_metadata": { "last_intervention_tick": { "type": "deterministic", "value": 0 } } },
       { "channel_id": "founder_startup", "members": ["Founder_1", "Startup_1"], "events": [], "channel_metadata": {} },
-      { "channel_id": "founder_talent", "members": ["Founder_1", "TalentMarket_1"], "events": [], "channel_metadata": {} }
+      { "channel_id": "founder_talent", "members": ["Founder_1", "TalentMarket_1"], "events": [], "channel_metadata": {} },
+      { "channel_id": "shock_regulator", "members": ["ShockEvent_1", "Regulator_1"], "events": [], "channel_metadata": {} }
     ]
   }
 ]
