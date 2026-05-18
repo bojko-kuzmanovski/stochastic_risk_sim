@@ -3609,7 +3609,7 @@
     "automaton_name": "client_replacement",
     "states": {
         "initial": "LOAD_PARAMS",
-        "final": ["REPLACED", "FAILED"]
+        "final": ["REPLACED", "FAILED_MARKET_CONDITION", "FAILED_FOUNDER_REPUTATION", "FAILED_MARKET_SENTIMENT", "FAILED_CLIENT_CREATION"]
     },
     "params": {},
     "transitions": [
@@ -3652,7 +3652,7 @@
                 },
                 {
                     "threshold_case": [{ "operator": "<=", "value": 0.2 }],
-                    "to": "FAILED",
+                    "to": "FAILED_MARKET_CONDITION",
                     "actions": []
                 }
             ]
@@ -3704,7 +3704,7 @@
                 },
                 {
                     "threshold_case": [{ "operator": "<=", "value": 0.3 }],
-                    "to": "FAILED",
+                    "to": "FAILED_FOUNDER_REPUTATION",
                     "actions": []
                 }
             ]
@@ -3720,7 +3720,7 @@
                 },
                 {
                     "threshold_case": [{ "operator": "<=", "value": 0.2 }],
-                    "to": "FAILED",
+                    "to": "FAILED_MARKET_SENTIMENT",
                     "actions": []
                 }
             ]
@@ -3766,7 +3766,7 @@
                 },
                 {
                     "threshold_case": [{ "operator": "==", "value": null }],
-                    "to": "FAILED",
+                    "to": "FAILED_CLIENT_CREATION",
                     "actions": []
                 }
             ]

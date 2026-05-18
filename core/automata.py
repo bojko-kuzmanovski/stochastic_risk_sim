@@ -137,12 +137,14 @@ class AutomatonSession:
         chosen_case = None
         for th in transition.get("thresholds", []):
             try:
-                if self.automata._evaluate_threshold_conditions(
-                    _X_, th["threshold_case"], ctx
-                ):
+                conds = th["threshold_case"]
+                ok = self.automata._evaluate_threshold_conditions(_X_, conds, ctx)
+                if ok:
                     chosen_case = th
                     break
-            except Exception:
+            except Exception as e:
+                import sys
+                print(f"[ERROR] {self.automaton_name}::{self.current_state}: {e}", file=sys.stderr)
                 continue
 
         if not chosen_case:
@@ -199,11 +201,14 @@ class AutomatonSession:
             elif "action_required" in action_obj:
                 obj = action_obj["action_required"]
                 args = resolve_args(obj.get("params", {}), ctx)
-                call_method(
+                result = call_method(
                     obj["target"], obj["method"], args,
                     self.automata.agents,
                     self.automata.environments
                 )
+                if result is not None:
+                    ctx["_Y_"] = result
+                    self.params["_Y_"] = result
 
             elif "update_params" in action_obj:
                 for k, v in action_obj["update_params"].items():

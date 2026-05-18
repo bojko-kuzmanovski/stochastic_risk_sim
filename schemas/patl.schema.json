@@ -6,7 +6,8 @@
   "properties": {
     "observations": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
+      "maxItems": 50,
       "items": {
         "type": "object",
         "required": ["automaton_name", "trigger_state", "predicates"],
