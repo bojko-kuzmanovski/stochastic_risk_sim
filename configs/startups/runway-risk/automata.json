@@ -425,7 +425,7 @@
             "thresholds": [
                 {
                     "threshold_case": [{ "operator": "!=", "value": null }],
-                    "to": "DONE_CYCLE",
+                    "to": "CALC_NEW_RUNWAY",
                     "actions": [
                         {
                             "update_params": { "new_cash_val": { "type": "deterministic", "value": "${_X_}" } }
@@ -438,6 +438,45 @@
                             }
                         }
                     ]
+                }
+            ]
+        },
+        {
+            "from": "CALC_NEW_RUNWAY",
+            "threshold_value": {
+                "type": "logic",
+                "query": {
+                    "target": "agents",
+                    "method": "read_agent_param",
+                    "params": { "agent_id": "Startup_1", "param_key": "${burn_rate_key}" }
+                }
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 0 }],
+                    "to": "CHECK_RECOVERY",
+                    "actions": [
+                        { "update_params": { "burn_val": { "type": "deterministic", "value": "${_X_}" } } }
+                    ]
+                }
+            ]
+        },
+        {
+            "from": "CHECK_RECOVERY",
+            "threshold_value": {
+                "type": "deterministic",
+                "value": "${new_cash_val} / ${burn_val}"
+            },
+            "thresholds": [
+                {
+                    "threshold_case": [{ "operator": ">", "value": 4 }],
+                    "to": "OPERATING",
+                    "actions": []
+                },
+                {
+                    "threshold_case": [{ "operator": "<=", "value": 4 }],
+                    "to": "DONE_CYCLE",
+                    "actions": []
                 }
             ]
         }

@@ -1,5 +1,6 @@
 from copy import deepcopy
 from itertools import product
+import sys
 
 from core.agents import Agents
 from core.environments import Environments
@@ -73,6 +74,7 @@ class PATLVerifier:
 
     def _load_snapshot(self, snap):
         a = Agents([], self.distributions, None, worker_mode=False)
+        a.automata = self.automata
         a.load_snapshot(snap["agents_data"])
         e = Environments([], self.distributions, None)
         e.load_snapshot(snap.get("environments_data"))
@@ -147,8 +149,9 @@ class PATLVerifier:
         self.automata.agents = agents_obj
         self.automata.environments = envs_obj
 
-        agents_to_expand = [a for a in agents_data if a["agent_id"] in strat]
-        for agent in agents_to_expand:
+        agents_to_expand = [a for a in agents_data if a["agent_id"] in strat and a.get("current_state") != "LOAD_PARAMS"]
+        
+        for idx, agent in enumerate(agents_to_expand):
             state = agent.get("current_state")
             aut_name = strat.get(agent["agent_id"], (agent.get("automata") or [None])[0])
             if not state or not aut_name:
@@ -182,13 +185,17 @@ class PATLVerifier:
                         session = self.automata.create_session(aut_name, event_data, async_mode=False)
                         session.current_state = state
                         session.params = agent.get("params", {}).copy()
-                        ns = session.step(forced_X=mid)
+                        if tv["type"] == "probabilistic":
+                            ns = session.step(forced_X=mid)
+                        else:
+                            ns = session.step()
                         if ns:
                             upd = dict(base_upd)
                             upd[agent["agent_id"]] = ns
                             new_branches.append((base_prob * p, upd, deepcopy(envs_obj.data)))
                     remaining_low = high
             branches = new_branches or branches
+
         return branches
 
     def _make_agents(self, data):

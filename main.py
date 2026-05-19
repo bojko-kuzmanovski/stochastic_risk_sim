@@ -120,7 +120,7 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
     loop = asyncio.get_running_loop()
     total_processed = 0
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         for batch in snapshot_manager.read_and_delete(batch_size=50):
             futures = [
                 loop.run_in_executor(pool, _verify_single, snap, automata, distributions, snapshot_manager.data)

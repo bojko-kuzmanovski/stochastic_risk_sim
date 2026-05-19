@@ -150,6 +150,15 @@ class Agents:
     def load_snapshot(self, agents_data):
         """Carga estado desde un snapshot (para verificación PATL)."""
         self.data = deepcopy(agents_data)
+        for agent in self.data:
+            if "current_state" not in agent or agent["current_state"] is None:
+                automata_list = agent.get("automata", [])
+                if automata_list and self.automata:
+                    aut_name = automata_list[0]
+                    aut_def = next((a for a in self.automata.data 
+                                if a["automaton_name"] == aut_name), None)
+                    if aut_def:
+                        agent["current_state"] = aut_def["states"]["initial"]
 
 
     def get_all_agents(self, agent_type):

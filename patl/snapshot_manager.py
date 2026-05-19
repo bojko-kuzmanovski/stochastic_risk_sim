@@ -57,24 +57,38 @@ class SnapshotManager:
     def _safe_deepcopy(self, obj, depth=0):
         """
         Safe deepcopy that handles asyncio futures and other non-picklable objects.
+        Also protects against concurrent modification during iteration.
         """
         max_depth = 10
         
         if depth > max_depth:
             return None
         
-        if isinstance(obj, (asyncio.Future, asyncio.Task, asyncio.Queue, asyncio.Event, asyncio.Lock, asyncio.Semaphore)):
+        # Filter asyncio objects and anything from _asyncio module
+        if isinstance(obj, (asyncio.Future, asyncio.Task, asyncio.Queue, 
+                            asyncio.Event, asyncio.Lock, asyncio.Semaphore)):
             return None
         
-        if hasattr(obj, '__class__') and obj.__class__.__name__ in ['_UnixSelectorEventLoop', 'ProactorEventLoop']:
-            return None
+        if hasattr(obj, '__class__'):
+            class_name = obj.__class__.__name__
+            module = getattr(obj.__class__, '__module__', '')
+            if module.startswith('_asyncio') or module == 'asyncio':
+                return None
+            if class_name in ['_UnixSelectorEventLoop', 'ProactorEventLoop', 
+                            'TaskStepMethWrapper', 'TaskWakeupMethWrapper']:
+                return None
         
         try:
             return deepcopy(obj)
-        except (TypeError, pickle.PicklingError) as e:
+        except (TypeError, pickle.PicklingError, RuntimeError) as e:
             if isinstance(obj, dict):
                 result = {}
-                for k, v in obj.items():
+                # Iterate over a snapshot of keys to avoid mutation during iteration
+                try:
+                    items = list(obj.items())
+                except RuntimeError:
+                    return None
+                for k, v in items:
                     safe_key = self._safe_deepcopy(k, depth + 1)
                     safe_value = self._safe_deepcopy(v, depth + 1)
                     if safe_key is not None:
@@ -82,7 +96,12 @@ class SnapshotManager:
                 return result
             elif isinstance(obj, (list, tuple)):
                 result = []
-                for item in obj:
+                # Snapshot to avoid mutation
+                try:
+                    items = list(obj)
+                except RuntimeError:
+                    return None
+                for item in items:
                     safe_item = self._safe_deepcopy(item, depth + 1)
                     if safe_item is not None:
                         result.append(safe_item)
@@ -91,7 +110,7 @@ class SnapshotManager:
                 return obj
             else:
                 return str(obj) if obj else None
-
+            
 
     async def capture(self, agent_id, automaton_name, state):
         """

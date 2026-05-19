@@ -63,18 +63,27 @@ class Automata:
                 self.environments
             )
 
-            if op == "<" and not (X < val):
-                return False
-            elif op == "<=" and not (X <= val):
-                return False
-            elif op == ">" and not (X > val):
-                return False
-            elif op == ">=" and not (X >= val):
-                return False
-            elif op == "==" and not (X == val):
-                return False
-            elif op == "!=" and not (X != val):
-                return False
+            try:
+                if op == "<" and not (X < val):
+                    return False
+                elif op == "<=" and not (X <= val):
+                    return False
+                elif op == ">" and not (X > val):
+                    return False
+                elif op == ">=" and not (X >= val):
+                    return False
+                elif op == "==" and not (X == val):
+                    return False
+                elif op == "!=" and not (X != val):
+                    return False
+            except TypeError as e:
+                import sys
+                print(f"[DEBUG] Comparison failed:", file=sys.stderr)
+                print(f"  X = {X!r} (type={type(X).__name__})", file=sys.stderr)
+                print(f"  val = {val!r} (type={type(val).__name__})", file=sys.stderr)
+                print(f"  op = {op}", file=sys.stderr)
+                print(f"  cond = {cond}", file=sys.stderr)
+                raise  # o return False si prefieres que no crashee
         return True
 
 
