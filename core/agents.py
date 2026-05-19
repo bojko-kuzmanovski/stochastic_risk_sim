@@ -161,6 +161,7 @@ class Agents:
                         agent["current_state"] = aut_def["states"]["initial"]
 
 
+    # DES / PATL METHODS
     def get_all_agents(self, agent_type):
         self.metrics_collector.record_agent_action(agent_type, "get_all_agents")
         return [a["agent_id"] for a in self.data if a.get("agent_type") == agent_type]

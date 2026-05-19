@@ -1041,6 +1041,7 @@
         }
     ]
   },
+
   {
     "automaton_name": "shock_lifecycle",
     "states": {
@@ -1797,6 +1798,7 @@
         }
     ]
   },
+
   {
     "automaton_name": "exogenous_shock",
     "states": {
@@ -2495,6 +2497,7 @@
         }
     ]
   },
+
   {
     "automaton_name": "belief_updater",
     "states": {
@@ -3295,6 +3298,7 @@
         }
     ]
   },
+  
   {
     "automaton_name": "compliance_burden",
     "states": {

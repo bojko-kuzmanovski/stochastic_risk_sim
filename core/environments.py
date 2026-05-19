@@ -125,6 +125,7 @@ class Environments:
         self.data = deepcopy(environments_data) if environments_data else []
 
 
+    # DES / PATL METHODS
     def get_all_envs(self, env_type):
         self.metrics_collector.record_environment_action(env_type, "get_all_envs")
         return [e["env_id"] for e in self.data if e.get("environment_type") == env_type]
@@ -207,7 +208,7 @@ class Environments:
             return False
         if any(m["agent_id"] == agent_id for m in env.get("members", [])):
             return False
-        env["members"].append({
+        env.setdefault("members", []).append({
             "agent_id": agent_id,
             "agent_rol": {}
         })
@@ -257,8 +258,9 @@ class Environments:
         if env is None:
             return False
         self.metrics_collector.record_environment_action(env["environment_type"], "read_rel")
+        target_members = {agent_a_id, agent_b_id}
         for r in env.get("relations", []):
-            if r["agent_a_id"] == agent_a_id and r["agent_b_id"] == agent_b_id:
+            if set(r.get("members", [])) == target_members:
                 return True
         return False
 
@@ -271,13 +273,13 @@ class Environments:
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
+        target_members = {agent_a_id, agent_b_id}
         for r in env.get("relations", []):
-            if r["agent_a_id"] == agent_a_id and r["agent_b_id"] == agent_b_id:
+            if set(r.get("members", [])) == target_members:
                 return False
-        env["relations"].append({
-            "agent_a_id": agent_a_id,
-            "agent_b_id": agent_b_id,
-            "rel_metadata": {}
+        env.setdefault("relations", []).append({
+            "members": [agent_a_id, agent_b_id],
+            "metadata": {}
         })
         self.metrics_collector.record_environment_action(env["environment_type"], "add_rel")
         return True
@@ -291,8 +293,9 @@ class Environments:
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
+        target_members = {agent_a_id, agent_b_id}
         for i, r in enumerate(env.get("relations", [])):
-            if r["agent_a_id"] == agent_a_id and r["agent_b_id"] == agent_b_id:
+            if set(r.get("members", [])) == target_members:
                 del env["relations"][i]
                 self.metrics_collector.record_environment_action(env["environment_type"], "remove_rel")
                 return True
@@ -307,15 +310,15 @@ class Environments:
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return None
+        target_members = {agent_a_id, agent_b_id}
         rel = next(
-            (r for r in env.get("relations", [])
-            if r["agent_a_id"] == agent_a_id and r["agent_b_id"] == agent_b_id),
+            (r for r in env.get("relations", []) if set(r.get("members", [])) == target_members),
             None
         )
         if rel is None:
             return None
         self.metrics_collector.record_environment_action(env["environment_type"], "read_rel_param")
-        return rel.get("rel_metadata", {}).get(param_name)
+        return rel.get("metadata", {}).get(param_name)
 
 
     def write_rel_param(self, env_id, agent_a_id, agent_b_id, param_name, value):
@@ -326,16 +329,16 @@ class Environments:
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
+        target_members = {agent_a_id, agent_b_id}
         rel = next(
-            (r for r in env.get("relations", [])
-            if r["agent_a_id"] == agent_a_id and r["agent_b_id"] == agent_b_id),
+            (r for r in env.get("relations", []) if set(r.get("members", [])) == target_members),
             None
         )
         if rel is None:
             return False
-        if "rel_metadata" not in rel:
-            rel["rel_metadata"] = {}
-        rel["rel_metadata"][param_name] = value
+        if "metadata" not in rel:
+            rel["metadata"] = {}
+        rel["metadata"][param_name] = value
         self.metrics_collector.record_environment_action(env["environment_type"], "write_rel_param")
         return True
 
@@ -371,7 +374,7 @@ class Environments:
             "channel_id": ch_id,
             "members": [],
             "events": [],
-            "channel_metadata": {}
+            "metadata": {}
         })
         self.metrics_collector.record_environment_action(env["environment_type"], "add_ch")
         return ch_id
@@ -438,7 +441,7 @@ class Environments:
         if ch is None:
             return None
         self.metrics_collector.record_environment_action(env["environment_type"], "read_ch_param")
-        return ch.get("channel_metadata", {}).get(param_name)
+        return ch.get("metadata", {}).get(param_name)
 
 
     def write_ch_param(self, env_id, ch_id, param_name, value):
@@ -452,9 +455,9 @@ class Environments:
         ch = next((c for c in env.get("channels", []) if c["channel_id"] == ch_id), None)
         if ch is None:
             return False
-        if "channel_metadata" not in ch:
-            ch["channel_metadata"] = {}
-        ch["channel_metadata"][param_name] = value
+        if "metadata" not in ch:
+            ch["metadata"] = {}
+        ch["metadata"][param_name] = value
         self.metrics_collector.record_environment_action(env["environment_type"], "write_ch_param")
         return True
 
@@ -489,9 +492,10 @@ class Environments:
         if agent_id not in ch.get("members", []):
             return False
 
-        ch["events"].append({
+        ch.setdefault("events", []).append({
             "agent_id": agent_id,
             "signal": signal
         })
         self.metrics_collector.record_environment_action(env["environment_type"], "write_ch_event")
         return True
+    
