@@ -19,7 +19,7 @@
   {"distribution_name": "layoff_severity", "family": "beta", "params": { "alpha": 3, "beta": 2 }, "output_type": "float"},
   {"distribution_name": "market_sentiment", "family": "beta", "params": { "alpha": 6, "beta": 2 }, "output_type": "float"},
   {"distribution_name": "hiring_success", "family": "beta", "params": { "alpha": 5, "beta": 3 }, "output_type": "float"},
-  {"distribution_name": "shock_type", "family": "categorical", "params": { "probabilities": [0.7, 0.2, 0.1] }, "labels": ["market", "regulatory", "compound"], "output_type": "string"},
-  {"distribution_name": "investor_exit_reason", "family": "categorical", "params": { "probabilities": [0.5, 0.3, 0.2] }, "labels": ["patience_exhausted", "regulatory_risk", "market_downturn"], "output_type": "string"},
-  {"distribution_name": "client_acquisition_channel", "family": "categorical", "params": { "probabilities": [0.4, 0.35, 0.25] }, "labels": ["organic", "referral", "paid"], "output_type": "string"}
+  {"distribution_name": "shock_type", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "market", "probability": 0.7}, {"label": "regulatory", "probability": 0.2}, {"label": "compound", "probability": 0.1}]}},
+  {"distribution_name": "investor_exit_reason", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "patience_exhausted", "probability": 0.5}, {"label": "regulatory_risk", "probability": 0.3}, {"label": "market_downturn", "probability": 0.2}]}},
+  {"distribution_name": "client_acquisition_channel", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "organic", "probability": 0.4}, {"label": "referral", "probability": 0.35}, {"label": "paid", "probability": 0.25}]}}
 ]

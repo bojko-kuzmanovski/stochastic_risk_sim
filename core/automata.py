@@ -1,7 +1,8 @@
+import sys
 import json
+import asyncio
 from jsonschema import validate
 from typing import Any, Optional
-import asyncio
 
 from core.utils.evaluator import resolve_args, call_method, resolve_value
 
@@ -77,7 +78,6 @@ class Automata:
                 elif op == "!=" and not (X != val):
                     return False
             except TypeError as e:
-                import sys
                 print(f"[DEBUG] Comparison failed:", file=sys.stderr)
                 print(f"  X = {X!r} (type={type(X).__name__})", file=sys.stderr)
                 print(f"  val = {val!r} (type={type(val).__name__})", file=sys.stderr)
@@ -141,6 +141,9 @@ class AutomatonSession:
             self.automata.agents,
             self.automata.environments
         )
+        # Filtro de DEBUG para un autómata y estado específicos
+        if self.automaton_name == "runway_lifecycle" and self.current_state == "CRITICAL":
+            print(f"[DEBUG] {self.automaton_name} | Transición desde '{self.current_state}' | Valor _X_ resuelto: {_X_}", file=sys.stderr)
 
         # Evaluate thresholds
         chosen_case = None
@@ -152,7 +155,6 @@ class AutomatonSession:
                     chosen_case = th
                     break
             except Exception as e:
-                import sys
                 print(f"[ERROR] {self.automaton_name}::{self.current_state}: {e}", file=sys.stderr)
                 continue
 

@@ -149,7 +149,7 @@ class PATLVerifier:
         self.automata.agents = agents_obj
         self.automata.environments = envs_obj
 
-        agents_to_expand = [a for a in agents_data if a["agent_id"] in strat and a.get("current_state") != "LOAD_PARAMS"]
+        agents_to_expand = [a for a in agents_data if a["agent_id"] in strat]
         
         for idx, agent in enumerate(agents_to_expand):
             state = agent.get("current_state")

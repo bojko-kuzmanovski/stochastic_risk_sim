@@ -34,11 +34,6 @@
         },
         "output_type": { "enum": ["int", "float", "string"] },
         "params": { "type": "object" },
-        "labels": {
-          "type": "array",
-          "items": { "type": "string" },
-          "minItems": 0
-        },
         "truncation": { "$ref": "#/definitions/truncation_bounds" }
       },
       "allOf": [
@@ -163,19 +158,27 @@
         {
           "if": { "properties": { "family": { "const": "categorical" } } },
           "then": {
-            "required": ["labels"],
             "properties": {
               "params": {
                 "type": "object",
-                "required": ["probabilities"],
+                "required": ["categories"],
                 "properties": {
-                  "probabilities": {
+                  "categories": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
-                      "type": "number",
-                      "minimum": 0
-                    },
-                    "minItems": 1
+                      "type": "object",
+                      "required": ["label", "probability"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "label": { "type": "string" },
+                        "probability": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      }
+                    }
                   }
                 },
                 "additionalProperties": false
