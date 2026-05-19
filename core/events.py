@@ -1,5 +1,4 @@
 import json
-import time
 from jsonschema import validate
 
 from core.utils.evaluator import resolve_value
@@ -20,13 +19,12 @@ class Events:
         for event_entry in config_data:
 
             event_resolved = event_entry.copy()
-            event_resolved["created_at"] = int(time.time())
 
             # STATIC EVENTS
             if event_entry["event_category"] == "static":
                 pdef = event_entry["periodicity"]
-                periodicity = resolve_value(pdef, {}, distributions, None, None)
-
+                periodicity = resolve_value(pdef, distributions)
+                
                 if not isinstance(periodicity, (int, float)):
                     raise TypeError(
                         f"periodicity must resolve to a number, got {type(periodicity).__name__}: "
@@ -39,7 +37,5 @@ class Events:
                     )
                 
                 event_resolved["periodicity"] = periodicity
-
-            # DYNAMIC EVENTS (no resolution needed)
 
             self.data.append(event_resolved)

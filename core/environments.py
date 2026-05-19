@@ -31,20 +31,15 @@ class Environments:
     
 
     def _build_env(self, env_entry, n):
-        """Construye un entorno resuelto a partir de una entrada de configuración y un número n."""
         env_type = env_entry["environment_type"]
         env_resolved = {
             "env_id": f"{env_type}_{n}",
             "environment_type": env_type,
         }
 
-        # Resolve params
         resolved_params = {}
         for pname, pdef in env_entry.get("params", {}).items():
-            resolved_params[pname] = resolve_value(
-                vdef=pdef, ctx={}, distributions=self.distributions,
-                agents_obj=None, environments_obj=None
-            )
+            resolved_params[pname] = resolve_value(vdef=pdef, distributions=self.distributions)
         env_resolved["params"] = resolved_params
 
         # Members
@@ -52,11 +47,7 @@ class Environments:
         for member in env_entry.get("members", []):
             resolved_rol = {}
             for rname, rdef in member.get("agent_rol", {}).items():
-                resolved_rol[rname] = resolve_value(
-                    vdef=rdef, ctx={},
-                    distributions=self.distributions,
-                    agents_obj=None, environments_obj=None
-                )
+                resolved_rol[rname] = resolve_value(vdef=rdef, distributions=self.distributions)
             resolved_members.append({
                 "agent_id": member["agent_id"],
                 "agent_rol": resolved_rol
@@ -68,11 +59,7 @@ class Environments:
         for rel in env_entry.get("relations", []):
             resolved_meta = {}
             for mname, mdef in rel.get("metadata", {}).items():
-                resolved_meta[mname] = resolve_value(
-                    vdef=mdef, ctx={},
-                    distributions=self.distributions,
-                    agents_obj=None, environments_obj=None
-                )
+                resolved_meta[mname] = resolve_value(vdef=mdef, distributions=self.distributions)
             members = rel.get("members", [])
             resolved_relations.append({
                 "agent_a_id": members[0] if len(members) > 0 else None,
@@ -84,23 +71,15 @@ class Environments:
         # Channels
         resolved_channels = []
         for ch in env_entry.get("channels", []):
-            # Resolver metadata
             resolved_ch_meta = {}
             for mname, mdef in ch.get("metadata", {}).items():
-                resolved_ch_meta[mname] = resolve_value(
-                    vdef=mdef, ctx={},
-                    distributions=self.distributions,
-                    agents_obj=None, environments_obj=None
-                )
-
-            # Eventos (ya resueltos, sin metadata)
+                resolved_ch_meta[mname] = resolve_value(vdef=mdef, distributions=self.distributions)
             resolved_events = []
             for ev in ch.get("events", []):
                 resolved_events.append({
                     "agent_id": ev["agent_id"],
                     "signal": ev["signal"]
                 })
-
             resolved_channels.append({
                 "channel_id": ch["channel_id"],
                 "members": ch["members"],

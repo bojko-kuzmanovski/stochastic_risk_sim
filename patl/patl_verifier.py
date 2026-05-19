@@ -82,17 +82,12 @@ class PATLVerifier:
 
     def _resolve_agents(self, agents, spec):
         r = []
-        for entry in spec.get("by_type", []):
+        for entry in spec:
             opts = [a["automaton_name"] for a in entry["automata"]]
             tmap = {a["automaton_name"]: set(a["target_states"]) for a in entry["automata"]}
             for ag in agents.data:
                 if ag.get("agent_type") == entry["agent_type"]:
                     r.append({"id": ag["agent_id"], "opts": opts, "targets": tmap})
-        for entry in spec.get("by_id", []):
-            opts = [a["automaton_name"] for a in entry["automata"]]
-            tmap = {a["automaton_name"]: set(a["target_states"]) for a in entry["automata"]}
-            if any(a["agent_id"] == entry["agent_id"] for a in agents.data):
-                r.append({"id": entry["agent_id"], "opts": opts, "targets": tmap})
         return r
 
     def _strategies(self, agents):

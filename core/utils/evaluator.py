@@ -1,128 +1,113 @@
-"""
-Evaluator functions for deterministic, probabilistic, and logic value resolution.
-Based on the critical logic originally inside Automata.process_event.
-"""
-
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict
 import re
 
 
-def eval_expr(expr: Any, ctx: Dict[str, Any]) -> Any:
+def resolve_value(vdef: Dict[str, Any], distributions: Any) -> Any:
     """
-    Evaluate a Python expression string within a restricted context.
-    If expr is not a string, return it unchanged.
-    If evaluation fails, return the original string.
-    """
-    if isinstance(expr, str):
-        try:
-            # Restrict builtins for safety
-            return eval(expr, {"__builtins__": {}}, ctx)
-        except Exception:
-            return expr
-    return expr
+    Resolve a param_definition (deterministic or probabilistic).
 
-
-def resolve_refs(refs: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Resolve a dictionary of references by evaluating each value with eval_expr.
-    """
-    return {rk: eval_expr(rv, ctx) for rk, rv in refs.items()}
-
-
-def _resolve_single_value(value: Any, ctx: Dict[str, Any]) -> Any:
-    if isinstance(value, str):
-        if value.startswith("${") and value.endswith("}"):
-            key = value[2:-1]
-            return ctx.get(key, value)
-        elif "${" in value:
-            def replacer(m):
-                var_name = m.group(1)
-                return str(ctx.get(var_name, m.group(0)))
-            return re.sub(r'\$\{(\w+)\}', replacer, value)
-    return value
-
-
-def resolve_args(params: Union[List[str], Dict[str, Any]], ctx: Dict[str, Any]) -> List[Any]:
-    """
-    Extract values from context for a list of keys.
-    """
-    if isinstance(params, list):
-        # Array de claves: extraer de ctx
-        return [ctx.get(key) for key in params]
-    elif isinstance(params, dict):
-        # Objeto: resolver cada valor
-        return [_resolve_single_value(v, ctx) for v in params.values()]
-    return []
-
-
-def call_method(
-    target_name: str,
-    method_name: str,
-    args: List[Any],
-    agents_obj: Any,
-    environments_obj: Any,
-) -> Optional[Any]:
-    """
-    Dynamically call a method on either agents_obj or environments_obj.
-    Returns None if any error occurs (method missing, exception, etc.).
-    """
-    target_obj = agents_obj if target_name == "agents" else environments_obj
-    try:
-        method = getattr(target_obj, method_name)
-        return method(*args)
-    except Exception:
-        return None
-
-
-def resolve_value(
-    vdef: Dict[str, Any],
-    ctx: Dict[str, Any],
-    distributions: Any,
-    agents_obj: Any,
-    environments_obj: Any,
-) -> Any:
-    """
-    Resolve a value definition (deterministic, probabilistic, or logic).
-    
-    vdef format:
-        {"type": "deterministic", "value": ...}
-        or {"type": "probabilistic", "distribution": str, "refs": {...}}
-        or {"type": "logic", "query": {"target": "agents"/"environments",
-                                       "method": str, "params": [str]}}
+    vdef formats:
+        {"type": "deterministic", "value": <string|number|boolean>}
+        {"type": "probabilistic", "distribution": <string>}
     """
     t = vdef.get("type")
     
     if t == "deterministic":
-        val = vdef.get("value")
-        if isinstance(val, str) and "${" in val:
-            def replacer(m):
-                var_name = m.group(1)
-                return str(ctx.get(var_name, m.group(0)))
-            interpolated = re.sub(r'\$\{(\w+)\}', replacer, val)
-            try:
-                return eval(interpolated, {"__builtins__": {}}, {**ctx, "ceil": __import__("math").ceil, "max": max, "min": min, "floor": __import__("math").floor})
-            except Exception:
-                return interpolated
-        return eval_expr(val, ctx)
+        return vdef.get("value")
     
-    elif t == "probabilistic":
-        dist_name = vdef.get("distribution")
-        refs_dict = vdef.get("refs", {})
-        refs = resolve_refs(refs_dict, ctx) if refs_dict else {}
-        if refs:
-            return distributions.sample(dist_name, refs)
-        else:
-            return distributions.sample(dist_name)
-    
-    elif t == "logic":
-        q = vdef.get("query", {})
-        args = resolve_args(q.get("params", {}), ctx)
-        return call_method(
-            q.get("target"),
-            q.get("method"),
-            args,
-            agents_obj,
-            environments_obj,
-        )
+    if t == "probabilistic":
+        return distributions.sample(vdef.get("distribution"))
     
     return None
+
+
+def call_method(target: str, method: str, args: list, agents_obj: Any, environments_obj: Any, event_obj: Any = None) -> Any:
+    """
+    Call a method on agents, environments, events, or system.
+    """
+    if target == "agents":
+        target_obj = agents_obj
+    elif target == "environments":
+        target_obj = environments_obj
+    elif target == "events":
+        target_obj = event_obj
+    elif target == "system":
+        return _call_system(method, args)
+    else:
+        return None
+
+    if target_obj is None:
+        return None
+
+    try:
+        fn = getattr(target_obj, method)
+        return fn(*args)
+    except Exception:
+        return None
+
+
+def _call_system(method: str, args: list) -> Any:
+    """Execute system methods (math_pipeline)."""
+    if method == "math_pipeline":
+        pipeline_def = args[0] if args else {}
+        return _execute_math_pipeline(pipeline_def)
+    return None
+
+
+def _execute_math_pipeline(pipeline_def: dict) -> Any:
+    """Execute a math_pipeline definition."""
+    import math
+    
+    initial = pipeline_def.get("initial_value", 0)
+    if isinstance(initial, dict):
+        initial = resolve_value(initial, None) if initial.get("type") else None
+    if initial is None:
+        initial = 0
+
+    value = initial
+    for op_def in pipeline_def.get("operations", []):
+        op = op_def["operator"]
+        operand = op_def.get("with", 0)
+        
+        if isinstance(operand, dict):
+            operand = resolve_value(operand, None) if operand.get("type") else operand
+
+        if op == "+":
+            value = value + operand
+        elif op == "-":
+            value = value - operand
+        elif op == "*":
+            value = value * operand
+        elif op == "/":
+            value = value / operand if operand != 0 else 0
+        elif op == "ceil":
+            value = math.ceil(value)
+        elif op == "floor":
+            value = math.floor(value)
+        elif op == "max":
+            value = max(value, operand)
+        elif op == "min":
+            value = min(value, operand)
+
+    return value
+
+
+def resolve_ephemeral(value: Any, ctx: Dict[str, Any]) -> Any:
+    """
+    Resolve $var references in a value using ctx.
+    If value is a string containing $var patterns, interpolate from ctx.
+    If value is a dict with 'target', treat as logic and execute it.
+    Otherwise return value as-is.
+    """
+    if isinstance(value, dict) and "target" in value:
+        return value
+
+    if isinstance(value, str) and "$" in value:
+        def replacer(m):
+            var_name = m.group(0)
+            if var_name not in ctx:
+                return var_name
+            return str(ctx[var_name])
+        return re.sub(r'\$[a-zA-Z_][a-zA-Z0-9_]*', replacer, value)
+
+    return value

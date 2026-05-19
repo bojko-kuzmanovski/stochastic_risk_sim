@@ -34,7 +34,6 @@ class Agents:
 
 
     def _build_agent(self, agent_entry, n):
-        """Construye un agente resuelto a partir de una entrada de configuración y un número n."""
         agent_type = agent_entry["agent_type"]
         agent_resolved = {
             "agent_id": f"{agent_type}_{n}",
@@ -42,16 +41,11 @@ class Agents:
             "automata": agent_entry.get("automata", []),
         }
 
-        # Resolve params
         resolved_params = {}
         for pname, pdef in agent_entry.get("params", {}).items():
-            resolved_params[pname] = resolve_value(
-                vdef=pdef, ctx={}, distributions=self.distributions,
-                agents_obj=None, environments_obj=None
-            )
+            resolved_params[pname] = resolve_value(vdef=pdef, distributions=self.distributions)
         agent_resolved["params"] = resolved_params
 
-        # Event queue
         if self.worker_mode:
             agent_resolved["event_queue"] = asyncio.Queue()
 
