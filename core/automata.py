@@ -5,10 +5,11 @@ from jsonschema import validate
 from typing import Any, Optional
 
 from core.utils.evaluator import resolve_value, call_method, resolve_ephemeral
+from core.events import Events
 
 
 class Automata:
-    def __init__(self, config_data, distributions, metrics_collector, events_obj=None):
+    def __init__(self, config_data, distributions, metrics_collector):
         schema_path = "schemas/automata.schema.json"
         with open(schema_path, "r") as f:
             schema = json.load(f)
@@ -27,7 +28,6 @@ class Automata:
         self.metrics_collector = metrics_collector
         self.agents = None
         self.environments = None
-        self.events = events_obj
 
     def set_objects(self, agents, environments):
         self.agents = agents
@@ -185,17 +185,13 @@ class AutomatonSession:
                     channel_id = self.ctx.get(resolved[3]) if resolved[3].startswith("$") else resolved[3]
                     event_data["channel_id"] = channel_id
 
-                if self.automata.events is not None:
-                    if not any(
-                        ev.get("event_category") == "dynamic"
-                        and ev.get("signal") == signal
-                        and ev.get("agent_id") == agent_id
-                        for ev in self.automata.events.data
-                    ):
-                        print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                              f"dynamic event not registered in Events: signal='{signal}', "
-                              f"agent_id='{agent_id}'", file=sys.stderr)
-                        sys.exit(1)
+                try:
+                    Events([event_data], self.automata.distributions)
+                except Exception as e:
+                    print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
+                          f"event_emit failed validation: {e}", file=sys.stderr)
+                    print(f"  signal='{signal}', agent_id='{agent_id}'", file=sys.stderr)
+                    sys.exit(1)
 
                 if agent_id is not None and self.async_mode:
                     asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))
