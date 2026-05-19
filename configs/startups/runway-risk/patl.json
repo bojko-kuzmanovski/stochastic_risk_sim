@@ -9,32 +9,12 @@
           "type": "reachability",
           "max_depth": 12,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["OPERATING", "LOW_RUNWAY"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investment_decision",
-                    "target_states": ["PASSED"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["OPERATING", "LOW_RUNWAY"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
+          ],
           "probability_bound": 0.4,
           "probability_operator": ">="
         },
@@ -43,32 +23,12 @@
           "type": "reachability",
           "max_depth": 8,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "investment_offer",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_id": [
-              {
-                "agent_id": "ShockEvent_1",
-                "automata": [
-                  {
-                    "automaton_name": "exogenous_shock",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "investment_offer", "target_states": ["DONE"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "ShockEvent", "automata": [{ "automaton_name": "exogenous_shock", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.35,
           "probability_operator": ">="
         },
@@ -77,19 +37,9 @@
           "type": "reachability",
           "max_depth": 5,
           "coalition_quantifier": "forall",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["DEAD"] }] }
+          ],
           "probability_bound": 0.5,
           "probability_operator": ">="
         },
@@ -98,32 +48,12 @@
           "type": "reachability",
           "max_depth": 10,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Regulator",
-                "automata": [
-                  {
-                    "automaton_name": "regulatory_intervention",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["DEAD"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Regulator", "automata": [{ "automaton_name": "regulatory_intervention", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.4,
           "probability_operator": ">="
         }
@@ -138,32 +68,12 @@
           "type": "reachability",
           "max_depth": 6,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "KeyClient",
-                "automata": [
-                  {
-                    "automaton_name": "client_retention_cycle",
-                    "target_states": ["CHURNED"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["DEAD", "CRITICAL"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "KeyClient", "automata": [{ "automaton_name": "client_retention_cycle", "target_states": ["CHURNED"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["DEAD", "CRITICAL"] }] }
+          ],
           "probability_bound": 0.6,
           "probability_operator": "<="
         },
@@ -172,32 +82,12 @@
           "type": "invariance",
           "max_depth": 10,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "KeyClient",
-                "automata": [
-                  {
-                    "automaton_name": "client_retention_cycle",
-                    "target_states": ["RENEWED"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_id": [
-              {
-                "agent_id": "ShockEvent_1",
-                "automata": [
-                  {
-                    "automaton_name": "exogenous_shock",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "KeyClient", "automata": [{ "automaton_name": "client_retention_cycle", "target_states": ["RENEWED"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "ShockEvent", "automata": [{ "automaton_name": "exogenous_shock", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.7,
           "probability_operator": ">="
         }
@@ -212,32 +102,12 @@
           "type": "reachability",
           "max_depth": 4,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investment_decision",
-                    "target_states": ["INVESTED"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["INVESTED"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
+          ],
           "probability_bound": 0.3,
           "probability_operator": ">="
         },
@@ -246,32 +116,12 @@
           "type": "reachability",
           "max_depth": 5,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investment_decision",
-                    "target_states": ["PASSED"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_id": [
-              {
-                "agent_id": "ShockEvent_1",
-                "automata": [
-                  {
-                    "automaton_name": "exogenous_shock",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "ShockEvent", "automata": [{ "automaton_name": "exogenous_shock", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.55,
           "probability_operator": "<="
         },
@@ -280,32 +130,12 @@
           "type": "reachability",
           "max_depth": 6,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investment_decision",
-                    "target_states": ["REMOVE_RELATION"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL", "DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["REMOVE_RELATION"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
+          ],
           "probability_bound": 0.4,
           "probability_operator": ">="
         }
@@ -320,36 +150,15 @@
           "type": "reachability",
           "max_depth": 15,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "revenue_generator",
-                    "target_states": ["DONE"]
-                  },
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["OPERATING"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investment_decision",
-                    "target_states": ["PASSED"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [
+              { "automaton_name": "revenue_generator", "target_states": ["DONE"] },
+              { "automaton_name": "runway_lifecycle", "target_states": ["OPERATING"] }
+            ]}
+          ],
+          "adversaries": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
+          ],
           "probability_bound": 0.45,
           "probability_operator": ">="
         }
@@ -364,32 +173,12 @@
           "type": "reachability",
           "max_depth": 6,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "headcount_controller",
-                    "target_states": ["LAYOFFS_DONE"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "headcount_controller", "target_states": ["LAYOFFS_DONE"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
+          ],
           "probability_bound": 0.8,
           "probability_operator": ">="
         },
@@ -398,32 +187,12 @@
           "type": "invariance",
           "max_depth": 8,
           "coalition_quantifier": "forall",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "headcount_controller",
-                    "target_states": ["FREEZE_SET"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_id": [
-              {
-                "agent_id": "ShockEvent_1",
-                "automata": [
-                  {
-                    "automaton_name": "exogenous_shock",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "headcount_controller", "target_states": ["FREEZE_SET"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "ShockEvent", "automata": [{ "automaton_name": "exogenous_shock", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.65,
           "probability_operator": ">="
         }
@@ -438,36 +207,15 @@
           "type": "reachability",
           "max_depth": 10,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "strategic_resource_allocator",
-                    "target_states": ["DONE"]
-                  },
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL", "DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "belief_updater",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [
+              { "automaton_name": "strategic_resource_allocator", "target_states": ["DONE"] },
+              { "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }
+            ]}
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "belief_updater", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.5,
           "probability_operator": ">="
         }
@@ -482,32 +230,12 @@
           "type": "reachability",
           "max_depth": 8,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investor_exit",
-                    "target_states": ["EXITED"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investor_exit", "target_states": ["EXITED"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
+          ],
           "probability_bound": 0.2,
           "probability_operator": "<="
         }
@@ -522,32 +250,12 @@
           "type": "reachability",
           "max_depth": 10,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Regulator",
-                "automata": [
-                  {
-                    "automaton_name": "regulatory_intervention",
-                    "target_states": ["WRITE_ENV_PARAMS"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL", "DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Regulator", "automata": [{ "automaton_name": "regulatory_intervention", "target_states": ["WRITE_ENV_PARAMS"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
+          ],
           "probability_bound": 0.3,
           "probability_operator": ">="
         }
@@ -562,32 +270,12 @@
           "type": "reachability",
           "max_depth": 6,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Regulator",
-                "automata": [
-                  {
-                    "automaton_name": "regulatory_intervention",
-                    "target_states": ["DONE"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["DEAD"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Regulator", "automata": [{ "automaton_name": "regulatory_intervention", "target_states": ["DONE"] }] }
+          ],
           "probability_bound": 0.5,
           "probability_operator": ">="
         }
@@ -602,32 +290,12 @@
           "type": "reachability",
           "max_depth": 8,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "KeyClient",
-                "automata": [
-                  {
-                    "automaton_name": "client_replacement",
-                    "target_states": ["REPLACED"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["CRITICAL", "DEAD"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "KeyClient", "automata": [{ "automaton_name": "client_replacement", "target_states": ["REPLACED"] }] }
+          ],
+          "adversaries": [
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
+          ],
           "probability_bound": 0.25,
           "probability_operator": ">="
         }
@@ -642,36 +310,15 @@
           "type": "reachability",
           "max_depth": 10,
           "coalition_quantifier": "exists",
-          "coalition": {
-            "by_type": [
-              {
-                "agent_type": "Startup",
-                "automata": [
-                  {
-                    "automaton_name": "headcount_controller",
-                    "target_states": ["HIRING_DONE"]
-                  },
-                  {
-                    "automaton_name": "runway_lifecycle",
-                    "target_states": ["OPERATING"]
-                  }
-                ]
-              }
-            ]
-          },
-          "adversaries": {
-            "by_type": [
-              {
-                "agent_type": "Investor",
-                "automata": [
-                  {
-                    "automaton_name": "investment_decision",
-                    "target_states": ["PASSED"]
-                  }
-                ]
-              }
-            ]
-          },
+          "coalition": [
+            { "agent_type": "Startup", "automata": [
+              { "automaton_name": "headcount_controller", "target_states": ["HIRING_DONE"] },
+              { "automaton_name": "runway_lifecycle", "target_states": ["OPERATING"] }
+            ]}
+          ],
+          "adversaries": [
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
+          ],
           "probability_bound": 0.35,
           "probability_operator": ">="
         }

@@ -20,9 +20,7 @@
       },
       "params": {
         "type": "object",
-        "additionalProperties": {
-          "$ref": "#/definitions/param_definition"
-        }
+        "additionalProperties": { "$ref": "#/definitions/dynamic_value" }
       },
       "transitions": {
         "type": "array",
@@ -38,7 +36,8 @@
       "properties": {
         "from": { "type": "string" },
         "threshold_value": {
-          "$ref": "#/definitions/dynamic_value"
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/dynamic_value" }
         },
         "thresholds": {
           "type": "array",
@@ -48,19 +47,14 @@
       }
     },
 
-    "threshold_condition": {
+    "threshold_rule": {
       "type": "object",
-      "required": ["operator", "value"],
+      "required": ["variable", "operator", "value"],
       "properties": {
-        "operator": {
-          "type": "string",
-          "enum": ["<", "<=", ">", ">=", "==", "!="]
-        },
-        "value": {
-          "type": ["string", "number", "boolean", "null"]
-        }
+        "variable": { "$ref": "#/definitions/ephemeral_variable" },
+        "operator": { "type": "string", "enum": ["<", "<=", ">", ">=", "==", "!="] },
+        "value": { "type": ["string", "number", "boolean", "null"] }
       },
-      "additionalProperties": false,
       "allOf": [
         {
           "if": {
@@ -84,7 +78,8 @@
         "threshold_case": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/definitions/threshold_condition" }
+          "maxItems": 2,
+          "items": { "$ref": "#/definitions/threshold_rule" }
         },
         "to": { "type": "string" },
         "actions": {
@@ -95,11 +90,8 @@
             "maxProperties": 1,
             "properties": {
               "event_emit": { "$ref": "#/definitions/event_emit_object" },
-              "action_required": { "$ref": "#/definitions/query_object" },
-              "update_params": {
-                "type": "object",
-                "additionalProperties": { "$ref": "#/definitions/dynamic_value" }
-              }
+              "action_required": { "type": "object", "additionalProperties": { "$ref": "#/definitions/logic" } },
+              "update_params": { "type": "object", "additionalProperties": { "$ref": "#/definitions/dynamic_value" } }
             },
             "additionalProperties": false
           },
@@ -110,124 +102,84 @@
     },
 
     "event_emit_object": {
-      "type": "object",
-      "required": ["signal", "agent_id"],
-      "additionalProperties": false,
-      "properties": {
-        "signal": {
-          "anyOf": [
-            { "type": "string" },
-            { "$ref": "#/definitions/dynamic_value" }
-          ]
-        },
-        "agent_id": {
-          "anyOf": [
-            { "type": "string" },
-            { "$ref": "#/definitions/dynamic_value" }
-          ]
-        },
-        "env_id": {
-          "anyOf": [
-            { "type": "string" },
-            { "$ref": "#/definitions/dynamic_value" }
-          ]
-        },
-        "channel_id": {
-          "anyOf": [
-            { "type": "string" },
-            { "$ref": "#/definitions/dynamic_value" }
-          ]
-        }
-      },
-      "allOf": [
-        {
-          "if": { "required": ["channel_id"] },
-          "then": { "required": ["env_id"] }
-        }
+      "type": "array",
+      "enum": [
+        ["signal", "agent_id"],
+        ["signal", "agent_id", "env_id"],
+        ["signal", "agent_id", "env_id", "channel_id"]
       ]
     },
 
-    "query_object": {
+    "logic": {
       "type": "object",
-      "required": ["target", "method", "params", "returns"],
+      "required": ["target", "method"],
       "additionalProperties": false,
       "properties": {
-        "target": {
-          "type": "string",
-          "enum": ["events", "agents", "environments", "system"]
-        },
+        "target": { "type": "string", "enum": ["events", "agents", "environments", "system"] },
         "method": { "type": "string" },
-        "params": { "type": "object" },
-        "returns": {
-          "type": "object",
-          "required": ["variable", "type"],
-          "additionalProperties": false,
-          "properties": { 
-            "variable": { "type": "string" }, 
-            "type": { "type": "string" } 
-          }
-        }
+        "params": { }
       },
       "allOf": [
         {
           "if": { "properties": { "target": { "const": "events" } } },
           "then": {
+            "required": ["method"],
             "properties": {
-              "method": {
-                "enum": ["read_event_signal", "read_event_agent_id", "read_event_env_id", "read_event_channel_id"]
-              },
-              "params": { "type": "object", "properties": {}, "additionalProperties": false },
-              "returns": { "properties": { "type": { "enum": ["string", "null"] } } }
+              "method": { "enum": ["event_signal", "event_agent_id", "event_env_id", "event_channel_id"] },
+              "params": { "maxItems": 0 }
             }
           }
         },
         {
           "if": { "properties": { "target": { "const": "agents" } } },
           "then": {
-            "properties": { "method": { "enum": ["get_all_agents", "add_agent", "remove_agent", "read_agent_param", "write_agent_param"] } },
+            "required": ["method", "params"],
+            "properties": { "method": { "enum": ["get_all_agents", "add_agent", "remove_agent", "read_agent_param", "write_agent_param"] }, "params": { "type": "array" } },
             "allOf": [
-              { "if": { "properties": { "method": { "const": "get_all_agents" } } }, "then": { "properties": { "params": { "type": "object", "required": ["agent_type"], "additionalProperties": false, "properties": { "agent_type": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string_array"] } } } } } },
-              { "if": { "properties": { "method": { "const": "add_agent" } } }, "then": { "properties": { "params": { "type": "object", "required": ["agent_type"], "additionalProperties": false, "properties": { "agent_type": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "remove_agent" } } }, "then": { "properties": { "params": { "type": "object", "required": ["agent_id"], "additionalProperties": false, "properties": { "agent_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_agent_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["agent_id", "param_name"], "additionalProperties": false, "properties": { "agent_id": { "type": "string" }, "param_name": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "number", "boolean", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_agent_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["agent_id", "param_name", "value"], "additionalProperties": false, "properties": { "agent_id": { "type": "string" }, "param_name": { "type": "string" }, "value": { "anyOf": [ { "type": ["string", "number", "boolean", "null"] }, { "$ref": "#/definitions/dynamic_value" } ] } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } }
+              { "if": { "properties": { "method": { "const": "get_all_agents" } } }, "then": { "properties": { "params": { "enum": [["agent_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_agent" } } }, "then": { "properties": { "params": { "enum": [["agent_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_agent" } } }, "then": { "properties": { "params": { "enum": [["agent_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_agent_param" } } }, "then": { "properties": { "params": { "enum": [["agent_id", "param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_agent_param" } } }, "then": { "properties": { "params": { "enum": [["agent_id", "param_key", "value"]] } } } }
             ]
           }
         },
         {
           "if": { "properties": { "target": { "const": "environments" } } },
           "then": {
-            "properties": { "method": { "enum": ["get_all_envs", "add_env", "remove_env", "read_env_param", "write_env_param", "read_members", "write_member", "read_member_param", "write_member_param", "read_rel", "add_rel", "remove_rel", "read_rel_param", "write_rel_param", "read_ch", "add_ch", "remove_ch", "read_ch_members", "write_ch_member", "read_ch_param", "write_ch_param", "read_ch_events", "write_ch_event"] } },
+            "required": ["method", "params"],
+            "properties": {  "method": { "enum": ["get_all_envs", "add_env", "remove_env", "read_env_param", "write_env_param", "read_members", "write_member", "read_member_param", "write_member_param", "read_rel", "add_rel", "remove_rel", "read_rel_param", "write_rel_param", "read_ch", "add_ch", "remove_ch", "read_ch_members", "write_ch_member", "read_ch_param", "write_ch_param", "read_ch_events", "write_ch_event"] }, "params": { "type": "array" } },
             "allOf": [
-              { "if": { "properties": { "method": { "const": "get_all_envs" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_type"], "additionalProperties": false, "properties": { "env_type": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string_array"] } } } } } },
-              { "if": { "properties": { "method": { "const": "add_env" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_type"], "additionalProperties": false, "properties": { "env_type": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "remove_env" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_env_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "param_name"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "param_name": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "number", "boolean", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_env_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "param_name", "value"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "param_name": { "type": "string" }, "value": { "anyOf": [ { "type": ["string", "number", "boolean", "null"] }, { "$ref": "#/definitions/dynamic_value" } ] } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_members" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string_array", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_member" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_member_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_id", "param_name"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_id": { "type": "string" }, "param_name": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "number", "boolean", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_member_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_id", "param_name", "value"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_id": { "type": "string" }, "param_name": { "type": "string" }, "value": { "anyOf": [ { "type": ["string", "number", "boolean", "null"] }, { "$ref": "#/definitions/dynamic_value" } ] } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_rel" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_a_id", "agent_b_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_a_id": { "type": "string" }, "agent_b_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "add_rel" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_a_id", "agent_b_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_a_id": { "type": "string" }, "agent_b_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "remove_rel" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_a_id", "agent_b_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_a_id": { "type": "string" }, "agent_b_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_rel_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_a_id", "agent_b_id", "param_name"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_a_id": { "type": "string" }, "agent_b_id": { "type": "string" }, "param_name": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "number", "boolean", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_rel_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "agent_a_id", "agent_b_id", "param_name", "value"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "agent_a_id": { "type": "string" }, "agent_b_id": { "type": "string" }, "param_name": { "type": "string" }, "value": { "anyOf": [ { "type": ["string", "number", "boolean", "null"] }, { "$ref": "#/definitions/dynamic_value" } ] } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_ch" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string_array", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "add_ch" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "remove_ch" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_ch_members" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string_array", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_ch_member" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id", "agent_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" }, "agent_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_ch_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id", "param_name"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" }, "param_name": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["string", "number", "boolean", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_ch_param" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id", "param_name", "value"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" }, "param_name": { "type": "string" }, "value": { "anyOf": [ { "type": ["string", "number", "boolean", "null"] }, { "$ref": "#/definitions/dynamic_value" } ] } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } },
-              { "if": { "properties": { "method": { "const": "read_ch_events" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["event_array", "null"] } } } } } },
-              { "if": { "properties": { "method": { "const": "write_ch_event" } } }, "then": { "properties": { "params": { "type": "object", "required": ["env_id", "channel_id", "agent_id", "signal"], "additionalProperties": false, "properties": { "env_id": { "type": "string" }, "channel_id": { "type": "string" }, "agent_id": { "type": "string" }, "signal": { "type": "string" } } }, "returns": { "properties": { "type": { "enum": ["boolean"] } } } } } }
+              { "if": { "properties": { "method": { "const": "get_all_envs" } } }, "then": { "properties": { "params": { "enum": [["env_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_env" } } }, "then": { "properties": { "params": { "enum": [["env_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_env" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_env_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_env_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "param_key", "value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_members" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_member" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_member_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_id", "param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_member_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_id", "param_key", "value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_rel" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_rel" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_rel" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_rel_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id", "param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_rel_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id", "param_key", "value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_ch" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_ch" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch_members" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_ch_member" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "agent_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_ch_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "param_key", "value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch_events" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_ch_event" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "agent_id", "signal"]] } } } }
             ]
           }
         },
         {
           "if": { "properties": { "target": { "const": "system" } } },
           "then": {
+            "required": ["method", "params"],
             "properties": {
               "method": { "enum": ["math_pipeline"] },
               "params": {
@@ -235,22 +187,33 @@
                 "required": ["initial_value", "operations"],
                 "additionalProperties": false,
                 "properties": {
-                  "initial_value": { "$ref": "#/definitions/dynamic_value" },
+                  "initial_value": {
+                    "oneOf": [
+                      { "$ref": "#/definitions/dynamic_value" },
+                      { "$ref": "#/definitions/ephemeral_variable" }
+                    ]
+                  },
                   "operations": {
                     "type": "array",
+                    "minItems": 0,
+                    "maxItems": 20,
                     "items": {
                       "type": "object",
                       "required": ["operator"],
                       "additionalProperties": false,
                       "properties": {
-                        "operator": { "enum": ["add", "subtract", "multiply", "divide", "ceil", "floor", "max", "min"] },
-                        "with": { "$ref": "#/definitions/dynamic_value" }
+                        "operator": { "enum": ["+", "-", "*", "/", "ceil", "floor", "max", "min"] },
+                        "with": {
+                          "oneOf": [
+                            { "$ref": "#/definitions/dynamic_value" },
+                            { "$ref": "#/definitions/ephemeral_variable" }
+                          ]
+                        }
                       }
                     }
                   }
                 }
-              },
-              "returns": { "properties": { "type": { "enum": ["number"] } } }
+              }
             }
           }
         }
@@ -281,11 +244,15 @@
       ]
     },
     
+    "ephemeral_variable": {
+      "type": "string",
+      "pattern": "^\\$[a-zA-Z_][a-zA-Z0-9_]*$"
+    },
+
     "dynamic_value": {
       "oneOf": [
         { "$ref": "#/definitions/param_definition" },
-        { "$ref": "#/definitions/query_object" },
-        { "type": "string", "pattern": "^\\$[a-zA-Z_][a-zA-Z0-9_]*$" }
+        { "$ref": "#/definitions/logic" }
       ]
     }
   }

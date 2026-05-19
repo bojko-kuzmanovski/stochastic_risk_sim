@@ -44,8 +44,16 @@
           "enum": ["exists", "forall"],
           "default": "exists"
         },
-        "coalition": { "$ref": "#/definitions/agent_group" },
-        "adversaries": { "$ref": "#/definitions/agent_group" },
+        "coalition": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/agent_coalition_target" }
+        },
+        "adversaries": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/agent_coalition_target" }
+        },
         "probability_bound": {
           "type": "number",
           "minimum": 0,
@@ -59,24 +67,7 @@
       },
       "additionalProperties": false
     },
-    "agent_group": {
-      "type": "object",
-      "minProperties": 1,
-      "properties": {
-        "by_type": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/definitions/agent_automata_by_type" }
-        },
-        "by_id": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/definitions/agent_automata_by_id" }
-        }
-      },
-      "additionalProperties": false
-    },
-    "agent_automata_by_type": {
+    "agent_coalition_target": {
       "type": "object",
       "required": ["agent_type", "automata"],
       "properties": {
@@ -84,19 +75,7 @@
         "automata": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/definitions/automaton_target" }
-        }
-      },
-      "additionalProperties": false
-    },
-    "agent_automata_by_id": {
-      "type": "object",
-      "required": ["agent_id", "automata"],
-      "properties": {
-        "agent_id": { "type": "string" },
-        "automata": {
-          "type": "array",
-          "minItems": 1,
+          "maxItems": 5,
           "items": { "$ref": "#/definitions/automaton_target" }
         }
       },
@@ -110,10 +89,11 @@
         "target_states": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 5,
           "items": { "type": "string" }
-        }
-      },
-      "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
     }
-  }
 }
