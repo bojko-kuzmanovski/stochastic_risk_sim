@@ -24,10 +24,20 @@ class Events:
 
             # STATIC EVENTS
             if event_entry["event_category"] == "static":
-                # periodicity resolution using the standard evaluator
                 pdef = event_entry["periodicity"]
-                # No context needed for periodicity resolution
                 periodicity = resolve_value(pdef, {}, distributions, None, None)
+
+                if not isinstance(periodicity, (int, float)):
+                    raise TypeError(
+                        f"periodicity must resolve to a number, got {type(periodicity).__name__}: "
+                        f"{periodicity} for signal '{event_entry['signal']}'"
+                    )
+                if periodicity <= 0:
+                    raise ValueError(
+                        f"periodicity must be positive, got {periodicity} "
+                        f"for signal '{event_entry['signal']}'"
+                    )
+                
                 event_resolved["periodicity"] = periodicity
 
             # DYNAMIC EVENTS (no resolution needed)

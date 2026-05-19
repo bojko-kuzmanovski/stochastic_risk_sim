@@ -139,10 +139,10 @@ class Agents:
             return
         if "event_queue" in agent:
             await agent["event_queue"].put(event)
-        if self.metrics_collector:
-            event_category = event.get("event_category")
-            signal = event.get("signal")
-            self.metrics_collector.record_agent_event(event_category, signal)
+            if self.metrics_collector:
+                event_category = event.get("event_category")
+                signal = event.get("signal")
+                self.metrics_collector.record_agent_event(event_category, signal)
 
 
     def load_snapshot(self, agents_data):
