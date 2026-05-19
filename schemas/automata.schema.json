@@ -104,9 +104,9 @@
     "event_emit_object": {
       "type": "array",
       "enum": [
-        ["signal", "agent_id"],
-        ["signal", "agent_id", "env_id"],
-        ["signal", "agent_id", "env_id", "channel_id"]
+        ["$signal", "$agent_id"],
+        ["$signal", "$agent_id", "$env_id"],
+        ["$signal", "$agent_id", "$env_id", "$channel_id"]
       ]
     },
 
@@ -136,11 +136,11 @@
             "required": ["method", "params"],
             "properties": { "method": { "enum": ["get_all_agents", "add_agent", "remove_agent", "read_agent_param", "write_agent_param"] }, "params": { "type": "array" } },
             "allOf": [
-              { "if": { "properties": { "method": { "const": "get_all_agents" } } }, "then": { "properties": { "params": { "enum": [["agent_type"]] } } } },
-              { "if": { "properties": { "method": { "const": "add_agent" } } }, "then": { "properties": { "params": { "enum": [["agent_type"]] } } } },
-              { "if": { "properties": { "method": { "const": "remove_agent" } } }, "then": { "properties": { "params": { "enum": [["agent_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_agent_param" } } }, "then": { "properties": { "params": { "enum": [["agent_id", "param_key"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_agent_param" } } }, "then": { "properties": { "params": { "enum": [["agent_id", "param_key", "value"]] } } } }
+              { "if": { "properties": { "method": { "const": "get_all_agents" } } }, "then": { "properties": { "params": { "enum": [["$agent_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_agent" } } }, "then": { "properties": { "params": { "enum": [["$agent_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_agent" } } }, "then": { "properties": { "params": { "enum": [["$agent_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_agent_param" } } }, "then": { "properties": { "params": { "enum": [["$agent_id", "$param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_agent_param" } } }, "then": { "properties": { "params": { "enum": [["$agent_id", "$param_key", "$param_value"]] } } } }
             ]
           }
         },
@@ -150,29 +150,29 @@
             "required": ["method", "params"],
             "properties": {  "method": { "enum": ["get_all_envs", "add_env", "remove_env", "read_env_param", "write_env_param", "read_members", "write_member", "read_member_param", "write_member_param", "read_rel", "add_rel", "remove_rel", "read_rel_param", "write_rel_param", "read_ch", "add_ch", "remove_ch", "read_ch_members", "write_ch_member", "read_ch_param", "write_ch_param", "read_ch_events", "write_ch_event"] }, "params": { "type": "array" } },
             "allOf": [
-              { "if": { "properties": { "method": { "const": "get_all_envs" } } }, "then": { "properties": { "params": { "enum": [["env_type"]] } } } },
-              { "if": { "properties": { "method": { "const": "add_env" } } }, "then": { "properties": { "params": { "enum": [["env_type"]] } } } },
-              { "if": { "properties": { "method": { "const": "remove_env" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_env_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "param_key"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_env_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "param_key", "value"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_members" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_member" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_member_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_id", "param_key"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_member_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_id", "param_key", "value"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_rel" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "add_rel" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "remove_rel" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_rel_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id", "param_key"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_rel_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "agent_a_id", "agent_b_id", "param_key", "value"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_ch" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "add_ch" } } }, "then": { "properties": { "params": { "enum": [["env_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "remove_ch" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_ch_members" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_ch_member" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "agent_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_ch_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "param_key"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_ch_param" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "param_key", "value"]] } } } },
-              { "if": { "properties": { "method": { "const": "read_ch_events" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id"]] } } } },
-              { "if": { "properties": { "method": { "const": "write_ch_event" } } }, "then": { "properties": { "params": { "enum": [["env_id", "channel_id", "agent_id", "signal"]] } } } }
+              { "if": { "properties": { "method": { "const": "get_all_envs" } } }, "then": { "properties": { "params": { "enum": [["$env_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_env" } } }, "then": { "properties": { "params": { "enum": [["$env_type"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_env" } } }, "then": { "properties": { "params": { "enum": [["$env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_env_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_env_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$param_key", "$param_value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_members" } } }, "then": { "properties": { "params": { "enum": [["$env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_member" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_member_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_id", "$param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_member_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_id", "$param_key", "$param_value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_rel" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_a_id", "$agent_b_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_rel" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_a_id", "$agent_b_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_rel" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_a_id", "$agent_b_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_rel_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_a_id", "$agent_b_id", "$param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_rel_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$agent_a_id", "$agent_b_id", "$param_key", "$param_value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch" } } }, "then": { "properties": { "params": { "enum": [["$env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "add_ch" } } }, "then": { "properties": { "params": { "enum": [["$env_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "remove_ch" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch_members" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_ch_member" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id", "$agent_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id", "$param_key"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_ch_param" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id", "$param_key", "$param_value"]] } } } },
+              { "if": { "properties": { "method": { "const": "read_ch_events" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id"]] } } } },
+              { "if": { "properties": { "method": { "const": "write_ch_event" } } }, "then": { "properties": { "params": { "enum": [["$env_id", "$channel_id", "$agent_id", "$signal"]] } } } }
             ]
           }
         },
