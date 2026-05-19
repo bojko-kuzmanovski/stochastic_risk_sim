@@ -32,8 +32,8 @@ class Distributions:
             truncation = d.get("truncation")
 
             def make_sampler(dist_name, family, output_type, params, labels, truncation):
-                def sampler(bound_params=None):
-                    p = {**params, **(bound_params or {})}
+                def sampler():
+                    p = {**params}
                     max_attempts = 1000
 
                     for _ in range(max_attempts):
@@ -85,21 +85,21 @@ class Distributions:
                 'output_type': output_type
             }
 
-    def sample(self, name, bound_params=None):
+    def sample(self, name):
         entry = self.samplers.get(name)
         if not entry:
             raise ValueError(f"Distribution {name} not found")
 
-        return entry['sampler'](bound_params)
+        return entry['sampler']()
     
 
-    def probability_interval(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True, bound_params=None):
+    def probability_interval(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
         entry = self.samplers.get(name)
         if not entry:
             raise ValueError(f"Distribution {name} not found")
 
         family = entry['family']
-        params = {**entry['params'], **(bound_params or {})}
+        params = entry['params']
         truncation = entry['truncation']
         labels = entry.get('labels', [])
 

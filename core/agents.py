@@ -44,13 +44,11 @@ class Agents:
 
         # Resolve params
         resolved_params = {}
-        ctx = resolved_params
         for pname, pdef in agent_entry.get("params", {}).items():
             resolved_params[pname] = resolve_value(
-                vdef=pdef, ctx=ctx, distributions=self.distributions,
+                vdef=pdef, ctx={}, distributions=self.distributions,
                 agents_obj=None, environments_obj=None
             )
-            ctx[pname] = resolved_params[pname]
         agent_resolved["params"] = resolved_params
 
         # Event queue
