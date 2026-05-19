@@ -26,6 +26,12 @@
         "agent_id": { "type": "string" },
         "env_id": { "type": "string" },
         "channel_id": { "type": "string" }
+      },
+      "if": {
+        "required": ["channel_id"]
+      },
+      "then": {
+        "required": ["env_id"]
       }
     }
   },
@@ -36,11 +42,7 @@
       "properties": {
         "type": { "enum": ["probabilistic", "deterministic"] },
         "value": { "type": ["string", "number", "boolean"] },
-        "distribution": { "type": "string" },
-        "refs": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        }
+        "distribution": { "type": "string" }
       },
       "if": {
         "properties": { "type": { "const": "probabilistic" } }

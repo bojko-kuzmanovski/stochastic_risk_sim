@@ -1,128 +1,16 @@
 [
-  {
-    "event_category": "static",
-    "signal": "runway_lifecycle",
-    "agent_type": "Startup",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "burn_rate_calculator",
-    "agent_type": "Startup",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "headcount_controller",
-    "agent_type": "Startup",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "compliance_burden",
-    "agent_type": "Startup",
-    "periodicity": {
-      "type": "probabilistic",
-      "distribution": "shock_arrival"
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "other_investment_controller",
-    "agent_type": "Startup",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "revenue_generator",
-    "agent_type": "RevenueStream",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "client_retention_cycle",
-    "agent_type": "KeyClient",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "shock_lifecycle",
-    "agent_type": "ShockEvent",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "regulatory_shock",
-    "agent_type": "ShockEvent",
-    "periodicity": {
-      "type": "probabilistic",
-      "distribution": "shock_arrival"
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "regulatory_intervention",
-    "agent_type": "Regulator",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 12
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "investment_decision",
-    "agent_type": "Investor",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 1
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "investor_exit",
-    "agent_type": "Investor",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 6
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "strategic_resource_allocator",
-    "agent_type": "Founder",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 6
-    }
-  },
-  {
-    "event_category": "static",
-    "signal": "belief_updater",
-    "agent_type": "Founder",
-    "periodicity": {
-      "type": "deterministic",
-      "value": 6
-    }
-  }
+  {"event_category": "static", "signal": "runway_lifecycle", "agent_type": "Startup", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "burn_rate_calculator", "agent_type": "Startup", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "headcount_controller", "agent_type": "Startup", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "compliance_burden", "agent_type": "Startup", "periodicity": {"type": "probabilistic", "distribution": "shock_arrival"}},
+  {"event_category": "static", "signal": "other_investment_controller", "agent_type": "Startup", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "revenue_generator", "agent_type": "RevenueStream", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "client_retention_cycle", "agent_type": "KeyClient", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "shock_lifecycle", "agent_type": "ShockEvent", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "regulatory_shock", "agent_type": "ShockEvent", "periodicity": {"type": "probabilistic", "distribution": "shock_arrival"}},
+  {"event_category": "static", "signal": "regulatory_intervention", "agent_type": "Regulator", "periodicity": {"type": "deterministic", "value": 12}},
+  {"event_category": "static", "signal": "investment_decision", "agent_type": "Investor", "periodicity": {"type": "deterministic", "value": 1}},
+  {"event_category": "static", "signal": "investor_exit", "agent_type": "Investor", "periodicity": {"type": "deterministic", "value": 6}},
+  {"event_category": "static", "signal": "strategic_resource_allocator", "agent_type": "Founder", "periodicity": {"type": "deterministic", "value": 6}},
+  {"event_category": "static", "signal": "belief_updater", "agent_type": "Founder", "periodicity": {"type": "deterministic", "value": 6}}
 ]
