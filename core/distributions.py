@@ -12,7 +12,6 @@ class Distributions:
 
         validate(instance=config_data, schema=schema)
 
-        # Validate unique distribution_name
         names = [d["distribution_name"] for d in config_data]
         if len(names) != len(set(names)):
             duplicates = [n for n in names if names.count(n) > 1]
@@ -28,17 +27,24 @@ class Distributions:
             family = d["family"]
             output_type = d["output_type"]
             params = d.get("params", {})
-            labels = d.get("labels", [])
             truncation = d.get("truncation")
 
-            def make_sampler(dist_name, family, output_type, params, labels, truncation):
+            if family == "categorical":
+                categories = params.get("categories", [])
+                labels = [c["label"] for c in categories]
+                probabilities = [c["probability"] for c in categories]
+            else:
+                labels = []
+                probabilities = []
+
+            def make_sampler(dist_name, family, output_type, params, labels, probabilities, truncation):
                 def sampler():
                     p = {**params}
                     max_attempts = 1000
 
                     for _ in range(max_attempts):
                         if family == "categorical":
-                            val = random.choices(labels, weights=p.get("probabilities"))[0]
+                            val = random.choices(labels, weights=probabilities)[0]
                         elif family == "normal":
                             val = random.normalvariate(p["mean"], p["sigma"])
                         elif family == "exponential":
@@ -70,17 +76,16 @@ class Distributions:
 
                         return val
 
-                    raise ValueError(
-                        f"Truncation too restrictive for {dist_name}"
-                    )
+                    raise ValueError(f"Truncation too restrictive for {dist_name}")
 
                 return sampler
 
             self.samplers[name] = {
-                'sampler': make_sampler(name, family, output_type, params, labels, truncation),
+                'sampler': make_sampler(name, family, output_type, params, labels, probabilities, truncation),
                 'family': family,
                 'params': params,
                 'labels': labels,
+                'probabilities': probabilities,
                 'truncation': truncation,
                 'output_type': output_type
             }
@@ -89,9 +94,7 @@ class Distributions:
         entry = self.samplers.get(name)
         if not entry:
             raise ValueError(f"Distribution {name} not found")
-
         return entry['sampler']()
-    
 
     def probability_interval(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
         entry = self.samplers.get(name)
@@ -101,18 +104,16 @@ class Distributions:
         family = entry['family']
         params = entry['params']
         truncation = entry['truncation']
-        labels = entry.get('labels', [])
 
-        # Intersection
         if truncation:
             lower = max(lower, truncation["min"])
             upper = min(upper, truncation["max"])
         if lower > upper:
             return 0.0
 
-        # Categorical
         if family == "categorical":
-            probs = params.get("probabilities", [])
+            labels = entry['labels']
+            probs = entry['probabilities']
             total = 0.0
             for label, p in zip(labels, probs):
                 try:
@@ -133,26 +134,20 @@ class Distributions:
                         total += p
             return total
 
-        # Poisson
         if family == "poisson":
             lam = params["lambda"]
-            
-            # Handle infinite bounds
             if lower == float("-inf"):
                 lower = 0
                 lower_inclusive = True
             if upper == float("inf"):
-                # Use 99.99th percentile as practical bound
                 upper = stats.poisson.ppf(0.9999, lam)
                 upper_inclusive = True
-            
             k_min = int(np.floor(lower)) if not lower_inclusive else int(np.ceil(lower))
             k_max = int(np.ceil(upper)) if not upper_inclusive else int(np.floor(upper))
             if k_min > k_max:
                 return 0.0
             return stats.poisson.cdf(k_max, mu=lam) - stats.poisson.cdf(k_min - 1, mu=lam)
 
-        # Continuous
         if family == "normal":
             cdf_lower = stats.norm.cdf(lower, loc=params["mean"], scale=params["sigma"])
             cdf_upper = stats.norm.cdf(upper, loc=params["mean"], scale=params["sigma"])
