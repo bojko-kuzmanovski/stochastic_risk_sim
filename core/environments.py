@@ -1,4 +1,3 @@
-import time
 import random
 import string
 import json
@@ -41,27 +40,23 @@ class Environments:
 
         # Resolve params
         resolved_params = {}
-        ctx = resolved_params
         for pname, pdef in env_entry.get("params", {}).items():
             resolved_params[pname] = resolve_value(
-                vdef=pdef, ctx=ctx, distributions=self.distributions,
+                vdef=pdef, ctx={}, distributions=self.distributions,
                 agents_obj=None, environments_obj=None
             )
-            ctx[pname] = resolved_params[pname]
         env_resolved["params"] = resolved_params
 
         # Members
         resolved_members = []
         for member in env_entry.get("members", []):
             resolved_rol = {}
-            rol_ctx = {}
             for rname, rdef in member.get("agent_rol", {}).items():
                 resolved_rol[rname] = resolve_value(
-                    vdef=rdef, ctx={**resolved_params, **rol_ctx},
+                    vdef=rdef, ctx={},
                     distributions=self.distributions,
                     agents_obj=None, environments_obj=None
                 )
-                rol_ctx[rname] = resolved_rol[rname]
             resolved_members.append({
                 "agent_id": member["agent_id"],
                 "agent_rol": resolved_rol
@@ -72,34 +67,31 @@ class Environments:
         resolved_relations = []
         for rel in env_entry.get("relations", []):
             resolved_meta = {}
-            meta_ctx = {}
-            for mname, mdef in rel.get("rel_metadata", {}).items():
+            for mname, mdef in rel.get("metadata", {}).items():
                 resolved_meta[mname] = resolve_value(
-                    vdef=mdef, ctx={**resolved_params, **meta_ctx},
+                    vdef=mdef, ctx={},
                     distributions=self.distributions,
                     agents_obj=None, environments_obj=None
                 )
-                meta_ctx[mname] = resolved_meta[mname]
+            members = rel.get("members", [])
             resolved_relations.append({
-                "agent_a_id": rel["agent_a_id"],
-                "agent_b_id": rel["agent_b_id"],
-                "rel_metadata": resolved_meta
+                "agent_a_id": members[0] if len(members) > 0 else None,
+                "agent_b_id": members[1] if len(members) > 1 else None,
+                "metadata": resolved_meta
             })
         env_resolved["relations"] = resolved_relations
 
         # Channels
         resolved_channels = []
         for ch in env_entry.get("channels", []):
-            # Resolver channel_metadata
+            # Resolver metadata
             resolved_ch_meta = {}
-            ch_meta_ctx = {}
-            for mname, mdef in ch.get("channel_metadata", {}).items():
+            for mname, mdef in ch.get("metadata", {}).items():
                 resolved_ch_meta[mname] = resolve_value(
-                    vdef=mdef, ctx={**resolved_params, **ch_meta_ctx},
+                    vdef=mdef, ctx={},
                     distributions=self.distributions,
                     agents_obj=None, environments_obj=None
                 )
-                ch_meta_ctx[mname] = resolved_ch_meta[mname]
 
             # Eventos (ya resueltos, sin metadata)
             resolved_events = []
@@ -113,7 +105,7 @@ class Environments:
                 "channel_id": ch["channel_id"],
                 "members": ch["members"],
                 "events": resolved_events,
-                "channel_metadata": resolved_ch_meta
+                "metadata": resolved_ch_meta
             })
         env_resolved["channels"] = resolved_channels
 
