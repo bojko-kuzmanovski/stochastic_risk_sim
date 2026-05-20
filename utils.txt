@@ -1,1 +1,7 @@
 tree ./ -I '__pycache__|venv|configs|*.txt|*.md|*.csv'
+
+De los eventos que se emiten en estos autómatas, sus señales y tipos de agente corresponden a agentes que tienen asignado el autómata de la señal correspondiente? Es decir, los eventos dinámicos realmente pueden ser procesados?
+
+runway_critical; runway_warning; client_replacement
+
+regulatory_intervention

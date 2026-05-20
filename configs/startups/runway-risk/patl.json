@@ -24,7 +24,7 @@
           "max_depth": 8,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "Startup", "automata": [{ "automaton_name": "investment_offer", "target_states": ["DONE"] }] }
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
           ],
           "adversaries": [
             { "agent_type": "ShockEvent", "automata": [{ "automaton_name": "exogenous_shock", "target_states": ["DONE"] }] }
@@ -95,7 +95,7 @@
     },
     {
       "automaton_name": "investment_decision",
-      "trigger_state": "EVALUATE",
+      "trigger_state": "PASSED",
       "predicates": [
         {
           "predicate_id": "investor_commitment_despite_capacity",
@@ -103,7 +103,7 @@
           "max_depth": 4,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["INVESTED"] }] }
+            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
           ],
           "adversaries": [
             { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
@@ -124,26 +124,12 @@
           ],
           "probability_bound": 0.55,
           "probability_operator": "<="
-        },
-        {
-          "predicate_id": "investor_breaks_relation_after_rejection",
-          "type": "reachability",
-          "max_depth": 6,
-          "coalition_quantifier": "exists",
-          "coalition": [
-            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["REMOVE_RELATION"] }] }
-          ],
-          "adversaries": [
-            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
-          ],
-          "probability_bound": 0.4,
-          "probability_operator": ">="
         }
       ]
     },
     {
-      "automaton_name": "strategic_resource_allocator",
-      "trigger_state": "APPLY_DECISION_RULE",
+      "automaton_name": "burn_rate_calculator",
+      "trigger_state": "DONE",
       "predicates": [
         {
           "predicate_id": "optimistic_allocation_leads_to_growth",
@@ -174,7 +160,7 @@
           "max_depth": 6,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "Startup", "automata": [{ "automaton_name": "headcount_controller", "target_states": ["LAYOFFS_DONE"] }] }
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "headcount_controller", "target_states": ["FREEZE_SET"] }] }
           ],
           "adversaries": [
             { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
@@ -209,7 +195,7 @@
           "coalition_quantifier": "exists",
           "coalition": [
             { "agent_type": "Startup", "automata": [
-              { "automaton_name": "strategic_resource_allocator", "target_states": ["DONE"] },
+              { "automaton_name": "burn_rate_calculator", "target_states": ["DONE"] },
               { "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }
             ]}
           ],
@@ -218,26 +204,6 @@
           ],
           "probability_bound": 0.5,
           "probability_operator": ">="
-        }
-      ]
-    },
-    {
-      "automaton_name": "investor_exit",
-      "trigger_state": "REMOVE_FROM_ECOSYSTEM",
-      "predicates": [
-        {
-          "predicate_id": "investor_exits_ecosystem_due_to_patience",
-          "type": "reachability",
-          "max_depth": 8,
-          "coalition_quantifier": "exists",
-          "coalition": [
-            { "agent_type": "Investor", "automata": [{ "automaton_name": "investor_exit", "target_states": ["EXITED"] }] }
-          ],
-          "adversaries": [
-            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
-          ],
-          "probability_bound": 0.2,
-          "probability_operator": "<="
         }
       ]
     },
@@ -251,7 +217,7 @@
           "max_depth": 10,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "Regulator", "automata": [{ "automaton_name": "regulatory_intervention", "target_states": ["WRITE_ENV_PARAMS"] }] }
+            { "agent_type": "Regulator", "automata": [{ "automaton_name": "regulatory_intervention", "target_states": ["DONE"] }] }
           ],
           "adversaries": [
             { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
@@ -282,8 +248,8 @@
       ]
     },
     {
-      "automaton_name": "client_replacement",
-      "trigger_state": "REGISTER_IN_ENV",
+      "automaton_name": "client_lost",
+      "trigger_state": "DONE",
       "predicates": [
         {
           "predicate_id": "client_replacement_succeeds_despite_crisis",
@@ -291,35 +257,12 @@
           "max_depth": 8,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "KeyClient", "automata": [{ "automaton_name": "client_replacement", "target_states": ["REPLACED"] }] }
+            { "agent_type": "KeyClient", "automata": [{ "automaton_name": "client_lost", "target_states": ["DONE"] }] }
           ],
           "adversaries": [
             { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
           ],
           "probability_bound": 0.25,
-          "probability_operator": ">="
-        }
-      ]
-    },
-    {
-      "automaton_name": "headcount_controller",
-      "trigger_state": "CHECK_HIRING_SUCCESS",
-      "predicates": [
-        {
-          "predicate_id": "hiring_success_boosts_growth",
-          "type": "reachability",
-          "max_depth": 10,
-          "coalition_quantifier": "exists",
-          "coalition": [
-            { "agent_type": "Startup", "automata": [
-              { "automaton_name": "headcount_controller", "target_states": ["HIRING_DONE"] },
-              { "automaton_name": "runway_lifecycle", "target_states": ["OPERATING"] }
-            ]}
-          ],
-          "adversaries": [
-            { "agent_type": "Investor", "automata": [{ "automaton_name": "investment_decision", "target_states": ["PASSED"] }] }
-          ],
-          "probability_bound": 0.35,
           "probability_operator": ">="
         }
       ]

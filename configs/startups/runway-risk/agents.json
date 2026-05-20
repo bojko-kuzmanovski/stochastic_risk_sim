@@ -22,13 +22,15 @@
     "automata": [
       "burn_rate_calculator",
       "runway_lifecycle",
-      "headcount_controller",
       "client_lost",
       "exogenous_shock",
       "investment_offer",
       "startup_dead",
       "other_investment_controller",
-      "compliance_burden"
+      "compliance_burden",
+      "seeking_funding",
+      "runway_warning",
+      "runway_critical"
     ]
   },
   {
@@ -52,12 +54,11 @@
     "params": {
       "revenue_share": { "type": "deterministic", "value": 0.15 },
       "retention_prob": { "type": "probabilistic", "distribution": "client_retention" },
-      "contract_months_remaining": { "type": "deterministic", "value": 12 },
+      "contract_months_remaining": { "type": "deterministic", "value": 6 },
       "is_active": { "type": "deterministic", "value": true }
     },
     "automata": [
-      "client_retention_cycle",
-      "client_replacement"
+      "client_retention_cycle"
     ]
   },
   {
@@ -102,7 +103,6 @@
     },
     "automata": [
       "investment_decision",
-      "seeking_funding",
       "investor_exit"
     ]
   },
@@ -120,7 +120,9 @@
     },
     "automata": [
       "strategic_resource_allocator",
-      "belief_updater"
+      "belief_updater",
+      "client_replacement",
+      "compliance_monitor"
     ]
   },
   {
@@ -133,6 +135,8 @@
       "estimated_productivity_per_head": { "type": "deterministic", "value": 1.0 }, 
       "estimated_revenue_elasticity": { "type": "deterministic", "value": 0.5 }
     },
-    "automata": []
+    "automata": [
+      "headcount_controller"
+    ]
   }
 ]

@@ -148,9 +148,13 @@ class PATLVerifier:
         
         for idx, agent in enumerate(agents_to_expand):
             state = agent.get("current_state")
-            aut_name = strat.get(agent["agent_id"], (agent.get("automata") or [None])[0])
+            aut_name = strat.get(agent["agent_id"])
+            if not aut_name:
+                aut_name = (agent.get("automata") or [None])[0]
+                
             if not state or not aut_name:
                 continue
+                
             aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
             if not aut_def or state in aut_def["states"].get("final", []):
                 continue
@@ -159,6 +163,9 @@ class PATLVerifier:
                 continue
 
             tv = trans["threshold_value"]
+            tv_key = next(iter(tv))
+            tv_def = tv[tv_key]
+
             new_branches = []
             for base_prob, base_upd, base_env in branches:
                 remaining_low, remaining_high = float("-inf"), float("inf")
@@ -170,20 +177,27 @@ class PATLVerifier:
                     low, high = max(low, remaining_low), min(high, remaining_high)
                     if low > high:
                         continue
-                    if tv["type"] == "probabilistic":
-                        p = self.distributions.probability_interval(tv["distribution"], low, high, li, ui)
+                    
+                    is_probabilistic = isinstance(tv_def, dict) and tv_def.get("type") == "probabilistic"
+                    
+                    if is_probabilistic:
+                        p = self.distributions.probability_interval(tv_def["distribution"], low, high, li, ui)
                     else:
                         p = 1.0
+                        
                     if p > 0:
                         mid = (low + high) / 2 if low != float("-inf") and high != float("inf") else (low if low != float("-inf") else high)
                         event_data = {"signal": aut_name, "agent_id": agent["agent_id"]}
+                        
                         session = self.automata.create_session(aut_name, event_data, async_mode=False)
                         session.current_state = state
-                        session.params = agent.get("params", {}).copy()
-                        if tv["type"] == "probabilistic":
+                        session.ctx = agent.get("params", {}).copy()
+                        
+                        if is_probabilistic:
                             ns = session.step(forced_X=mid)
                         else:
                             ns = session.step()
+                            
                         if ns:
                             upd = dict(base_upd)
                             upd[agent["agent_id"]] = ns
@@ -193,6 +207,13 @@ class PATLVerifier:
 
         return branches
 
+    def _is_final(self, agent):
+        aut_name = (agent.get("automata") or [None])[0]
+        if not aut_name:
+            return True
+        aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
+        return aut_def and agent.get("current_state") in aut_def["states"].get("final", []) if aut_def else True
+    
     def _make_agents(self, data):
         a = Agents([], self.distributions, None, worker_mode=False)
         a.data = data
