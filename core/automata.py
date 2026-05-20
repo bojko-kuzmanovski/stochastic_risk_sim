@@ -72,34 +72,21 @@ class AutomatonSession:
         param_keys = logic_def.get("params", [])
 
         if target == "system":
-            pipeline_def = logic_def["params"]
             try:
-                initial_resolved = self._resolve(pipeline_def["initial_value"])
-                operations = []
-                for op_def in pipeline_def.get("operations", []):
-                    with_resolved = self._resolve(op_def.get("with", 0))
-                    operations.append({
-                        "operator": op_def["operator"],
-                        "with": {"type": "deterministic", "value": with_resolved}
-                    })
-                mocked_pipeline = {
-                    "initial_value": {"type": "deterministic", "value": initial_resolved},
-                    "operations": operations
-                }
-                return call_method(target, method, [mocked_pipeline],
-                                 self.automata.agents, self.automata.environments)
-            
+                return call_method(target, method, [param_keys],
+                                 self.automata.agents, self.automata.environments, 
+                                 resolve_fn=self._resolve)
             except Exception as e:
                 print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
                       f"math_pipeline execution failed. Error: {type(e).__name__} - {e}", file=sys.stderr, flush=True)
-                print(f"        pipeline_def: {pipeline_def}", file=sys.stderr, flush=True)
+                print(f"        pipeline_def: {param_keys}", file=sys.stderr, flush=True)
                 os._exit(1)
 
         resolved_keys = [resolve_ephemeral(k, self.ctx) for k in param_keys]
         args = [self.ctx.get(k) if isinstance(k, str) and k.startswith("$") else k for k in resolved_keys]
         event_obj = self.event if target == "events" else None
         return call_method(target, method, args, self.automata.agents, self.automata.environments, event_obj)
-
+    
     def step(self, forced_X=None) -> Optional[str]:
         if self.current_state in self.final_states:
             self.automata.metrics_collector.record_automaton_execution(
