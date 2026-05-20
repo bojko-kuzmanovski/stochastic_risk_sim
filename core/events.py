@@ -30,7 +30,7 @@ class Events:
                         f"periodicity must resolve to a number, got {type(periodicity).__name__}: "
                         f"{periodicity} for signal '{event_entry['signal']}'"
                     )
-                if periodicity <= 0:
+                if periodicity < 0:
                     raise ValueError(
                         f"periodicity must be positive, got {periodicity} "
                         f"for signal '{event_entry['signal']}'"

@@ -58,6 +58,26 @@ class Agents:
 
 
     def _start_worker(self, agent):
+        async def _run_automaton_lifecycle(session, automaton_name):
+            """Maneja el ciclo de vida de un autómata en una tarea independiente."""
+            while self._running:
+                while self.snapshot_manager.is_sampling():
+                    await asyncio.sleep(0.01)
+
+                self.snapshot_manager.enter_transition()
+                new_state = session.step()
+                self.snapshot_manager.exit_transition()
+
+                if new_state is None:
+                    agent.pop("current_state", None)
+                    break
+
+                agent["current_state"] = new_state
+                await self.snapshot_manager.capture(
+                    agent["agent_id"], automaton_name, new_state
+                )
+                await asyncio.sleep(0.025)
+
         async def _worker():
             try:
                 while self._running:
@@ -79,22 +99,8 @@ class Agents:
                     automaton_name = session.automaton_name
                     agent["current_state"] = session.current_state
                     
-                    while self._running:
-                        while self.snapshot_manager.is_sampling():
-                            await asyncio.sleep(0.01)
-
-                        self.snapshot_manager.enter_transition()
-                        new_state = session.step()
-                        self.snapshot_manager.exit_transition()
-
-                        if new_state is None:
-                            agent.pop("current_state", None)
-                            break
-
-                        agent["current_state"] = new_state
-                        await self.snapshot_manager.capture(
-                            agent["agent_id"], automaton_name, new_state
-                        )
+                    asyncio.create_task(_run_automaton_lifecycle(session, automaton_name))
+                    
             except asyncio.CancelledError:
                 pass
 

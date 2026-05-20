@@ -14,6 +14,7 @@
     "then": {
       "required": ["signal", "agent_type", "periodicity"],
       "properties": {
+        "event_category": { "type": "string" },
         "signal": { "type": "string" },
         "agent_type": { "type": "string" },
         "periodicity": { "$ref": "#/definitions/periodicity_definition" }
@@ -23,6 +24,7 @@
       "required": ["signal", "agent_id"],
       "additionalProperties": false,
       "properties": {
+        "event_category": { "type": "string" },
         "signal": { "type": "string" },
         "agent_id": { "type": "string" },
         "env_id": { "type": "string" },

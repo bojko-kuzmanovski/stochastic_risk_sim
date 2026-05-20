@@ -58,19 +58,28 @@ def _execute_math_pipeline(pipeline_def: dict) -> Any:
     """Execute a math_pipeline definition."""
     import math
     
+    def _force_numeric(val):
+        if isinstance(val, str):
+            try:
+                return float(val) if "." in val else int(val)
+            except ValueError:
+                return 0
+        return val if val is not None else 0
+
     initial = pipeline_def.get("initial_value", 0)
     if isinstance(initial, dict):
         initial = resolve_value(initial, None) if initial.get("type") else None
-    if initial is None:
-        initial = 0
 
-    value = initial
+    value = _force_numeric(initial)
+    
     for op_def in pipeline_def.get("operations", []):
         op = op_def["operator"]
         operand = op_def.get("with", 0)
         
         if isinstance(operand, dict):
             operand = resolve_value(operand, None) if operand.get("type") else operand
+
+        operand = _force_numeric(operand)
 
         if op == "+":
             value = value + operand
@@ -103,11 +112,23 @@ def resolve_ephemeral(value: Any, ctx: Dict[str, Any]) -> Any:
         return value
 
     if isinstance(value, str) and "$" in value:
+        if value.startswith("$") and " " not in value:
+            if value in ctx:
+                return ctx[value]
+            elif value[1:] in ctx:
+                return ctx[value[1:]]
+
         def replacer(m):
             var_name = m.group(0)
             if var_name not in ctx:
                 return var_name
             return str(ctx[var_name])
-        return re.sub(r'\$[a-zA-Z_][a-zA-Z0-9_]*', replacer, value)
+        
+        res = re.sub(r'\$[a-zA-Z_][a-zA-Z0-9_]*', replacer, value)
+        
+        try:
+            return float(res) if "." in res else int(res)
+        except ValueError:
+            return res
 
     return value

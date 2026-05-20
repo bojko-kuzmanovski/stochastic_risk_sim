@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 import asyncio
@@ -72,15 +73,27 @@ class AutomatonSession:
 
         if target == "system":
             pipeline_def = logic_def["params"]
-            initial = self._resolve(pipeline_def["initial_value"])
-            operations = []
-            for op_def in pipeline_def.get("operations", []):
-                operations.append({
-                    "operator": op_def["operator"],
-                    "with": self._resolve(op_def.get("with", 0))
-                })
-            return call_method(target, method, [initial, operations],
-                             self.automata.agents, self.automata.environments)
+            try:
+                initial_resolved = self._resolve(pipeline_def["initial_value"])
+                operations = []
+                for op_def in pipeline_def.get("operations", []):
+                    with_resolved = self._resolve(op_def.get("with", 0))
+                    operations.append({
+                        "operator": op_def["operator"],
+                        "with": {"type": "deterministic", "value": with_resolved}
+                    })
+                mocked_pipeline = {
+                    "initial_value": {"type": "deterministic", "value": initial_resolved},
+                    "operations": operations
+                }
+                return call_method(target, method, [mocked_pipeline],
+                                 self.automata.agents, self.automata.environments)
+            
+            except Exception as e:
+                print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
+                      f"math_pipeline execution failed. Error: {type(e).__name__} - {e}", file=sys.stderr, flush=True)
+                print(f"        pipeline_def: {pipeline_def}", file=sys.stderr, flush=True)
+                os._exit(1)
 
         resolved_keys = [resolve_ephemeral(k, self.ctx) for k in param_keys]
         args = [self.ctx.get(k) if isinstance(k, str) and k.startswith("$") else k for k in resolved_keys]
@@ -114,8 +127,8 @@ class AutomatonSession:
 
         if not chosen:
             print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                  f"no threshold_case matched for value {X}", file=sys.stderr)
-            sys.exit(1)
+                  f"no threshold_case matched for value {X}", file=sys.stderr, flush=True)
+            os._exit(1)
 
         self.current_state = chosen["to"]
         self._apply_actions(chosen.get("actions", []))
@@ -123,38 +136,55 @@ class AutomatonSession:
 
     def _check_case(self, conditions: list) -> bool:
         for cond in conditions:
-            var_name = resolve_ephemeral(cond["variable"], self.ctx)
+            raw_var = cond["variable"]
             op = cond["operator"]
+
             expected = resolve_ephemeral(cond["value"], self.ctx) if isinstance(cond["value"], str) else cond["value"]
-            actual = self.ctx.get(var_name)
-            if actual is None and var_name not in self.ctx:
+            actual = None
+            found = False
+
+            if isinstance(raw_var, str):
+                var_with_dollar = raw_var if raw_var.startswith("$") else f"${raw_var}"
+                var_no_dollar = raw_var[1:] if raw_var.startswith("$") else raw_var
+
+                if raw_var in self.ctx:
+                    actual = self.ctx[raw_var]
+                    found = True
+                elif var_with_dollar in self.ctx:
+                    actual = self.ctx[var_with_dollar]
+                    found = True
+                elif var_no_dollar in self.ctx:
+                    actual = self.ctx[var_no_dollar]
+                    found = True
+            else:
+                if raw_var in self.ctx:
+                    actual = self.ctx[raw_var]
+                    found = True
+
+            if not found:
                 print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                      f"undefined ephemeral variable '{var_name}' in threshold_rule", file=sys.stderr)
-                sys.exit(1)
+                      f"undefined ephemeral variable '{raw_var}' in threshold_rule", file=sys.stderr, flush=True)
+                os._exit(1)
+
             try:
                 if op == "<" and not (actual < expected):
-                    self._fatal_check(var_name, actual, expected, op)
+                    return False
                 elif op == "<=" and not (actual <= expected):
-                    self._fatal_check(var_name, actual, expected, op)
+                    return False
                 elif op == ">" and not (actual > expected):
-                    self._fatal_check(var_name, actual, expected, op)
+                    return False
                 elif op == ">=" and not (actual >= expected):
-                    self._fatal_check(var_name, actual, expected, op)
+                    return False
                 elif op == "==" and not (actual == expected):
-                    self._fatal_check(var_name, actual, expected, op)
+                    return False
                 elif op == "!=" and not (actual != expected):
-                    self._fatal_check(var_name, actual, expected, op)
-                else:
+                    return False
+                elif op not in ["<", "<=", ">", ">=", "==", "!="]:
                     return False
             except TypeError:
-                self._fatal_check(var_name, actual, expected, op)
-        return True
+                return False
 
-    def _fatal_check(self, var_name, actual, expected, op):
-        print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-              f"threshold_rule failed: {var_name} {op} {expected} "
-              f"(actual={actual}, type={type(actual).__name__})", file=sys.stderr)
-        sys.exit(1)
+        return True
 
     def _apply_actions(self, actions: list):
         for action_obj in actions:
@@ -189,9 +219,9 @@ class AutomatonSession:
                     Events([event_data], self.automata.distributions)
                 except Exception as e:
                     print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                          f"event_emit failed validation: {e}", file=sys.stderr)
-                    print(f"  signal='{signal}', agent_id='{agent_id}'", file=sys.stderr)
-                    sys.exit(1)
+                          f"event_emit failed validation: {e}", file=sys.stderr, flush=True)
+                    print(f"  signal='{signal}', agent_id='{agent_id}'", file=sys.stderr, flush=True)
+                    os._exit(1)
 
                 if agent_id is not None and self.async_mode:
                     asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))

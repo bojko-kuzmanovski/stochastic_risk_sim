@@ -129,7 +129,9 @@
     "params": {
       "true_productivity_per_head": { "type": "probabilistic", "distribution": "true_productivity" },
       "true_revenue_elasticity": { "type": "probabilistic", "distribution": "true_elasticity" },
-      "talent_availability": { "type": "probabilistic", "distribution": "hiring_success" }
+      "talent_availability": { "type": "probabilistic", "distribution": "hiring_success" },
+      "estimated_productivity_per_head": { "type": "deterministic", "value": 1.0 }, 
+      "estimated_revenue_elasticity": { "type": "deterministic", "value": 0.5 }
     },
     "automata": []
   }
