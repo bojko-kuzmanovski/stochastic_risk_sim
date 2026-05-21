@@ -211,4 +211,6 @@ class AutomatonSession:
                     os._exit(1)
 
                 if agent_id is not None and self.async_mode:
-                    asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))
+                    agent_exists = any(ag.get("agent_id") == agent_id for ag in self.automata.agents.data) if hasattr(self.automata.agents, 'data') else False
+                    if agent_exists:
+                        asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))

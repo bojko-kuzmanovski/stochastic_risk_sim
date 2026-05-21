@@ -16,8 +16,8 @@ class PATLVerifier:
 
     def _verify_predicate(self, snapshot, pred):
         agents, environments = self._load_snapshot(snapshot)
-        coalition = self._resolve_agents(agents, pred["coalition"])
-        adversaries = self._resolve_agents(agents, pred.get("adversaries", {}))
+        coalition = self._resolve_agents(agents, pred["coalition"], is_coalition=True)
+        adversaries = self._resolve_agents(agents, pred.get("adversaries", {}), is_coalition=False)
         bound = pred["probability_bound"]
         operator = pred.get("probability_operator", ">=")
         predicate_id = pred["predicate_id"]
@@ -42,9 +42,10 @@ class PATLVerifier:
                 worst = 1.0
                 for a_strat in a_strats:
                     full = {**c_strat, **a_strat}
+                    # Forzamos un deepcopy inicial limpio de los datos del snapshot antes de iniciar la búsqueda de la estrategia
                     p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
                                     full, self._target_set(coalition, c_strat),
-                                    max_depth, pred_type)
+                                    max_depth, pred_type, coalition)
                     if p < worst:
                         worst = p
                 if worst > p_game:
@@ -57,7 +58,7 @@ class PATLVerifier:
                     full = {**c_strat, **a_strat}
                     p = self._reach(deepcopy(agents.data), deepcopy(environments.data),
                                     full, self._target_set(coalition, c_strat),
-                                    max_depth, pred_type)
+                                    max_depth, pred_type, coalition)
                     if p < worst:
                         worst = p
                 if worst < p_game:
@@ -80,14 +81,27 @@ class PATLVerifier:
         e.load_snapshot(snap.get("environments_data"))
         return a, e
 
-    def _resolve_agents(self, agents, spec):
+    def _resolve_agents(self, agents, spec, is_coalition=False):
         r = []
         for entry in spec:
             opts = [a["automaton_name"] for a in entry["automata"]]
             tmap = {a["automaton_name"]: set(a["target_states"]) for a in entry["automata"]}
             for ag in agents.data:
                 if ag.get("agent_type") == entry["agent_type"]:
-                    r.append({"id": ag["agent_id"], "opts": opts, "targets": tmap})
+                    initial_states = {}
+                    if is_coalition:
+                        for aut_name in opts:
+                            aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
+                            if aut_def:
+                                initial_states[aut_name] = aut_def["states"].get("initial", "LOAD_PARAMS")
+                    
+                    r.append({
+                        "id": ag["agent_id"], 
+                        "opts": opts, 
+                        "targets": tmap,
+                        "initial_states": initial_states,
+                        "is_coalition": is_coalition
+                    })
         return r
 
     def _strategies(self, agents):
@@ -106,8 +120,9 @@ class PATLVerifier:
                 t |= a["targets"][chosen]
         return t
 
-    def _reach(self, agents_data, env_data, strat, targets, depth, pred_type):
+    def _reach(self, agents_data, env_data, strat, targets, depth, pred_type, coalition_spec):
         memo = {}
+        coalition_ids = {c["id"]: c for c in coalition_spec}
 
         def dp(agents_data, env_data, d):
             if d == 0:
@@ -122,7 +137,7 @@ class PATLVerifier:
                 return 0.0
 
             total = 0.0
-            for prob, updates, new_env in self._expand(agents_data, env_data, strat):
+            for prob, updates, new_env in self._expand(agents_data, env_data, strat, coalition_ids, is_initial_step=(d == depth)):
                 saved = {aid: next(a for a in agents_data if a["agent_id"] == aid).get("current_state")
                          for aid in updates}
                 for aid, ns in updates.items():
@@ -137,7 +152,7 @@ class PATLVerifier:
         result = dp(agents_data, env_data, depth)
         return 1.0 - result if pred_type == "invariance" else result
 
-    def _expand(self, agents_data, env_data, strat):
+    def _expand(self, agents_data, env_data, strat, coalition_ids, is_initial_step=False):
         branches = [(1.0, {}, deepcopy(env_data))]
         agents_obj = self._make_agents(agents_data)
         envs_obj = self._make_envs(env_data)
@@ -147,12 +162,21 @@ class PATLVerifier:
         agents_to_expand = [a for a in agents_data if a["agent_id"] in strat]
         
         for idx, agent in enumerate(agents_to_expand):
-            state = agent.get("current_state")
             aut_name = strat.get(agent["agent_id"])
             if not aut_name:
                 aut_name = (agent.get("automata") or [None])[0]
                 
-            if not state or not aut_name:
+            if not aut_name:
+                continue
+
+            # RESET LÓGICO: Si es el agente de la coalición y estamos en el paso 0 de la verificación PATL, 
+            # ignoramos el estado del snapshot y forzamos el estado inicial del autómata
+            if is_initial_step and agent["agent_id"] in coalition_ids:
+                state = coalition_ids[agent["agent_id"]]["initial_states"].get(aut_name, "LOAD_PARAMS")
+            else:
+                state = agent.get("current_state")
+                
+            if not state:
                 continue
                 
             aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
@@ -258,13 +282,6 @@ class PATLVerifier:
                       for a in sorted(agents_data, key=lambda x: x["agent_id"]))
         env_items = tuple((e.get("env_id"), tuple(sorted(e.get("params", {}).items()))) for e in env_data)
         return (items, env_items)
-
-    def _is_final(self, agent):
-        aut_name = (agent.get("automata") or [None])[0]
-        if not aut_name:
-            return True
-        aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
-        return aut_def and agent.get("current_state") in aut_def["states"].get("final", []) if aut_def else True
 
     def _compare(self, value, bound, operator):
         if operator == ">=": return value >= bound

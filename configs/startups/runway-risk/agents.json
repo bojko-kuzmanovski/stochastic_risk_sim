@@ -28,7 +28,6 @@
       "startup_dead",
       "other_investment_controller",
       "compliance_burden",
-      "seeking_funding",
       "runway_warning",
       "runway_critical"
     ]
@@ -103,7 +102,8 @@
     },
     "automata": [
       "investment_decision",
-      "investor_exit"
+      "investor_exit",
+      "investment_offer"
     ]
   },
   {
@@ -122,7 +122,8 @@
       "strategic_resource_allocator",
       "belief_updater",
       "client_replacement",
-      "compliance_monitor"
+      "compliance_monitor",
+      "seeking_funding"
     ]
   },
   {

@@ -160,7 +160,7 @@
           "max_depth": 6,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "Startup", "automata": [{ "automaton_name": "headcount_controller", "target_states": ["FREEZE_SET"] }] }
+            { "agent_type": "TalentMarket",  "automata": [{ "automaton_name": "headcount_controller", "target_states": ["FREEZE_SET"] }] }
           ],
           "adversaries": [
             { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
@@ -257,12 +257,12 @@
           "max_depth": 8,
           "coalition_quantifier": "exists",
           "coalition": [
-            { "agent_type": "KeyClient", "automata": [{ "automaton_name": "client_lost", "target_states": ["DONE"] }] }
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "client_replacement", "target_states": ["REPLACED"] }] }
           ],
           "adversaries": [
-            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL", "DEAD"] }] }
+            { "agent_type": "Startup", "automata": [{ "automaton_name": "runway_lifecycle", "target_states": ["CRITICAL"] }] }
           ],
-          "probability_bound": 0.25,
+          "probability_bound": 0.65,
           "probability_operator": ">="
         }
       ]

@@ -1,3 +1,4 @@
+import os
 import json
 import asyncio
 from jsonschema import validate
@@ -89,7 +90,16 @@ class Agents:
                         continue
 
                     signal = event.get("signal")
-                    if signal not in agent.get("automata", []):
+                    automaton_def = next(
+                        (a for a in self.automata.data if a["automaton_name"] == signal), None
+                    )
+                    
+                    if not automaton_def:
+                        continue
+
+                    if automaton_def["automaton_name"] not in agent.get("automata", []):
+                        print(f"[FATAL] Agent {agent['agent_id']} rejected signal '{signal}' because it does not have that automaton assigned.")
+                        os._exit(1)
                         continue
 
                     session = self.automata.create_session(signal, event)

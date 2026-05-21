@@ -100,9 +100,8 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
     await sim.run_simulation(max_time=max_time)
     elapsed_des = time.time() - t0
 
-    # --- WRITE summary and des IMMEDIATELY, free memory ---
-    await writer.write_summary_rows(run_id, seed, elapsed_des, 0.0, metrics, configs)
-    await writer.write_des_rows(run_id, metrics)
+    # --- 🎯 WRITER CENTRALIZADO: MÁXIMA LIMPIEZA EN MAIN ---
+    await writer.write_simulation_results(run_id, seed, elapsed_des, metrics, configs, snapshot_manager)
     metrics_for_report = metrics
 
     # --- PATL ---
@@ -137,6 +136,7 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
                 total_processed += len(batch_results)
     
     elapsed_patl = time.time() - t0
+    await writer.update_summary_patl_time(run_id, elapsed_patl)
     snapshot_manager.clear_all_snapshots()
 
     return {
@@ -176,7 +176,7 @@ async def main():
     )
 
     spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    sem = asyncio.Semaphore(args.threads)
+    sem = asyncio.semaphore(args.threads)
 
     last_objects = {}
 
