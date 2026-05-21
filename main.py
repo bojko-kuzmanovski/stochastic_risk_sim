@@ -100,7 +100,6 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
     await sim.run_simulation(max_time=max_time)
     elapsed_des = time.time() - t0
 
-    # --- 🎯 WRITER CENTRALIZADO: MÁXIMA LIMPIEZA EN MAIN ---
     await writer.write_simulation_results(run_id, seed, elapsed_des, metrics, configs, snapshot_manager)
     metrics_for_report = metrics
 
