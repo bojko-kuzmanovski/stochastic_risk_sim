@@ -1,203 +1,328 @@
-import csv
-import asyncio
-from pathlib import Path
+from typing import Dict
+from collections import defaultdict
 
 
-class MetricsWriter:
+class MetricsCollector:
     """
-    Thread-safe CSV writer designed for analytical consumption (Pandas, SQL).
-    Replicates the exact structured hierarchy of MetricsCollector.print_report()
-    into structured CSV records, guaranteeing zero JSON/OrderedDict dumps.
+    Collects event, automata, distribution and environment metrics.
     """
 
-    def __init__(self, output_dir: Path, base_name: str):
-        self._lock = asyncio.Lock()
-        self._output_dir = output_dir
-        self._base_name = base_name
+    def __init__(self, enabled=True):
+        self.enabled = enabled
 
-        self._summary_path = output_dir / f"{base_name}_summary.csv"
-        self._des_path = output_dir / f"{base_name}_des.csv"
-        self._patl_path = output_dir / f"{base_name}_patl.csv"
+        # Events runtime usage
+        self._agent_event_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-        self._summary_header_written = False
-        self._des_header_written = False
-        self._patl_header_written = False
+        # Automata execution counts
+        self._automaton_execution_counts: Dict[str, Dict[str, Dict[str, int]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
-        # Reset states
-        for f in [self._summary_path, self._des_path, self._patl_path]:
-            f.unlink(missing_ok=True)
+        # Distribution runtime usage
+        self._distribution_sample_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-    async def write_simulation_results(self, run_id: int, seed: int, elapsed_des: float, 
-                                      metrics, configs: dict, snapshot_manager):
-        """
-        Unified entry point called right after DES completion. Writes clean rows to 
-        summary and des files.
-        """
-        async with self._lock:
-            # 1. Handle Summary
-            write_sum_header = not self._summary_header_written
-            self._summary_header_written = True
-            _write_summary_csv(str(self._summary_path), run_id, seed, elapsed_des, metrics, configs, snapshot_manager, write_sum_header)
+        # Environment actions
+        self._environment_action_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-            # 2. Handle DES
-            write_des_header = not self._des_header_written
-            self._des_header_written = True
-            _write_des_csv(str(self._des_path), run_id, metrics, write_des_header)
+        # Agents actions
+        self._agent_action_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-    async def update_summary_patl_time(self, run_id: int, elapsed_patl: float):
-        """
-        Updates the execution duration row for PATL after verification threads terminate.
-        """
-        async with self._lock:
-            with open(str(self._summary_path), "a", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow([run_id, "performance", "elapsed_patl_sec", "", round(elapsed_patl, 3)])
+        # PATL snapshots
+        self._patl_snapshot_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
-    async def write_patl_rows(self, run_id: int, patl_results: list):
-        """Writes analytical rows for verifying predicates."""
-        async with self._lock:
-            write_header = not self._patl_header_written
-            self._patl_header_written = True
+
+    # RUNTIME HOOKS
+    def record_agent_event(self, event_category: str, signal: str) -> None:
+        if not self.enabled:
+            return
+        self._agent_event_counts[event_category][signal] += 1
+
+
+    def record_automaton_execution(self, automaton_name: str, result: str, state: str) -> None:
+        if not self.enabled:
+            return
+        self._automaton_execution_counts[automaton_name][result][state] += 1
+
+
+    def record_distribution_sample(self, dist_name: str, family: str) -> None:
+        if not self.enabled:
+            return
+        self._distribution_sample_counts[dist_name][family] += 1
+
+
+    def record_environment_action(self, env_type: str, action: str) -> None:
+        if not self.enabled:
+            return
+        self._environment_action_counts[env_type][action] += 1
+
+
+    def record_agent_action(self, agent_type: str, action: str) -> None:
+        if not self.enabled:
+            return
+        self._agent_action_counts[agent_type][action] += 1
+
+
+    def record_patl_sampling(self, automaton_name: str, state: str) -> None:
+        if not self.enabled:
+            return
+        self._patl_snapshot_counts[automaton_name][state] += 1
+
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled
+
+    # REPORT
+    def print_report(self, distributions, environments, agents, automata, events, snapshot_manager):
+        print("\n" + "=" * 60)
+        print("📊 SIMULATION STATISTICS")
+        print("=" * 60)
+
+        # BUILDTIME METRICS
+        print("\n" + "*" * 60)
+        print("🧱 BUILDTIME METRICS")
+        print("*" * 60)
+
+        # Distributions buildtime
+        family_distributions = {}
+        for dist_name in distributions.samplers.keys():
+            family = distributions.samplers[dist_name]['family']
+            if family not in family_distributions:
+                family_distributions[family] = []
+            family_distributions[family].append(dist_name)
+
+        print(f"\n📈 Distributions: {len(distributions.samplers)}")
+        for family in sorted(family_distributions.keys()):
+            count = len(family_distributions[family])
+            print(f"   └── {family}: {count}")
+            for dist_name in sorted(family_distributions[family]):
+                print(f"       └── {dist_name}")
+
+        # Environments buildtime
+        env_count = {}
+        for e in environments.data:
+            env_type = e.get('environment_type')
+            env_count[env_type] = env_count.get(env_type, 0) + 1
+
+        print(f"\n🌍 Environments: {len(environments.data)}")
+        for env_type in sorted(env_count.keys()):
+            print(f"   └── {env_type}: {env_count[env_type]}")
+
+        # Agents buildtime
+        agent_count = {}
+        for a in agents.data:
+            agent_type = a.get('agent_type')
+            agent_count[agent_type] = agent_count.get(agent_type, 0) + 1
+
+        print(f"\n👤 Agents: {len(agents.data)}")
+        for agent_type in sorted(agent_count.keys()):
+            print(f"   └── {agent_type}: {agent_count[agent_type]}")
+
+        # Automata buildtime
+        print(f"\n🤖 Automata: {len(automata.data)}")
+        for aut in sorted(automata.data, key=lambda x: x.get('automaton_name', '')):
+            print(f"   └── {aut.get('automaton_name')}")
+
+        # Declared events buildtime
+        static_defined = [e for e in events.data if e.get("event_category") == "static"]
+        signal_counts = {}
+        signal_agents = {}
+        for e in static_defined:
+            signal = e["signal"]
+            agent_type = e["agent_type"]
             
-            mode = "w" if write_header else "a"
-            with open(str(self._patl_path), mode, newline="") as f:
-                writer = csv.writer(f)
-                if write_header:
-                    writer.writerow(["run_id", "automaton_name", "trigger_state", "agent_id",
-                                     "predicate_id", "p_value", "bound", "operator", "result"])
-                for snap, results in patl_results:
-                    for r in results:
-                        writer.writerow([
-                            run_id, snap["automaton_name"], snap["state"], snap["agent_id"],
-                            r["predicate_id"], r["p_value"], r["bound"], r["operator"], r["result"]
-                        ])
+            if signal not in signal_counts:
+                signal_counts[signal] = 0
+                signal_agents[signal] = set()
+            
+            signal_counts[signal] += 1
+            signal_agents[signal].add(agent_type)
+
+        print(f"\n🧾 Static Declared Events: {len(static_defined)}")
+        for signal in sorted(signal_counts.keys()):
+            print(f"   └── {signal}: {signal_counts[signal]}")
+            for agent_type in sorted(signal_agents[signal]):
+                print(f"       └── {agent_type}")
+
+        # PATL buildtime
+        data = snapshot_manager.data
+        total_predicates = sum(len(preds) for preds in data.values())
+        print(f"\n📸 PATL Predicates: {total_predicates}")
+
+        by_automaton = {}
+        for (aut, state), preds in data.items():
+            if aut not in by_automaton:
+                by_automaton[aut] = {"total_preds": 0, "states": {}}
+            by_automaton[aut]["total_preds"] += len(preds)
+            by_automaton[aut]["states"][state] = preds
+
+        for aut in sorted(by_automaton.keys()):
+            info = by_automaton[aut]
+            print(f"   └── {aut}: {info['total_preds']} predicates")
+            for state in sorted(info["states"].keys()):
+                preds = info["states"][state]
+                print(f"       └── {state}: {len(preds)} predicates")
+                for pred in preds:
+                    pred_id = pred.get("predicate_id", "?")
+                    pred_type = pred.get("type", "?")
+                    print(f"           └── {pred_id} ({pred_type})")
 
 
-def _write_summary_csv(csv_path: str, run_id: int, seed: int, elapsed_des: float, 
-                       metrics, configs: dict, snapshot_manager, write_header: bool):
-    mode = "w" if write_header else "a"
-    with open(csv_path, mode, newline="") as f:
-        writer = csv.writer(f)
-        if write_header:
-            writer.writerow(["run_id", "category", "key", "subkey", "value"])
+        # RUNTIME METRICS
+        print("\n" + "*" * 60)
+        print("🚀 RUNTIME METRICS")
+        print("*" * 60)
 
-        def row(category, key, subkey, value):
-            writer.writerow([run_id, category, key, subkey, value])
+        # Distributions runtime
+        family_usage = {}
+        total_all = 0
+        for dist_name, fams in self._distribution_sample_counts.items():
+            for family, count in fams.items():
+                if family not in family_usage:
+                    family_usage[family] = {"total": 0, "distributions": []}
+                family_usage[family]["total"] += count
+                family_usage[family]["distributions"].append((dist_name, count))
+                total_all += count
 
-        # METADATA & PERFORMANCE
-        row("metadata", "seed", "", seed)
-        row("performance", "elapsed_des_sec", "", round(elapsed_des, 3))
+        print(f"\n🎲 Distribution Usage: {total_all}")
+        for family in sorted(family_usage.keys()):
+            total = family_usage[family]["total"]
+            print(f"   └── {family}: {total}")
+            for dist_name, count in sorted(family_usage[family]["distributions"]):
+                print(f"       └── {dist_name}: {count}")
 
-        # ==========================================
-        # 🧱 BUILDTIME METRICS
-        # ==========================================
+        # Environments runtime
+        total_env = sum(sum(actions.values()) for actions in self._environment_action_counts.values())
+        print(f"\n🌍 Environment Actions: {total_env}")
+        for env in sorted(self._environment_action_counts.keys()):
+            actions = self._environment_action_counts[env]
+            total = sum(actions.values())
+            print(f"   └── {env}: {total}")
+            for act in sorted(actions.keys()):
+                print(f"       └── {act}: {actions[act]}")
+
+        # Agent runtime
+        total_agent = sum(sum(actions.values()) for actions in self._agent_action_counts.values())
+        print(f"\n🤖 Agent Actions: {total_agent}")
+        for agent in sorted(self._agent_action_counts.keys()):
+            actions = self._agent_action_counts[agent]
+            total = sum(actions.values())
+            print(f"   └── {agent}: {total}")
+            for act in sorted(actions.keys()):
+                print(f"       └── {act}: {actions[act]}")
+
+        # Automata runtime
+        total_aut = sum(sum(sum(states.values()) for states in result.values()) for result in self._automaton_execution_counts.values())
+        print(f"\n🎯 Automata Executions: {total_aut}")
+        for aut in sorted(self._automaton_execution_counts.keys()):
+            results = self._automaton_execution_counts[aut]
+            total = sum(sum(states.values()) for states in results.values())
+            print(f"   └── {aut}: {total}")
+            for result in sorted(results.keys()):
+                states = results[result]
+                result_total = sum(states.values())
+                print(f"       └── {result}: {result_total}")
+                for state in sorted(states.keys()):
+                    print(f"           └── {state}: {states[state]}")
+
+        # Events runtime
+        total_static = sum(self._agent_event_counts["static"].values())
+        total_dynamic = sum(self._agent_event_counts["dynamic"].values())
+
+        print(f"\n📅 Events Generated: {total_static + total_dynamic}")
+        print(f"   └── static: {total_static}")
+        print(f"   └── dynamic: {total_dynamic}")
+
+        # PATL VERIFICATION
+        print("\n" + "*" * 60)
+        print("🔍 PATL VERIFICATION")
+        print("*" * 60)
+
+        # PATL runtime
+        total_patl = sum(
+            sum(states.values())
+            for states in self._patl_snapshot_counts.values()
+        )
+
+        print(f"\n📸 PATL Snapshots Captured: {total_patl}")
+        for aut in sorted(self._patl_snapshot_counts.keys()):
+            states = self._patl_snapshot_counts[aut]
+            total_aut = sum(states.values())
+            print(f"   └── {aut}: {total_aut}")
+            for state in sorted(states.keys()):
+                print(f"       └── {state}: {states[state]}")
         
-        # Distributions Buildtime
-        dists = configs.get("distributions", {})
-        row("buildtime_summary", "distributions_total_declared", "", len(dists))
-        for dist_name, dist_body in dists.items():
-            family = dist_body.get("family", "unknown")
-            row("buildtime_detail", "distribution.family", dist_name, family)
-            
-            # Recursive extraction of distribution params/categories to prevent dict dumps
-            if "params" in dist_body and isinstance(dist_body["params"], dict):
-                for p_key, p_val in dist_body["params"].items():
-                    row("buildtime_detail", f"distribution_param.{dist_name}", p_key, p_val)
-            
-            if "categories" in dist_body and isinstance(dist_body["categories"], list):
-                for cat in dist_body["categories"]:
-                    if isinstance(cat, dict) and "label" in cat:
-                        label = cat["label"]
-                        for attr, val in cat.items():
-                            if attr != "label":
-                                row("buildtime_detail", f"distribution_category.{dist_name}", f"{label}.{attr}", val)
-
-        # Environments Buildtime
-        envs = configs.get("environments", [])
-        row("buildtime_summary", "environments_total_declared", "", len(envs))
-        for env in envs:
-            etype = env.get("environment_type", "unknown")
-            row("buildtime_detail", "environment_quantity", etype, env.get("quantity", 1))
-            row("buildtime_detail", f"environment_structure.{etype}", "members_count", len(env.get("members", [])))
-            row("buildtime_detail", f"environment_structure.{etype}", "relations_count", len(env.get("relations", [])))
-            row("buildtime_detail", f"environment_structure.{etype}", "channels_count", len(env.get("channels", [])))
-
-        # Agents Buildtime
-        agents = configs.get("agents", [])
-        row("buildtime_summary", "agents_total_declared", "", len(agents))
-        for agent in agents:
-            atype = agent.get("agent_type", "unknown")
-            row("buildtime_detail", "agent_quantity", atype, agent.get("quantity", 0))
-            for aut in agent.get("automata", []):
-                row("buildtime_detail", f"agent_capabilities.{atype}", "assigned_automaton", aut)
-
-        # Automata Buildtime
-        automata = configs.get("automata", [])
-        row("buildtime_summary", "automata_total_declared", "", len(automata))
-        for aut in automata:
-            aname = aut.get("automaton_name", "unknown")
-            row("buildtime_detail", f"automaton_states.{aname}", "initial_state", aut.get("states", {}).get("initial", ""))
-            row("buildtime_detail", f"automaton_states.{aname}", "final_states_count", len(aut.get("states", {}).get("final", [])))
-            row("buildtime_detail", f"automaton_structure.{aname}", "transitions_count", len(aut.get("transitions", [])))
-
-        # Static Events Buildtime
-        events = configs.get("events", [])
-        static_events = [e for e in events if e.get("event_category") == "static"]
-        row("buildtime_summary", "static_events_total_declared", "", len(static_events))
-        for evt in static_events:
-            sig = evt.get("signal", "unknown")
-            row("buildtime_detail", f"static_event_target.{sig}", "agent_type", evt.get("agent_type", ""))
-            row("buildtime_detail", f"static_event_trigger.{sig}", "periodicity_type", evt.get("periodicity", {}).get("type", ""))
-
-        # PATL Specification Buildtime
-        patl_data = snapshot_manager.data
-        total_preds = sum(len(preds) for preds in patl_data.values())
-        row("buildtime_summary", "patl_predicates_total_declared", "", total_preds)
-        for (aut_name, state_name), preds in patl_data.items():
-            for pred in preds:
-                pid = pred.get("predicate_id", "unknown")
-                row("buildtime_detail", f"patl_specification.{aut_name}.{state_name}", pid, pred.get("type", "reachability"))
+        print("\n" + "=" * 60)
 
 
-def _write_des_csv(csv_path: str, run_id: int, metrics, write_header: bool):
-    """
-    Writes the runtime telemetry directly into its own transactional CSV log.
-    Ensures that every execution path matches the granular tree layout.
-    """
-    mode = "w" if write_header else "a"
-    with open(csv_path, mode, newline="") as f:
-        writer = csv.writer(f)
-        if write_header:
-            writer.writerow(["run_id", "runtime_section", "entity_key", "metric_subkey", "execution_value"])
+    def to_dict(self) -> dict:
+        """
+        Return all runtime metrics as a nested dict for CSV serialization.
+        Structure: {metric_type: {key: {subkey: value}}}
+        """
+        result = {}
 
-        data = metrics.to_dict()
+        # Distribution usage: {dist_name: {family: count}}
+        dist_data = {}
+        for dist_name, fams in self._distribution_sample_counts.items():
+            dist_data[dist_name] = dict(fams)
+        result["distribution_usage"] = dist_data
 
-        # 1.🎲 Distribution Runtime Usage
-        for dist_name, families in data.get("distribution_usage", {}).items():
-            for family, count in families.items():
-                writer.writerow([run_id, "distribution_usage", family, dist_name, count])
+        # Environment actions: {env_type: {action: count}}
+        env_data = {}
+        for env, actions in self._environment_action_counts.items():
+            env_data[env] = dict(actions)
+        result["environment_actions"] = env_data
 
-        # 2.🌍 Environment Runtime Actions
-        for env_type, actions in data.get("environment_actions", {}).items():
-            for action, count in actions.items():
-                writer.writerow([run_id, "environment_action", env_type, action, count])
+        # Agent actions: {agent_type: {action: count}}
+        agent_data = {}
+        for agent, actions in self._agent_action_counts.items():
+            agent_data[agent] = dict(actions)
+        result["agent_actions"] = agent_data
 
-        # 3.🤖 Agent Runtime Actions
-        for agent_type, actions in data.get("agent_actions", {}).items():
-            for action, count in actions.items():
-                writer.writerow([run_id, "agent_action", agent_type, action, count])
-
-        # 4.🎯 Automata Executions & Terminal States Reachability (Granular matching to print_report)
-        for aut_name, results in data.get("automaton_executions", {}).items():
+        # Automaton executions: {aut_name: {result: {state: count}}}
+        aut_data = {}
+        for aut_name, results in self._automaton_execution_counts.items():
+            aut_data[aut_name] = {}
             for result_type, states in results.items():
-                for state, count in states.items():
-                    writer.writerow([run_id, "automaton_execution", aut_name, f"{result_type}:{state}", count])
+                aut_data[aut_name][result_type] = dict(states)
+        result["automaton_executions"] = aut_data
 
-        # 5.📅 Events Generation Frequency
-        for event_type, count in data.get("events_generated", {}).items():
-            writer.writerow([run_id, "event_generated", "system", event_type, count])
+        # Events generated: {static: count, dynamic: count}
+        result["events_generated"] = {
+            "static": sum(self._agent_event_counts.get("static", {}).values()),
+            "dynamic": sum(self._agent_event_counts.get("dynamic", {}).values())
+        }
 
-        # 6.📸 PATL Verification Engine Snapshots
-        for aut_name, states in data.get("snapshots_captured", {}).items():
-            for state, count in states.items():
-                writer.writerow([run_id, "snapshot_captured", aut_name, state, count])
+        # PATL snapshots: {aut_name: {state: count}}
+        snap_data = {}
+        for aut, states in self._patl_snapshot_counts.items():
+            snap_data[aut] = dict(states)
+        result["snapshots_captured"] = snap_data
+
+        return result
+
+
+    def get_summary(self) -> dict:
+        """
+        Return high-level aggregate metrics for the summary CSV.
+        """
+        return {
+            "actions_total": sum(
+                sum(actions.values())
+                for actions in self._agent_action_counts.values()
+            ),
+            "automata_exec_total": sum(
+                sum(sum(states.values()) for states in result.values())
+                for result in self._automaton_execution_counts.values()
+            ),
+            "distrib_samples_total": sum(
+                sum(fams.values())
+                for fams in self._distribution_sample_counts.values()
+            ),
+            "events_total": sum(
+                sum(self._agent_event_counts[cat].values())
+                for cat in self._agent_event_counts
+            ),
+            "snapshots_total": sum(
+                sum(states.values())
+                for states in self._patl_snapshot_counts.values()
+            )
+        }

@@ -3,10 +3,10 @@
   {"distribution_name": "volatility_profile", "family": "beta", "params": { "alpha": 1, "beta": 8 }, "output_type": "float"},
   {"distribution_name": "growth_rate", "family": "normal", "params": { "mean": -0.05, "sigma": 0.25 }, "output_type": "float"},
   {"distribution_name": "shock_arrival", "family": "poisson", "params": { "lambda": 6.0 }, "output_type": "int"},
+  {"distribution_name": "funding_arrival_rate", "family": "gamma", "params": { "shape": 2, "scale": 1.2 }, "output_type": "float"},
   {"distribution_name": "shock_impact", "family": "gamma", "params": { "shape": 1.5, "scale": 0.2 }, "output_type": "float"},
   {"distribution_name": "shock_duration", "family": "poisson", "params": { "lambda": 3 }, "output_type": "int", "truncation": { "min": 1, "max": 12 }},
-  {"distribution_name": "client_retention", "family": "beta", "params": { "alpha": 2, "beta": 6 }, "output_type": "float"},
-  {"distribution_name": "investor_appetite", "family": "beta", "params": { "alpha": 5, "beta": 2 }, "output_type": "float"},
+  {"distribution_name": "client_retention", "family": "beta", "params": { "alpha": 60, "beta": 40 }, "output_type": "float"},
   {"distribution_name": "investment_size", "family": "gamma", "params": { "shape": 3, "scale": 100000 }, "output_type": "float"},
   {"distribution_name": "founder_optimism", "family": "beta", "params": { "alpha": 2, "beta": 5 }, "output_type": "float"},
   {"distribution_name": "productivity_belief", "family": "gamma", "params": { "shape": 5, "scale": 1600 }, "output_type": "float"},
@@ -17,9 +17,10 @@
   {"distribution_name": "revenue_volatility", "family": "normal", "params": { "mean": 0.85, "sigma": 0.25 }, "output_type": "float", "truncation": { "min": 0.1, "max": 1.8 }},
   {"distribution_name": "cost_inflation", "family": "normal", "params": { "mean": 1.08, "sigma": 0.04 }, "output_type": "float", "truncation": { "min": 0.9, "max": 1.2 }},
   {"distribution_name": "layoff_severity", "family": "beta", "params": { "alpha": 3, "beta": 2 }, "output_type": "float"},
-  {"distribution_name": "market_sentiment", "family": "beta", "params": { "alpha": 2, "beta": 5 }, "output_type": "float"},
   {"distribution_name": "hiring_success", "family": "beta", "params": { "alpha": 5, "beta": 3 }, "output_type": "float"},
   {"distribution_name": "shock_type", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "market", "probability": 0.7}, {"label": "regulatory", "probability": 0.2}, {"label": "compound", "probability": 0.1}]}},
   {"distribution_name": "investor_exit_reason", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "patience_exhausted", "probability": 0.5}, {"label": "regulatory_risk", "probability": 0.3}, {"label": "market_downturn", "probability": 0.2}]}},
-  {"distribution_name": "client_acquisition_channel", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "organic", "probability": 0.4}, {"label": "referral", "probability": 0.35}, {"label": "paid", "probability": 0.25}]}}
+  {"distribution_name": "client_acquisition_channel", "family": "categorical", "output_type": "string", "params": {"categories": [{"label": "organic", "probability": 0.4}, {"label": "referral", "probability": 0.35}, {"label": "paid", "probability": 0.25}]}},
+  {"distribution_name": "investor_appetite", "family": "beta", "params": { "alpha": 1.5, "beta": 6.0 }, "output_type": "float"},
+  {"distribution_name": "market_sentiment", "family": "beta", "params": { "alpha": 1.5, "beta": 6.0 }, "output_type": "float"}
 ]

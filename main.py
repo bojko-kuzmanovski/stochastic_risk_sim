@@ -176,7 +176,7 @@ async def main():
     )
 
     spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-    sem = asyncio.semaphore(args.threads)
+    sem = asyncio.Semaphore(args.threads)
 
     last_objects = {}
 
