@@ -9,7 +9,7 @@
       "revenue_growth_rate": { "type": "probabilistic", "distribution": "growth_rate" },
       "cost_fixed": { "type": "deterministic", "value": 40000 },
       "cost_variable_per_head": { "type": "deterministic", "value": 6000 },
-      "cost_rigidity": { "type": "deterministic", "value": 0.3 },
+      "cost_rigidity": { "type": "probabilistic", "distribution": "volatility_profile" },
       "headcount": { "type": "deterministic", "value": 10 },
       "burn_rate": { "type": "deterministic", "value": 0 },
       "runway": { "type": "deterministic", "value": 0 },
@@ -17,19 +17,19 @@
       "other_budget": { "type": "deterministic", "value": 0 },
       "hiring_budget": { "type": "deterministic", "value": 0 },
       "alive": { "type": "deterministic", "value": true },
-      "tax_rate": { "type": "deterministic", "value": 0.15 }
+      "tax_rate": { "type": "probabilistic", "distribution": "cost_inflation" }
     },
     "automata": [
       "burn_rate_calculator",
       "runway_lifecycle",
-      "client_lost",
       "exogenous_shock",
       "investment_offer",
-      "startup_dead",
       "other_investment_controller",
       "compliance_burden",
+      "regulatory_shock",
+      "runway_critical",
       "runway_warning",
-      "runway_critical"
+      "startup_dead"
     ]
   },
   {
@@ -41,7 +41,7 @@
       "growth_trend": { "type": "probabilistic", "distribution": "growth_rate" },
       "shock_probability": { "type": "probabilistic", "distribution": "shock_arrival" },
       "shock_magnitude": { "type": "probabilistic", "distribution": "shock_impact" },
-      "current_revenue": { "type": "deterministic", "value": 0 }
+      "revenue_current": { "type": "deterministic", "value": 0 }
     },
     "automata": [
       "revenue_generator"
@@ -72,8 +72,7 @@
       "shock_type": { "type": "deterministic", "value": "market" }
     },
     "automata": [
-      "shock_lifecycle",
-      "regulatory_shock"
+      "shock_lifecycle"
     ]
   },
   {
@@ -116,7 +115,7 @@
       "hiring_budget": { "type": "deterministic", "value": 0 },
       "other_budget": { "type": "deterministic", "value": 0 },
       "last_decision_tick": { "type": "deterministic", "value": 0 },
-      "reputation": { "type": "deterministic", "value": 0.5 }
+      "reputation": { "type": "probabilistic", "distribution": "hiring_success" }
     },
     "automata": [
       "strategic_resource_allocator",

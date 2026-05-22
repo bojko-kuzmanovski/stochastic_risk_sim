@@ -29,7 +29,6 @@ class SnapshotManager:
         self.agents = None
         self.environments = None
 
-        # Disk storage
         if disk_dir is None:
             disk_dir = Path(__file__).parent.parent / "data" / ".snapshots"
         self._disk_dir = Path(disk_dir)
@@ -64,7 +63,6 @@ class SnapshotManager:
         if depth > max_depth:
             return None
         
-        # Filter asyncio objects and anything from _asyncio module
         if isinstance(obj, (asyncio.Future, asyncio.Task, asyncio.Queue, 
                             asyncio.Event, asyncio.Lock, asyncio.Semaphore)):
             return None
@@ -83,7 +81,6 @@ class SnapshotManager:
         except (TypeError, pickle.PicklingError, RuntimeError) as e:
             if isinstance(obj, dict):
                 result = {}
-                # Iterate over a snapshot of keys to avoid mutation during iteration
                 try:
                     items = list(obj.items())
                 except RuntimeError:
@@ -96,7 +93,6 @@ class SnapshotManager:
                 return result
             elif isinstance(obj, (list, tuple)):
                 result = []
-                # Snapshot to avoid mutation
                 try:
                     items = list(obj)
                 except RuntimeError:
@@ -138,7 +134,8 @@ class SnapshotManager:
                 "environments_data": environments_data
             }
 
-            # Write to disk
+            self._disk_dir.mkdir(parents=True, exist_ok=True)
+
             filepath = self._disk_dir / f"snap_{self._snapshot_index:010d}.json"
             with open(filepath, "w") as f:
                 json.dump(snapshot, f, default=str)
@@ -156,9 +153,15 @@ class SnapshotManager:
         yields them, and DELETES each file after reading.
         Nothing is kept in memory between batches.
         """
-        files = sorted(
-            [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
-        )
+        if not self._disk_dir.exists():
+            return
+
+        try:
+            files = sorted(
+                [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
+            )
+        except FileNotFoundError:
+            return
         
         for i in range(0, len(files), batch_size):
             batch = []
@@ -179,27 +182,38 @@ class SnapshotManager:
 
     def get_snapshot_filepaths(self):
         """Return list of snapshot file paths sorted by creation order."""
-        files = sorted(
-            [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
-        )
-        return [str(self._disk_dir / f) for f in files]
+        if not self._disk_dir.exists():
+            return []
+        try:
+            files = sorted(
+                [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
+            )
+            return [str(self._disk_dir / f) for f in files]
+        except FileNotFoundError:
+            return []
     
 
     def get_snapshot_count(self):
         """Return number of snapshots currently on disk."""
-        files = [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
-        return len(files)
+        if not self._disk_dir.exists():
+            return 0
+        try:
+            files = [f for f in os.listdir(self._disk_dir) if f.startswith("snap_") and f.endswith(".json")]
+            return len(files)
+        except FileNotFoundError:
+            return 0
 
 
     def clear_all_snapshots(self):
         """Delete all remaining snapshot files from disk."""
-        for filename in os.listdir(self._disk_dir):
-            if filename.startswith("snap_") and filename.endswith(".json"):
-                try:
-                    os.remove(self._disk_dir / filename)
-                except OSError:
-                    pass
+        if not self._disk_dir.exists():
+            return
         try:
-            self._disk_dir.rmdir()
-        except OSError:
-            pass
+            for filename in os.listdir(self._disk_dir):
+                if filename.startswith("snap_") and filename.endswith(".json"):
+                    try:
+                        os.remove(self._disk_dir / filename)
+                    except OSError:
+                        pass
+        except FileNotFoundError:
+            return

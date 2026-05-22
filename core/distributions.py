@@ -105,6 +105,11 @@ class Distributions:
         params = entry['params']
         truncation = entry['truncation']
 
+        if lower == float("-inf"):
+            lower = -1e308
+        if upper == float("inf"):
+            upper = 1e308
+
         if truncation:
             lower = max(lower, truncation["min"])
             upper = min(upper, truncation["max"])
@@ -136,34 +141,39 @@ class Distributions:
 
         if family == "poisson":
             lam = params["lambda"]
-            if lower == float("-inf"):
-                lower = 0
-                lower_inclusive = True
-            if upper == float("inf"):
-                upper = stats.poisson.ppf(0.9999, lam)
-                upper_inclusive = True
-            k_min = int(np.floor(lower)) if not lower_inclusive else int(np.ceil(lower))
-            k_max = int(np.ceil(upper)) if not upper_inclusive else int(np.floor(upper))
+            actual_lower = max(0, lower)
+            actual_upper = min(upper, 1e6)
+            k_min = int(np.ceil(actual_lower)) if lower_inclusive else int(np.floor(actual_lower)) + 1
+            k_max = int(np.floor(actual_upper)) if upper_inclusive else int(np.ceil(actual_upper)) - 1
             if k_min > k_max:
                 return 0.0
+            if k_min <= 0:
+                return stats.poisson.cdf(k_max, mu=lam)
             return stats.poisson.cdf(k_max, mu=lam) - stats.poisson.cdf(k_min - 1, mu=lam)
 
-        if family == "normal":
-            cdf_lower = stats.norm.cdf(lower, loc=params["mean"], scale=params["sigma"])
-            cdf_upper = stats.norm.cdf(upper, loc=params["mean"], scale=params["sigma"])
-        elif family == "exponential":
-            cdf_lower = stats.expon.cdf(lower, scale=1.0 / params["rate"])
-            cdf_upper = stats.expon.cdf(upper, scale=1.0 / params["rate"])
-        elif family == "gamma":
-            cdf_lower = stats.gamma.cdf(lower, a=params["shape"], scale=params["scale"])
-            cdf_upper = stats.gamma.cdf(upper, a=params["shape"], scale=params["scale"])
-        elif family == "beta":
-            cdf_lower = stats.beta.cdf(lower, a=params["alpha"], b=params["beta"])
-            cdf_upper = stats.beta.cdf(upper, a=params["alpha"], b=params["beta"])
-        elif family == "lognormal":
-            cdf_lower = stats.lognorm.cdf(lower, s=params["sigma"], scale=np.exp(params["mean"]))
-            cdf_upper = stats.lognorm.cdf(upper, s=params["sigma"], scale=np.exp(params["mean"]))
-        else:
-            raise ValueError(f"CDF not supported for {family}")
+        try:
+            if family == "normal":
+                cdf_lower = stats.norm.cdf(lower, loc=params["mean"], scale=params["sigma"])
+                cdf_upper = stats.norm.cdf(upper, loc=params["mean"], scale=params["sigma"])
+            elif family == "exponential":
+                cdf_lower = stats.expon.cdf(lower, scale=1.0 / params["rate"])
+                cdf_upper = stats.expon.cdf(upper, scale=1.0 / params["rate"])
+            elif family == "gamma":
+                cdf_lower = stats.gamma.cdf(lower, a=params["shape"], scale=params["scale"])
+                cdf_upper = stats.gamma.cdf(upper, a=params["shape"], scale=params["scale"])
+            elif family == "beta":
+                cdf_lower = stats.beta.cdf(lower, a=params["alpha"], b=params["beta"])
+                cdf_upper = stats.beta.cdf(upper, a=params["alpha"], b=params["beta"])
+            elif family == "lognormal":
+                sigma = params["sigma"]
+                scale = np.exp(params["mean"]) if params["mean"] > -100 else 1e-10
+                cdf_lower = stats.lognorm.cdf(max(0, lower), s=sigma, scale=scale)
+                cdf_upper = stats.lognorm.cdf(max(0, upper), s=sigma, scale=scale)
+            else:
+                raise ValueError(f"CDF not supported for {family}")
+        except Exception as e:
+            print(f"[WARN] probability_interval error for {family}: {e}, params={params}, lower={lower}, upper={upper}")
+            return 0.0
 
-        return max(0.0, cdf_upper - cdf_lower)
+        result = max(0.0, min(1.0, cdf_upper - cdf_lower))
+        return result

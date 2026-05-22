@@ -5,7 +5,6 @@ from jsonschema import validate
 from typing import Dict, List
 from copy import deepcopy
 
-# Importar funciones de evaluación estandarizadas
 from core.utils.evaluator import resolve_value
 
 class Environments:

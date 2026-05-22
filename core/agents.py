@@ -167,6 +167,11 @@ class Agents:
                                 if a["automaton_name"] == aut_name), None)
                     if aut_def:
                         agent["current_state"] = aut_def["states"]["initial"]
+            
+            if "automaton_name" not in agent:
+                automata_list = agent.get("automata", [])
+                if automata_list:
+                    agent["automaton_name"] = automata_list[0]
 
 
     # DES / PATL METHODS

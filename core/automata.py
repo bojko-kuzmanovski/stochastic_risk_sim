@@ -85,19 +85,29 @@ class AutomatonSession:
         resolved_keys = [resolve_ephemeral(k, self.ctx) for k in param_keys]
         args = [self.ctx.get(k) if isinstance(k, str) and k.startswith("$") else k for k in resolved_keys]
         event_obj = self.event if target == "events" else None
-        return call_method(target, method, args, self.automata.agents, self.automata.environments, event_obj)
+        result = call_method(target, method, args, self.automata.agents, self.automata.environments, event_obj)
+
+        if result is None:
+            print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
+                  f"Target: {target} | Method: {method} | Params/Args: {args} -> Resolved Value: {result}", 
+                  flush=True)
+            os._exit(1)
+        
+        return result
     
     def step(self, forced_X=None) -> Optional[str]:
         if self.current_state in self.final_states:
-            self.automata.metrics_collector.record_automaton_execution(
-                self.automaton_name, "success", self.current_state)
+            if self.async_mode:
+                self.automata.metrics_collector.record_automaton_execution(
+                    self.automaton_name, "success", self.current_state)
             return None
 
         transition = next(
             (t for t in self.automaton_def["transitions"] if t["from"] == self.current_state), None)
         if not transition:
-            self.automata.metrics_collector.record_automaton_execution(
-                self.automaton_name, "failure", self.current_state)
+            if self.async_mode:
+                self.automata.metrics_collector.record_automaton_execution(
+                    self.automaton_name, "failure", self.current_state)
             return None
 
         tv = transition["threshold_value"]
@@ -187,30 +197,36 @@ class AutomatonSession:
             elif "event_emit" in action_obj:
                 event_array = action_obj["event_emit"]
                 resolved = [resolve_ephemeral(k, self.ctx) for k in event_array]
+                
+                # Fallback agresivo a strings si se resuelven como None
                 signal = self.ctx.get(resolved[0]) if resolved[0].startswith("$") else resolved[0]
+                if signal is None: signal = "UNKNOWN_SIGNAL"
+                
                 agent_id = self.ctx.get(resolved[1]) if resolved[1].startswith("$") else resolved[1]
+                if agent_id is None: agent_id = "UNKNOWN_AGENT"
 
                 event_data = {
                     "event_category": "dynamic",
-                    "signal": signal,
-                    "agent_id": agent_id
+                    "signal": str(signal),
+                    "agent_id": str(agent_id)
                 }
+                
                 if len(resolved) > 2:
                     env_id = self.ctx.get(resolved[2]) if resolved[2].startswith("$") else resolved[2]
-                    event_data["env_id"] = env_id
+                    if env_id is not None: event_data["env_id"] = str(env_id)
                 if len(resolved) > 3:
                     channel_id = self.ctx.get(resolved[3]) if resolved[3].startswith("$") else resolved[3]
-                    event_data["channel_id"] = channel_id
+                    if channel_id is not None: event_data["channel_id"] = str(channel_id)
 
                 try:
                     Events([event_data], self.automata.distributions)
                 except Exception as e:
                     print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
                           f"event_emit failed validation: {e}", file=sys.stderr, flush=True)
-                    print(f"  signal='{signal}', agent_id='{agent_id}'", file=sys.stderr, flush=True)
                     os._exit(1)
 
-                if agent_id is not None and self.async_mode:
-                    agent_exists = any(ag.get("agent_id") == agent_id for ag in self.automata.agents.data) if hasattr(self.automata.agents, 'data') else False
-                    if agent_exists:
-                        asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))
+                if agent_id is not None:
+                    if self.async_mode:
+                        agent_exists = any(ag.get("agent_id") == agent_id for ag in self.automata.agents.data) if hasattr(self.automata.agents, 'data') else False
+                        if agent_exists:
+                            asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))

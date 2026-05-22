@@ -106,8 +106,13 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
     # --- PATL ---
     t0 = time.time()
     
-    def _verify_single(snap, automata_obj, dists, snapshot_data):
-        verifier = PATLVerifier(automata_obj, dists)
+    def _verify_single(snap, automata_config, dists, snapshot_data):
+        local_automata = Automata(automata_config, dists, MetricsCollector(enabled=False))
+        local_agents = Agents([], dists, None, worker_mode=False)
+        local_envs = Environments([], dists, None)
+        local_automata.set_objects(local_agents, local_envs)
+        
+        verifier = PATLVerifier(local_automata, dists)
         key = (snap["automaton_name"], snap["state"])
         predicates = snapshot_data.get(key, [])
         if not predicates:
@@ -118,10 +123,12 @@ async def run_single_simulation(run_id: int, configs: dict, max_time: float, wri
     loop = asyncio.get_running_loop()
     total_processed = 0
     
+    automata_config = configs["automata"]
+    
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         for batch in snapshot_manager.read_and_delete(batch_size=50):
             futures = [
-                loop.run_in_executor(pool, _verify_single, snap, automata, distributions, snapshot_manager.data)
+                loop.run_in_executor(pool, _verify_single, snap, automata_config, distributions, snapshot_manager.data)
                 for snap in batch
             ]
             batch_results = []

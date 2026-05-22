@@ -20,6 +20,15 @@ def call_method(target: str, method: str, args: list, agents_obj: Any, environme
     elif target == "environments":
         target_obj = environments_obj
     elif target == "events":
+        if isinstance(event_obj, dict):
+            mapping = {
+                "event_signal": "signal",
+                "event_agent_id": "agent_id",
+                "event_env_id": "env_id",
+                "event_channel_id": "channel_id"
+            }
+            if method in mapping:
+                return event_obj.get(mapping[method])
         target_obj = event_obj
     elif target == "system":
         return _call_system(method, args, resolve_fn)
