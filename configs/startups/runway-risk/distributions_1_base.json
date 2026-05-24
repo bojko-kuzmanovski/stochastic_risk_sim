@@ -12,7 +12,7 @@
   {"distribution_name": "revenue_elasticity_belief", "family": "beta", "params": { "alpha": 3, "beta": 3 }, "output_type": "float", "truncation": { "min": 0.05, "max": 0.95 }},
   {"distribution_name": "true_productivity", "family": "gamma", "params": { "shape": 5, "scale": 1200 }, "output_type": "float", "truncation": { "min": 800.0, "max": 15000.0 }},
   {"distribution_name": "true_elasticity", "family": "beta", "params": { "alpha": 4, "beta": 4 }, "output_type": "float", "truncation": { "min": 0.05, "max": 0.95 }},
-  {"distribution_name": "market_noise", "family": "normal", "params": { "mean": 0, "sigma": 0.02 }, "output_type": "float", "truncation": { "min": -0.07, "max": 0.07 }},
+  {"distribution_name": "market_noise", "family": "normal", "params": { "mean": 0.0, "sigma": 0.02 }, "output_type": "float", "truncation": { "min": -0.07, "max": 0.07 }},
   {"distribution_name": "revenue_volatility", "family": "normal", "params": { "mean": 1.0, "sigma": 0.15 }, "output_type": "float", "truncation": { "min": 0.5, "max": 1.5 }},
   {"distribution_name": "cost_inflation", "family": "normal", "params": { "mean": 1.02, "sigma": 0.04 }, "output_type": "float", "truncation": { "min": 0.9, "max": 1.2 }},
   {"distribution_name": "layoff_severity", "family": "beta", "params": { "alpha": 3, "beta": 2 }, "output_type": "float", "truncation": { "min": 0.0, "max": 1.0 }},
