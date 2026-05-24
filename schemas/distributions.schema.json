@@ -186,6 +186,16 @@
               }
             }
           }
+        },
+        {
+          "if": { 
+            "not": { 
+              "properties": { "family": { "const": "categorical" } } 
+            } 
+          },
+          "then": {
+            "required": ["truncation"]
+          }
         }
       ]
     }

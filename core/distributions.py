@@ -1,3 +1,6 @@
+import os
+import sys
+import math
 import json
 import random
 import numpy as np
@@ -11,6 +14,28 @@ class Distributions:
             schema = json.load(f)
 
         validate(instance=config_data, schema=schema)
+
+        for d in config_data:
+            name = d["distribution_name"]
+            family = d["family"]
+            params = d.get("params", {})
+            truncation = d.get("truncation")
+
+            if family == "categorical":
+                categories = params.get("categories", [])
+                total_prob = sum(c.get("probability", 0.0) for c in categories)
+                if not math.isclose(total_prob, 1.0, rel_tol=1e-9):
+                    print(f"[FATAL] DistributionsFactory::VALIDATION: "
+                          f"no threshold_case matched for value Categorical distribution '{name}' "
+                          f"probabilities sum up to {total_prob} instead of 1.0", file=sys.stderr)
+                    os._exit(1)
+            else:
+                if truncation:
+                    if truncation["min"] >= truncation["max"]:
+                        print(f"[FATAL] DistributionsFactory::VALIDATION: "
+                              f"no threshold_case matched for value Distribution '{name}' truncation bounds: "
+                              f"min ({truncation['min']}) must be strictly less than max ({truncation['max']})", file=sys.stderr)
+                        os._exit(1)
 
         names = [d["distribution_name"] for d in config_data]
         if len(names) != len(set(names)):
@@ -37,42 +62,73 @@ class Distributions:
                 labels = []
                 probabilities = []
 
-            def make_sampler(dist_name, family, output_type, params, labels, probabilities, truncation):
+            # Precalculamos los denominadores de truncamiento analíticos para ahorrar CPU
+            trunc_factor = 1.0
+            if truncation and family != "categorical":
+                t_min = truncation["min"]
+                t_max = truncation["max"]
+                try:
+                    if family == "normal":
+                        f_max = stats.norm.cdf(t_max, loc=params["mean"], scale=params["sigma"])
+                        f_min = stats.norm.cdf(t_min, loc=params["mean"], scale=params["sigma"])
+                    elif family == "exponential":
+                        f_max = stats.expon.cdf(t_max, scale=1.0 / params["rate"])
+                        f_min = stats.expon.cdf(t_min, scale=1.0 / params["rate"])
+                    elif family == "gamma":
+                        f_max = stats.gamma.cdf(t_max, a=params["shape"], scale=params["scale"])
+                        f_min = stats.gamma.cdf(t_min, a=params["shape"], scale=params["scale"])
+                    elif family == "beta":
+                        f_max = stats.beta.cdf(t_max, a=params["alpha"], b=params["beta"])
+                        f_min = stats.beta.cdf(t_min, a=params["alpha"], b=params["beta"])
+                    elif family == "lognormal":
+                        f_max = stats.lognorm.cdf(t_max, s=params["sigma"], scale=np.exp(params["mean"])) if t_max > 0 else 0.0
+                        f_min = stats.lognorm.cdf(t_min, s=params["sigma"], scale=np.exp(params["mean"])) if t_min > 0 else 0.0
+                    elif family == "poisson":
+                        f_max = stats.poisson.cdf(int(np.floor(t_max)), mu=params["lambda"])
+                        f_min = stats.poisson.cdf(int(np.ceil(t_min)) - 1, mu=params["lambda"]) if t_min > 0 else 0.0
+                    else:
+                        f_max, f_min = 1.0, 0.0
+                    
+                    trunc_factor = max(1e-12, f_max - f_min)
+                except Exception:
+                    trunc_factor = 1.0
+
+            def make_sampler(dist_name, f_fam, out_t, p_maps, lbls, probs, trnc):
                 def sampler():
-                    p = {**params}
+                    p = {**p_maps}
                     max_attempts = 1000
 
                     for _ in range(max_attempts):
-                        if family == "categorical":
-                            val = random.choices(labels, weights=probabilities)[0]
-                        elif family == "normal":
+                        if f_fam == "categorical":
+                            val = random.choices(lbls, weights=probs)[0]
+                        elif f_fam == "normal":
                             val = random.normalvariate(p["mean"], p["sigma"])
-                        elif family == "exponential":
+                        elif f_fam == "exponential":
                             val = random.expovariate(p["rate"])
-                        elif family == "poisson":
+                        elif f_fam == "poisson":
                             val = np.random.poisson(p["lambda"])
-                        elif family == "gamma":
+                        elif f_fam == "gamma":
                             val = random.gammavariate(p["shape"], p["scale"])
-                        elif family == "beta":
+                        elif f_fam == "beta":
                             val = random.betavariate(p["alpha"], p["beta"])
-                        elif family == "lognormal":
+                        elif f_fam == "lognormal":
                             val = random.lognormvariate(p["mean"], p["sigma"])
                         else:
-                            raise ValueError(f"Unknown family {family}")
+                            raise ValueError(f"Unknown family {f_fam}")
 
-                        if family != "categorical" and truncation:
-                            if not (truncation["min"] <= val <= truncation["max"]):
+                        if f_fam != "categorical" and trnc:
+                            if not (trnc["min"] <= val <= trnc["max"]):
                                 continue
 
-                        if output_type == "int":
+                        if out_t == "int":
                             val = int(val)
-                        elif output_type == "float":
+                        elif out_t == "float":
                             val = round(float(val), 4)
                         else:
                             val = str(val)
 
                         if self.metrics_collector:
-                            self.metrics_collector.record_distribution_sample(dist_name, family)
+                            self.metrics_collector.record_distribution_sample(dist_name, f_fam)
 
                         return val
 
@@ -87,7 +143,8 @@ class Distributions:
                 'labels': labels,
                 'probabilities': probabilities,
                 'truncation': truncation,
-                'output_type': output_type
+                'output_type': output_type,
+                'trunc_factor': trunc_factor
             }
 
     def sample(self, name):
@@ -104,15 +161,16 @@ class Distributions:
         family = entry['family']
         params = entry['params']
         truncation = entry['truncation']
+        trunc_factor = entry['trunc_factor']
 
-        if lower == float("-inf"):
-            lower = -1e308
-        if upper == float("inf"):
-            upper = 1e308
+        if lower == float("-inf"): lower = -1e308
+        if upper == float("inf"): upper = 1e308
 
+        # Forzar límites al espacio truncado real si existe
         if truncation:
             lower = max(lower, truncation["min"])
             upper = min(upper, truncation["max"])
+            
         if lower > upper:
             return 0.0
 
@@ -125,31 +183,31 @@ class Distributions:
                     val = float(label)
                 except (ValueError, TypeError):
                     continue
+                
+                # Evaluación estricta de límites discretos/categóricos
                 if lower_inclusive and upper_inclusive:
-                    if lower <= val <= upper:
-                        total += p
+                    if lower <= val <= upper: total += p
                 elif lower_inclusive:
-                    if lower <= val < upper:
-                        total += p
+                    if lower <= val < upper: total += p
                 elif upper_inclusive:
-                    if lower < val <= upper:
-                        total += p
+                    if lower < val <= upper: total += p
                 else:
-                    if lower < val < upper:
-                        total += p
+                    if lower < val < upper: total += p
             return total
 
         if family == "poisson":
             lam = params["lambda"]
-            actual_lower = max(0, lower)
-            actual_upper = min(upper, 1e6)
-            k_min = int(np.ceil(actual_lower)) if lower_inclusive else int(np.floor(actual_lower)) + 1
-            k_max = int(np.floor(actual_upper)) if upper_inclusive else int(np.ceil(actual_upper)) - 1
+            k_min = int(np.ceil(lower)) if lower_inclusive else int(np.floor(lower)) + 1
+            k_max = int(np.floor(upper)) if upper_inclusive else int(np.ceil(upper)) - 1
+            
             if k_min > k_max:
                 return 0.0
-            if k_min <= 0:
-                return stats.poisson.cdf(k_max, mu=lam)
-            return stats.poisson.cdf(k_max, mu=lam) - stats.poisson.cdf(k_min - 1, mu=lam)
+                
+            cdf_upper = stats.poisson.cdf(k_max, mu=lam)
+            cdf_lower = stats.poisson.cdf(k_min - 1, mu=lam) if k_min > 0 else 0.0
+            
+            raw_prob = max(0.0, cdf_upper - cdf_lower)
+            return max(0.0, min(1.0, raw_prob / trunc_factor))
 
         try:
             if family == "normal":
@@ -165,15 +223,15 @@ class Distributions:
                 cdf_lower = stats.beta.cdf(lower, a=params["alpha"], b=params["beta"])
                 cdf_upper = stats.beta.cdf(upper, a=params["alpha"], b=params["beta"])
             elif family == "lognormal":
-                sigma = params["sigma"]
-                scale = np.exp(params["mean"]) if params["mean"] > -100 else 1e-10
-                cdf_lower = stats.lognorm.cdf(max(0, lower), s=sigma, scale=scale)
-                cdf_upper = stats.lognorm.cdf(max(0, upper), s=sigma, scale=scale)
+                scale_val = np.exp(params["mean"])
+                cdf_lower = stats.lognorm.cdf(lower, s=params["sigma"], scale=scale_val) if lower > 0 else 0.0
+                cdf_upper = stats.lognorm.cdf(upper, s=params["sigma"], scale=scale_val) if upper > 0 else 0.0
             else:
                 raise ValueError(f"CDF not supported for {family}")
         except Exception as e:
-            print(f"[WARN] probability_interval error for {family}: {e}, params={params}, lower={lower}, upper={upper}")
+            print(f"[WARN] error analítico en {family}: {e}")
             return 0.0
 
-        result = max(0.0, min(1.0, cdf_upper - cdf_lower))
-        return result
+        # Aplicación del Teorema de Probabilidad Condicional para Truncamiento Formal
+        result = max(0.0, (cdf_upper - cdf_lower) / trunc_factor)
+        return min(1.0, result)

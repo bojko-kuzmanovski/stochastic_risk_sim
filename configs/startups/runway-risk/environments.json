@@ -6,7 +6,7 @@
       "market_condition": {"type": "probabilistic", "distribution": "volatility_profile"}, 
       "risk_free_rate": {"type": "deterministic", "value": 0.05}, 
       "tick_duration_months": {"type": "deterministic", "value": 1}, 
-      "regulatory_pressure": {"type": "deterministic", "value": 0.0}, 
+      "regulatory_pressure": {"type": "probabilistic", "distribution": "market_sentiment"}, 
       "tax_rate": {"type": "deterministic", "value": 0.15}, 
       "compliance_cost_index": {"type": "deterministic", "value": 1.0}
     }, 
