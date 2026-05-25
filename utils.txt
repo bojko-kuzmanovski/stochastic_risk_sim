@@ -1,7 +1,11 @@
 tree ./ -I '__pycache__|venv|configs|*.txt|*.md|*.csv'
 
-
 python3 main.py --output runway_risk_base --runs 100 --time 60 --threads 10
 python3 main.py --output runway_risk_bull --runs 100 --time 60 --threads 10
 python3 main.py --output runway_risk_bear --runs 100 --time 60 --threads 10
 python3 main.py --output runway_risk_crisis --runs 100 --time 60 --threads 10
+
+python3 analyze_scenario.py --scenario runway_risk_base
+python3 analyze_scenario.py --scenario runway_risk_bull
+python3 analyze_scenario.py --scenario runway_risk_bear
+python3 analyze_scenario.py --scenario runway_risk_crisis
