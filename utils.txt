@@ -1,17 +1,7 @@
 tree ./ -I '__pycache__|venv|configs|*.txt|*.md|*.csv'
 
 
-runway_lifecycle (en sus estados LOAD_PARAMS y CRITICAL).
-
-runway_critical (en su estado ASSESS_SURVIVAL_CHANCE).
-
-compliance_monitor (en su estado READ_REGULATOR_CHANNEL).
-
-client_replacement (en su estado LOAD_PARAMS).
-
-
-runway_lifecycle, runway_critical, compliance_monitor, client_replacement
-
-
-runway_lifecycle, runway_critical, compliance_monitor, client_replacement,
-investment_decision, exogenous_shock, regulatory_shock, client_retention_cycle
+python3 main.py --output runway_risk_base --runs 100 --time 60 --threads 5
+python3 main.py --output runway_risk_bull --runs 100 --time 60 --threads 5
+python3 main.py --output runway_risk_bear --runs 100 --time 60 --threads 5
+python3 main.py --output runway_risk_crisis --runs 100 --time 60 --threads 5

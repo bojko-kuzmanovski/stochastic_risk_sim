@@ -13,14 +13,6 @@ from core.agents import Agents
 from core.environments import Environments
 
 
-# Predicados que queremos debuggear
-DEBUG_PREDICATES = {
-    "PR_STOCHASTIC_EXIT_VIA_PATIENCE",        # investor_exit/DETERMINE_EXIT_REASON
-    "PR_STOCHASTIC_VULNERABILITY_VIA_BURDEN",  # compliance_monitor/EVALUATE_BURDEN_FATIGUE
-    "PR_STOCHASTIC_LAYOFFS_VIA_PANIC",         # da 0.00004 - muy bajo
-}
-
-
 class PATLVerifier:
     def __init__(self, automata, distributions, configs=None, epsilon=1e-6):
         self.automata = automata
@@ -28,28 +20,17 @@ class PATLVerifier:
         self.configs = configs or {}
         self._thread_id = threading.get_ident()
         self.epsilon = epsilon
-        self._debug = False  # Se activa por predicado
 
         self.agent_meta = {a["agent_type"]: a["params"] for a in self.configs.get("agents", [])}
         self.env_meta = {e["environment_type"]: e["params"] for e in self.configs.get("environments", [])}
 
-    def _dbg(self, msg):
-        if self._debug:
-            print(f"[DEBUG][T{self._thread_id}] {msg}", flush=True)
-
     def verify(self, snapshot, predicates):
-        self._dbg(f"verify() INICIO - {len(predicates)} predicados")
         t0 = time.time()
         results = []
         for i, p in enumerate(predicates):
-            self._debug = p["predicate_id"] in DEBUG_PREDICATES
-            self._dbg(f"  Verificando predicado {i+1}/{len(predicates)}: {p['predicate_id']}")
             t1 = time.time()
             r = self._verify_predicate(snapshot, p)
-            self._dbg(f"  Predicado {p['predicate_id']} terminó en {time.time()-t1:.3f}s: {r['result']}")
             results.append(r)
-        self._debug = False
-        self._dbg(f"verify() FIN - {time.time()-t0:.3f}s")
         return results
 
     def _verify_predicate(self, snapshot, pred):
@@ -64,10 +45,6 @@ class PATLVerifier:
         operator = pred.get("probability_operator", ">=")
         predicate_id = pred["predicate_id"]
 
-        self._dbg(f"  _verify_predicate INICIO: {predicate_id}")
-        self._dbg(f"  coalition={[c['id'] for c in coalition]}, adversaries={[a['id'] for a in adversaries]}")
-        self._dbg(f"  bound={bound}, operator={operator}")
-
         if not coalition:
             return {"predicate_id": predicate_id, "result": "ERROR",
                     "p_value": 0.0, "bound": bound, "operator": operator,
@@ -75,8 +52,6 @@ class PATLVerifier:
 
         c_strats = list(self._strategies(coalition))
         a_strats = list(self._strategies(adversaries)) if adversaries else [{}]
-        
-        self._dbg(f"  c_strats={c_strats}, a_strats={a_strats}")
         
         max_depth = pred.get("max_depth", 20)
         pred_type = pred["type"]
@@ -91,11 +66,7 @@ class PATLVerifier:
                 targets = self._target_set(coalition, c_strat)
                 coalition_ids = [c["id"] for c in coalition]
                 
-                self._dbg(f"  _reach con full_strategy={full_strategy}, targets={targets}, coalition_ids={coalition_ids}")
-                
                 p = self._reach(agents_map, environments.data, full_strategy, targets, max_depth, pred_type, coalition_ids)
-                
-                self._dbg(f"  _reach retornó p={p:.6f}")
                 
                 if p < worst:
                     worst = p
@@ -108,7 +79,6 @@ class PATLVerifier:
                     p_game = worst
 
         satisfied = self._compare(p_game, bound, operator)
-        self._dbg(f"  _verify_predicate FIN: p_game={p_game:.6f}, satisfied={satisfied}")
         return {"predicate_id": predicate_id,
                 "result": "SATISFIED" if satisfied else "VIOLATED",
                 "p_value": round(p_game, 6), "bound": bound, "operator": operator}
@@ -160,52 +130,38 @@ class PATLVerifier:
         return t
 
     def _reach(self, agents_map, env_data, strat, targets, depth, pred_type, coalition_ids=None):
-        self._dbg(f"    _reach INICIO: depth={depth}, targets={targets}")
-        self._dbg(f"    strat={strat}")
-        self._dbg(f"    agentes en strat: {[(aid, agents_map[aid].get('current_state')) for aid in strat if aid in agents_map]}")
-        self._dbg(f"    coalition_ids={coalition_ids}")
-
         memo = {}
         
         def dp(d, visited_states):
             if d == 0:
-                self._dbg(f"    dp: d=0 -> 0.0")
                 return 0.0
                 
             state_key = self._hash(agents_map, env_data)
             if state_key in visited_states:
-                self._dbg(f"    dp: CICLO detectado a depth={d} -> 0.0")
                 return 0.0
                 
             if (state_key, d) in memo:
                 return memo[(state_key, d)]
             
-            # Verificar target SOLO en coalición
             if coalition_ids:
                 for aid in coalition_ids:
                     if aid in agents_map and agents_map[aid].get("current_state") in targets:
-                        self._dbg(f"    dp: TARGET alcanzado! {aid} en {agents_map[aid].get('current_state')} -> 1.0")
                         return 1.0
             
-            # VERIFICAR FINALES ANTES DE EXPANDIR
             non_final_agents = [aid for aid in strat if aid in agents_map and not self._is_final(agents_map[aid])]
             if not non_final_agents:
-                self._dbg(f"    dp: Todos finales -> 0.0")
                 memo[(state_key, d)] = 0.0
                 return 0.0
 
             total = 0.0
             new_visited = visited_states | {state_key}
             branches = self._expand_inplace(agents_map, env_data, strat)
-            self._dbg(f"    dp: d={d}, branches={len(branches)}")
             
             if not branches:
-                self._dbg(f"    dp: SIN RAMAS -> 0.0")
                 memo[(state_key, d)] = 0.0
                 return 0.0
             
             for prob, updates in branches:
-                self._dbg(f"    dp: rama prob={prob:.6f}, updates={updates}")
                 if prob < self.epsilon:
                     continue
                     
@@ -216,33 +172,27 @@ class PATLVerifier:
                         agents_map[aid]["current_state"] = ns
                 
                 child = dp(d - 1, new_visited)
-                self._dbg(f"    dp: rama prob={prob:.6f} * child={child:.6f} = {prob*child:.6f}")
                 total += prob * child
                 
                 for aid, old_state in saved_states.items():
                     agents_map[aid]["current_state"] = old_state
 
             memo[(state_key, d)] = total
-            self._dbg(f"    dp: d={d}, total={total:.6f}")
             return total
 
         result = dp(depth, frozenset())
-        self._dbg(f"    _reach FINAL: result={result:.6f}")
         return 1.0 - result if pred_type == "invariance" else result
 
     def _expand_inplace(self, agents_map, env_data, strat):
-        self._dbg(f"      _expand_inplace: strat_agent_ids={set(strat.keys())}")
         branches = [(1.0, {})]
         strat_agent_ids = set(strat.keys())
         
         for agent_id in strat_agent_ids:
             if agent_id not in agents_map:
-                self._dbg(f"      {agent_id} NO EN agents_map!")
                 continue
             agent = agents_map[agent_id]
             state = agent.get("current_state")
             aut_name = strat[agent_id]
-            self._dbg(f"      agente={agent_id}, state={state}, aut={aut_name}")
             
             if not aut_name:
                 continue
@@ -251,12 +201,9 @@ class PATLVerifier:
                 if aut_def_temp:
                     state = aut_def_temp["states"]["initial"]
                     agent["current_state"] = state
-                    self._dbg(f"      {agent_id}: state=None -> inicializado a {state}")
                 
             aut_def = next((a for a in self.automata.data if a["automaton_name"] == aut_name), None)
-            self._dbg(f"      aut_def encontrado: {aut_def['automaton_name']}, initial={aut_def['states']['initial']}")
             if not aut_def:
-                self._dbg(f"      {aut_name} NO ENCONTRADO en automata.data")
                 continue
 
             if state not in aut_def["states"].get("final", []) and \
@@ -264,15 +211,12 @@ class PATLVerifier:
                 state not in [t["from"] for t in aut_def.get("transitions", [])]:
                     state = aut_def["states"]["initial"]
                     agent["current_state"] = state
-                    self._dbg(f"      {agent_id}: estado reset a inicial={state}")
                 
             if state in aut_def["states"].get("final", []):
-                self._dbg(f"      {agent_id}: estado FINAL {state} -> skip")
                 continue
                 
             trans = next((t for t in aut_def["transitions"] if t["from"] == state), None)
             if not trans:
-                self._dbg(f"      {agent_id}: NO TRANSICION desde {state}")
                 continue
 
             tv = trans.get("threshold_value", {})
@@ -294,8 +238,6 @@ class PATLVerifier:
                 elif "target" in tv_def:
                     threshold_type = "dynamic"
 
-            self._dbg(f"      threshold_type={threshold_type}, dist_name={dist_name}, truncation_limits={truncation_limits}")
-
             new_branches = []
             for base_prob, base_upd in branches:
                 for th in trans.get("thresholds", []):
@@ -311,7 +253,6 @@ class PATLVerifier:
 
                     if threshold_type == "probabilistic" and dist_name:
                         p = self.distributions.probability_interval(dist_name, low, high, li, ui)
-                        self._dbg(f"      PROB interval=[{low:.4f}, {high:.4f}] -> p={p:.6f}")
                         if p > 0:
                             saved_agents = self.automata.agents
                             saved_envs = self.automata.environments
@@ -336,7 +277,6 @@ class PATLVerifier:
                                 mid = (low + high) / 2.0
                             
                             ns = session.step(forced_X=mid)
-                            self._dbg(f"      PROB step: state={state}, mid={mid:.4f}, ns={ns}")
                             
                             self.automata.agents = saved_agents
                             self.automata.environments = saved_envs
@@ -365,7 +305,6 @@ class PATLVerifier:
                             mid = (low + high) / 2.0
                         
                         ns = session.step(forced_X=mid)
-                        self._dbg(f"      DYNAMIC step: state={state}, interval=[{low:.4f}, {high:.4f}], mid={mid:.4f}, ns={ns}")
                         
                         self.automata.agents = saved_agents
                         self.automata.environments = saved_envs
@@ -395,7 +334,6 @@ class PATLVerifier:
                             mid = (low + high) / 2.0
                         
                         ns = session.step(forced_X=mid)
-                        self._dbg(f"      DET step: state={state}, mid={mid:.4f}, ns={ns}")
                         
                         self.automata.agents = saved_agents
                         self.automata.environments = saved_envs
@@ -405,16 +343,13 @@ class PATLVerifier:
                         upd = dict(base_upd)
                         upd[agent_id] = ns
                         new_branches.append((base_prob * p, upd))
-                        self._dbg(f"      -> rama agregada: prob={base_prob*p:.6f}, {agent_id}->{ns}")
             
             if new_branches:
                 branches = new_branches
             
         if len(branches) == 1 and branches[0][1] == {}:
-            self._dbg(f"      -> retornando [] (sin cambios)")
             return []
         
-        self._dbg(f"      -> retornando {len(branches)} ramas")
         return branches
 
     def _make_agents_from_map(self, agents_map):
