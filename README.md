@@ -1,22 +1,27 @@
 # 🔷 Framework narrativo (alineado a posts)
 
-## 1. 
+## 1.
+
 **¿Dónde se rompe el modelo de negocio?**  
 👉 Dolor observable, síntomas claros
 
-## 2. 
+## 2.
+
 **¿Qué lo está rompiendo… y no se está viendo?**  
 👉 Transición: explicación común → gap
 
-## 3. 
+## 3.
+
 **¿Cómo analizarlo sin perder complejidad?**  
 👉 “Caja negra” metodológica (sin revelar IP)
 
-## 4. 
+## 4.
+
 **¿Qué decisiones cambian el resultado?**  
 👉 Evaluación dinámica: decisiones → efectos
 
-## 5. 
+## 5.
+
 **¿Cómo operar cuando el entorno es incierto?**  
 👉 Cierre estratégico (no táctico)
 
@@ -24,7 +29,8 @@
 
 # 🔁 Mapeo con posts
 
-## 🟠 Post 1 — DOLORES  
+## 🟠 Post 1 — DOLORES
+
 **(Preguntas 1 + 2)**
 
 **Enganche:**  
@@ -37,7 +43,8 @@
 
 ---
 
-## 🟠 Post 2 — CAUSAS  
+## 🟠 Post 2 — CAUSAS
+
 **(Preguntas 2 + 3)**
 
 **Punto de partida:**  
@@ -46,12 +53,14 @@
 **Elevación:**  
 👉 El problema está mal modelado
 
-💡 Insight clave:  
+💡 Insight clave:
+
 > “El problema no es falta de datos, es cómo se están leyendo.”
 
 ---
 
-## 🟠 Post 3 — EVALUACIÓN  
+## 🟠 Post 3 — EVALUACIÓN
+
 **(Preguntas 3 + 4)**
 
 **Desde:**  
@@ -65,7 +74,8 @@ Pasas de complejidad → criterio
 
 ---
 
-## 🟠 Post 4 — DECISIONES  
+## 🟠 Post 4 — DECISIONES
+
 **(Preguntas 4 + 5)**
 
 **Desde:**  
