@@ -20,7 +20,13 @@ class SnapshotManager:
         self.data = {}
         for obs in patl_config.get("observations", []):
             key = (obs["automaton_name"], obs["trigger_state"])
-            self.data[key] = obs.get("predicates", [])
+            bucket = self.data.setdefault(key, [])
+            declared = {p.get("predicate_id") for p in bucket}
+            for pred in obs.get("predicates", []):
+                if pred.get("predicate_id") in declared:
+                    continue
+                bucket.append(pred)
+                declared.add(pred.get("predicate_id"))
 
         self._active_transitions = 0
         self._sampling = False
