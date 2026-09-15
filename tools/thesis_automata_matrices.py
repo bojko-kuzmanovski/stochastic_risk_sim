@@ -43,7 +43,7 @@ from thesis_automata_diagrams import (DEFAULT_CONFIG, DEFAULT_OUT, Automaton, br
                                       load_abbreviations, longest_path_layers, tex_escape)
 
 LANDSCAPE_FROM = 13      # estados a partir de los cuales la matriz va en página horizontal
-NOTE_COLUMNS = 3         # columnas de la lista de notas
+NOTE_COLUMNS = 2         # columnas de la lista de notas, en página vertical y horizontal
 
 UNKNOWN = ("unk",)
 EVENT = ("event",)
@@ -382,7 +382,9 @@ def render(M):
         "% events.json y patl.json. No editar a mano: volver a ejecutar el generador.",
     ]
     colspec = "r@{\\hspace{2pt}}l@{\\hspace{3pt}}l" + "|c" * n + "|"
-    lines.append(r"\begin{anxmfit}{" + (r"\footnotesize" if land else r"\scriptsize") + "}")
+    # En página horizontal las notas van en dos columnas: renglones algo más bajos para que el cuadro quepa.
+    size = r"\footnotesize\renewcommand{\arraystretch}{1.2}" if land else r"\scriptsize"
+    lines.append(r"\begin{anxmfit}{" + size + "}")
     lines.append(r"\begin{tabular}{" + colspec + "}")
     head = [r"\multicolumn{3}{r|}{\anxmhead{de $\downarrow$ \quad a $\rightarrow$}}"]
     head += [r"\multicolumn{1}{c|}{\anxmhead{" + str(j + 1) + "}}" for j in range(n)]
@@ -403,10 +405,10 @@ def render(M):
     lines.append(r"\end{anxmfit}")
     notes = M["notes"]
     if notes:
-        ncols = NOTE_COLUMNS if land else 2
+        ncols = NOTE_COLUMNS
         per = -(-len(notes) // ncols)
         cols = [notes[k * per:(k + 1) * per] for k in range(ncols)]
-        width = "0.325" if land else "0.49"
+        width = "0.49"
         lines.append(r"\par\smallskip")
         lines.append(r"\begin{minipage}[t]{\linewidth}\anxmnotes")
         for k, col in enumerate(cols):
@@ -455,8 +457,8 @@ STYLES = r"""% Colores y glifos de las matrices de transición simbólicas del A
 \newcommand{\anxmnotes}{\scriptsize\setlength{\parskip}{0.6pt}}
 % Ajusta la matriz al ancho de la línea sin ampliarla nunca.
 \newsavebox{\anxmbox}
-\newenvironment{anxmfit}[1]{\begin{lrbox}{\anxmbox}#1\arrayrulecolor{black!18}\renewcommand{\arraystretch}{1.35}%
-  \setlength{\tabcolsep}{1.6pt}}{\end{lrbox}%
+\newenvironment{anxmfit}[1]{\begin{lrbox}{\anxmbox}\arrayrulecolor{black!18}\renewcommand{\arraystretch}{1.35}%
+  \setlength{\tabcolsep}{1.6pt}#1}{\end{lrbox}%
   \ifdim\wd\anxmbox>\linewidth\resizebox{\linewidth}{!}{\usebox{\anxmbox}}\else\usebox{\anxmbox}\fi}
 """
 
