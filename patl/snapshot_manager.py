@@ -4,6 +4,8 @@ import os
 from jsonschema import validate
 from pathlib import Path
 
+from core.trace import tracer
+
 # Campos de ejecución que no forman parte del estado global.
 _RUNTIME_KEYS = {"event_queue"}
 
@@ -71,6 +73,9 @@ class SnapshotManager:
         filepath = self._disk_dir / f"snap_{self._snapshot_index:010d}.json"
         with open(filepath, "w") as f:
             json.dump(snapshot, f, default=str)
+        tracer.emit("snapshots", "capture", index=self._snapshot_index, agent=agent_id,
+                    automaton=automaton_name, state=state,
+                    predicates=[p.get("predicate_id") for p in self.data[(automaton_name, state)]])
         self._snapshot_index += 1
 
         if self.metrics_collector:

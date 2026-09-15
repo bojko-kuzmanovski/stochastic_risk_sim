@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from core.utils.evaluator import resolve_value, call_method, resolve_ephemeral
 from core.events import Events
+from core.trace import tracer
 
 
 class Automata:
@@ -75,6 +76,9 @@ class AutomatonSession:
             self.ctx[k] = self._resolve_value(vdef)
 
     def _resolve_value(self, vdef: dict) -> Any:
+        # Un valor determinista que referencia variables de la sesión ("$x") se resuelve contra el contexto.
+        if vdef.get("type") == "deterministic" and isinstance(vdef.get("value"), str) and "$" in vdef["value"]:
+            return resolve_ephemeral(vdef["value"], self.ctx)
         # En el verificador un parámetro probabilístico no se muestrea: se usa su esperanza.
         if not self.live and vdef.get("type") == "probabilistic":
             return self.automata.distributions.conditional_mean(
@@ -108,6 +112,10 @@ class AutomatonSession:
         args = [self.ctx.get(k) if isinstance(k, str) and k.startswith("$") else k for k in resolved_keys]
         event_obj = self.event if target == "events" else None
         result = call_method(target, method, args, self.automata.agents, self.automata.environments, event_obj)
+
+        if self.live and tracer.on("automata"):
+            tracer.emit("automata", "call", agent=self.event.get("agent_id"), automaton=self.automaton_name,
+                        state=self.current_state, target=target, method=method, args=args, result=result)
 
         if result is None:
             print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
@@ -180,6 +188,14 @@ class AutomatonSession:
             print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
                   f"no threshold_case matched for value {X}", file=sys.stderr, flush=True)
             os._exit(1)
+
+        if self.live and tracer.on("automata"):
+            tv_key, tv_def = self.threshold_value(transition)
+            source = tv_def.get("distribution") if tv_def.get("type") == "probabilistic" else (
+                f"{tv_def['target']}.{tv_def['method']}" if "target" in tv_def else "deterministic")
+            tracer.emit("automata", "transition", agent=self.event.get("agent_id"), automaton=self.automaton_name,
+                        frm=self.current_state, variable=tv_key, source=source, value=X,
+                        case=transition["thresholds"].index(chosen), to=chosen["to"])
 
         return self.apply_case(transition, chosen, X)
 
@@ -281,6 +297,8 @@ class AutomatonSession:
                           f"event_emit failed validation: {e}", file=sys.stderr, flush=True)
                     os._exit(1)
 
+                tracer.emit("automata", "emit", agent=self.event.get("agent_id"), automaton=self.automaton_name,
+                            state=self.current_state, event=event_data)
                 if self.automata.event_sink is not None:
                     self.automata.event_sink(event_data)
 

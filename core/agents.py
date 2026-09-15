@@ -6,6 +6,7 @@ from copy import deepcopy
 
 # Importar funciones de evaluación estandarizadas
 from core.utils.evaluator import resolve_value
+from core.trace import tracer
 
 # Cota de pasos por sesión: una sesión que no llega a estado final en este número
 # de transiciones indica un ciclo en la configuración del autómata.
@@ -87,6 +88,8 @@ class Agents:
         if agent is None or "event_queue" not in agent:
             return False
         agent["event_queue"].append(event)
+        tracer.emit("agents", "enqueue", agent=agent_id, signal=event.get("signal"),
+                    category=event.get("event_category"), queue_len=len(agent["event_queue"]))
         if self.metrics_collector:
             self.metrics_collector.record_agent_event(event.get("event_category"), event.get("signal"))
         return True
@@ -131,16 +134,27 @@ class Agents:
         agent["current_state"] = session.current_state
         agent["session_ctx"] = session.ctx
 
+        tracer.emit("agents", "session_start", agent=agent["agent_id"], automaton=session.automaton_name,
+                    state=session.current_state, category=event.get("event_category"))
+
+        # El agente también alcanza el estado inicial de la sesión, que puede ser un estado disparador.
+        self.snapshot_manager.capture(agent["agent_id"], session.automaton_name, session.current_state)
+
+        steps = 0
         for _ in range(MAX_SESSION_STEPS):
             new_state = session.step()
             if new_state is None:
                 break
+            steps += 1
             agent["current_state"] = new_state
             self.snapshot_manager.capture(agent["agent_id"], session.automaton_name, new_state)
         else:
             print(f"[FATAL] Agent {agent['agent_id']}: automaton '{signal}' did not reach a final state "
                   f"after {MAX_SESSION_STEPS} steps.")
             os._exit(1)
+
+        tracer.emit("agents", "session_end", agent=agent["agent_id"], automaton=session.automaton_name,
+                    final=session.current_state, steps=steps)
 
         agent.pop("current_automaton", None)
         agent.pop("current_state", None)

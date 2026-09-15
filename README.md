@@ -94,11 +94,29 @@ between agents) and `events.json` (timers/triggers).
 
 ## Why analytical, not Monte Carlo?
 
-The verification step does not estimate probabilities by re-running the simulation thousands of times
-and counting outcomes. Instead, it reads each distribution's CDF directly and combines them through a
-depth-bounded dynamic program over the automaton's reachable states. This gives an **exact, deterministic
-probability value** for every predicate — no sampling error, no trial count to tune for convergence, and
-the same `p_value` every time you verify the same snapshot.
+The verification step does not estimate probabilities by re-running the simulation and counting outcomes.
+From each snapshot it builds a bounded game between the coalition and the adversaries of the predicate and
+evaluates the PATL_b operator
+
+    <<C>>_k^{op d} psi  iff  exists sigma_C (observation-based, memory k)  for all sigma_A :  P(psi) op d
+
+* Each probabilistic threshold becomes one branch per decision case, weighted by its exact mass: the CDF
+  for continuous families, the probability mass of each support value for Poisson, the label probability for
+  categorical ones. Nothing is sampled. For continuous families, the value passed on to the case's actions
+  is the conditional expectation inside the case region.
+* Deterministic and dynamic thresholds are evaluated on the game state and yield a single branch.
+* Coalition strategies are deterministic, observation-based and have `k` memory modes (`--memory` or
+  `max_memory` per predicate). Adversaries are unrestricted; for each coalition strategy their best response
+  is computed by backward induction over (state, memory modes, remaining depth).
+* The direction follows the bound: for `>=`/`>` the coalition maximizes and the adversaries minimize; for
+  `<=`/`<` the coalition minimizes and the adversaries maximize. Invariance is evaluated on its own path
+  formula, not as a complement of reachability.
+* Each participant runs one automaton session within the horizon; a participant without an active session
+  chooses (by strategy) which of its assigned automata to start. Non-participants stay frozen, and events
+  emitted during verification are not propagated.
+
+The result is a deterministic value per snapshot and predicate. A predicate whose automaton is not
+assigned to the agent type, or whose game exceeds the size limits, is reported as `ERROR` with its reason.
 
 ## Project structure
 
@@ -120,31 +138,32 @@ the same `p_value` every time you verify the same snapshot.
 configs/*.json  ──validate──▶  schemas/*.schema.json
       │
       ▼
-┌───────────────────────── one simulation run ─────────────────────────┐
-│ core/: Distributions, Environments, Automata, Agents built from config│
+┌───────────────────────── one simulation run (one process) ───────────┐
+│ core/: Distributions (seeded), Environments, Automata, Agents         │
 │      │                                                                │
 │      ▼                                                                │
 │  DES phase (des/)                     patl/snapshot_manager.py        │
-│  agents.start() + scheduler.start() ─▶ capture() on observed states   │
-│  runs for --time seconds               ──▶ data/.snapshots/run_<id>/  │
-│  agents react to events → automata step (may emit new events)         │
+│  calendar Q ordered by time; clock T  ─▶ capture() on trigger states  │
+│  jumps to the next event, up to T_max ──▶ data/.snapshots/run_<id>/   │
+│  events → agent queues Q_i → up to K atomic automaton sessions        │
 │      │                                                                │
 │      ▼                                                                │
-│  metrics/metrics_writer.py ──▶ <name>_summary.csv, <name>_des.csv     │
-│      │                                                                │
-│      ▼                                                                │
-│  PATL phase: read snapshots (batched) → PATLVerifier (thread pool)    │
-│      │                                                                │
-│      ▼                                                                │
-│  metrics/metrics_writer.py ──▶ <name>_patl.csv                        │
+│  PATL phase: read snapshots (batched) → PATLVerifier                  │
 └─────────────────────────────────────────────────────────────────────┘
+      │
+      ▼
+metrics/metrics_writer.py (main process) ──▶ <name>_summary.csv, _des.csv, _patl.csv
       │
       ▼
 analytics/analyze_scenario.py  (optional, standalone descriptive stats)
 ```
 
-DES (stochastic simulation) and PATL (analytical verification) are two separate phases within each run;
-`--threads` lets multiple runs' DES/PATL phases overlap.
+DES (stochastic simulation) and PATL (analytical verification) are two separate phases within each run.
+The DES follows the event calendar model: static events are first scheduled at `t0 ~ rho` for every agent of
+their type and rescheduled at `T + dt, dt ~ rho` each time they are dispatched; dynamic events emitted by an
+automaton enter the calendar at the current instant. When the next event lies beyond `T_max`, dispatching
+stops and the remaining queues are drained. Run `i` is seeded with `seed * 1000000 + i`, so a run can be
+reproduced exactly. `--threads` runs independent simulations in parallel processes.
 
 ## Requirements
 
@@ -164,12 +183,18 @@ pip install -r requirements.txt
 Run a simulation (results are written to `data/`):
 
 ```bash
-python3 main.py --output <name> --runs 100 --time 60 --threads 10
+python3 main.py --output runway_risk_base --runs 50 --time 60 --threads 10 \
+    --distributions distributions_1_base.json
 ```
 
 - `--runs`: number of independent simulations (1–1000)
-- `--time`: simulated seconds per run (10–500)
-- `--threads`: concurrent runs (1–10)
+- `--time`: simulated time horizon `T_max` per run, in model time units (10–500)
+- `--threads`: runs executed in parallel processes (1–10)
+- `--seed`: base seed (default 1)
+- `--config-dir`: scenario directory (default `configs/startups/runway-risk`)
+- `--distributions`: distributions file inside the scenario directory (default `distributions.json`)
+- `--queue-batch`: `K`, events an agent takes from its queue per instant (default 5)
+- `--memory`: default memory bound `k` of coalition strategies (1–4, default 1)
 
 Analyze results for a completed scenario:
 
@@ -177,22 +202,20 @@ Analyze results for a completed scenario:
 python3 analytics/analyze_scenario.py --scenario <name>
 ```
 
-> **Note:** `main.py` currently runs the `configs/startups/runway-risk` scenario by default. To run a
-> different domain/scenario, edit the config path in `main.py`.
-
 ## Output & interpretation
 
 Each run produces three CSV files under `data/`, all sharing the `<name>` prefix:
 
 | File | Contents |
 |---|---|
-| `<name>_summary.csv` | One row per metric: declared config counts (agents, automata, predicates, etc.) plus run performance (`elapsed_des_sec`, `elapsed_patl_sec`). Columns: `run_id, category, key, subkey, value` |
-| `<name>_des.csv` | Runtime telemetry from the simulation itself — distribution samples drawn, agent/environment actions taken, automaton executions, events fired. Columns: `run_id, runtime_section, entity_key, metric_subkey, execution_value` |
-| `<name>_patl.csv` | One row per verified predicate per run — the actual formal-verification results. Columns: `run_id, automaton_name, trigger_state, agent_id, predicate_id, p_value, bound, operator, result` |
+| `<name>_summary.csv` | One row per metric: seed, simulated time reached, declared config counts (agents, automata, predicates, etc.) plus run performance (`elapsed_des_sec`, `elapsed_patl_sec`). Columns: `run_id, category, key, subkey, value` |
+| `<name>_des.csv` | Runtime telemetry from the simulation itself: distribution samples drawn, agent/environment actions taken, automaton executions, events fired, snapshots captured. Columns: `run_id, runtime_section, entity_key, metric_subkey, execution_value` |
+| `<name>_patl.csv` | One row per verified predicate per snapshot. Columns: `run_id, automaton_name, trigger_state, agent_id, predicate_id, value, bound, operator, memory_k, result, reason` |
 
-To read a PATL result: `result` is `SATISFIED` or `VIOLATED` depending on whether the exact computed
-`p_value` meets the `bound`/`operator` threshold from `patl.json` (e.g. `>= 0.20`) — a pass/fail flag
-reported alongside the probability itself, so you can see how close a case was, not just whether it passed.
+To read a PATL result: `value` is the value of the property (the optimal probability of the path formula
+for the coalition against its adversaries), not a statistical p-value. `result` is `SATISFIED` or `VIOLATED`
+depending on whether `value` meets `bound`/`operator` from `patl.json`, or `ERROR` when the predicate could
+not be verified, with the cause in `reason`.
 
 ## Use cases
 

@@ -2,6 +2,7 @@
 import sys
 
 from des.event_scheduler import EventCalendar
+from core.trace import tracer
 
 # Cota de eventos despachados en un mismo instante; superarla indica un ciclo de
 # eventos dinámicos con latencia cero (comportamiento de Zenón).
@@ -62,6 +63,10 @@ class DiscreteEventSimulator:
         while self.calendar and self.calendar.next_time() <= max_time:
             T, batch = self.calendar.pop_instant()
             self.T = T
+            tracer.clock = T
+            tracer.emit("des", "instant", dispatched=len(batch),
+                        events=[(e.get("agent_id"), e.get("signal"), e.get("event_category")) for e in batch],
+                        calendar_size=len(self.calendar))
 
             same_instant = same_instant + len(batch) if T == last_T else len(batch)
             last_T = T
@@ -82,8 +87,10 @@ class DiscreteEventSimulator:
         # Finalización: cesa el despacho y se vacían las colas.
         self._dispatching = False
         self.event_scheduler.stop()
+        tracer.emit("des", "drain", pending_agents=len(ready), discarded_calendar=len(self.calendar))
         while ready:
             self._process_ready(ready)
         self.agents.stop()
         self.calendar.clear()
+        tracer.emit("des", "end", final_T=self.T)
         return self.T

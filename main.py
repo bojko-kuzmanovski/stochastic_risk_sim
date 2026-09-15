@@ -27,6 +27,7 @@ from patl.snapshot_manager import SnapshotManager
 
 from metrics.metrics_collector import MetricsCollector
 from metrics.metrics_writer import MetricsWriter
+from core.trace import tracer, parse_components, COMPONENTS
 
 
 def parse_args():
@@ -47,8 +48,11 @@ def parse_args():
                         help="Distributions file inside --config-dir (e.g. distributions_1_base.json)")
     parser.add_argument("--queue-batch", type=int, default=5,
                         help="K: maximum events an agent extracts from its queue per instant")
-    parser.add_argument("--memory", type=int, default=1,
-                        help="Default memory bound k of coalition strategies (1-4)")
+    parser.add_argument("--memory", type=str, default="1",
+                        help="Memory bounds k of coalition strategies, e.g. 1 or 1,2 (each 1-4); "
+                             "predicates with max_memory use their own")
+    parser.add_argument("--trace", type=str, default="",
+                        help=f"Write a JSONL trace per run to data/traces/: comma list of {', '.join(COMPONENTS)} or all")
     return parser.parse_args()
 
 
@@ -61,8 +65,10 @@ def validate_args(args):
         raise ValueError(f"--threads must be between 1 and 10, got {args.threads}")
     if args.queue_batch < 1:
         raise ValueError(f"--queue-batch must be at least 1, got {args.queue_batch}")
-    if not (1 <= args.memory <= 4):
-        raise ValueError(f"--memory must be between 1 and 4, got {args.memory}")
+    args.memory = [int(m) for m in args.memory.split(",") if m.strip()]
+    if not args.memory or any(not (1 <= m <= 4) for m in args.memory):
+        raise ValueError(f"--memory values must be between 1 and 4, got {args.memory}")
+    args.trace = parse_components(args.trace)
     if args.threads > args.runs:
         args.threads = args.runs
 
@@ -77,7 +83,10 @@ def load_configs(config_dir: Path, distributions_file: str) -> dict:
 
 
 def run_single_simulation(run_id: int, configs: dict, max_time: float, output_dir: Path, seed: int,
-                          queue_batch: int, memory: int, keep_objects: bool = False):
+                          queue_batch: int, memory: list, keep_objects: bool = False,
+                          trace_components=frozenset(), trace_name: str = ""):
+    tracer.configure(output_dir / "traces" / f"{trace_name}_run{run_id}.jsonl", trace_components, run_id)
+    tracer.emit("des", "run_start", seed=seed, max_time=max_time, queue_batch=queue_batch, memory=memory)
     metrics = MetricsCollector(enabled=True)
     distributions = Distributions(configs["distributions"], metrics, seed=seed)
     environments = Environments(configs["environments"], distributions, metrics)
@@ -106,6 +115,7 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
 
     # --- PATL ---
     # El verificador trabaja con su propio intérprete de autómatas y no muestrea.
+    tracer.clock = None
     t0 = time.time()
     verifier_automata = Automata(configs["automata"], distributions, MetricsCollector(enabled=False))
     verifier = PATLVerifier(verifier_automata, distributions, configs=configs, default_memory=memory)
@@ -124,6 +134,7 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
                 ])
     elapsed_patl = time.time() - t0
     snapshot_manager.clear_all_snapshots()
+    tracer.close()
 
     result = {
         "run_id": run_id,
@@ -168,12 +179,14 @@ def main():
     if args.threads == 1:
         for run_id in range(1, args.runs + 1):
             last = run_single_simulation(run_id, configs, args.time, output_dir, seed_for(run_id),
-                                         args.queue_batch, args.memory, keep_objects=(args.runs == 1))
+                                         args.queue_batch, args.memory, keep_objects=(args.runs == 1),
+                                         trace_components=args.trace, trace_name=base_name)
             record(last)
     else:
         with ProcessPoolExecutor(max_workers=args.threads) as pool:
             futures = [pool.submit(run_single_simulation, run_id, configs, args.time, output_dir,
-                                   seed_for(run_id), args.queue_batch, args.memory)
+                                   seed_for(run_id), args.queue_batch, args.memory,
+                                   False, args.trace, base_name)
                        for run_id in range(1, args.runs + 1)]
             for future in as_completed(futures):
                 record(future.result())
