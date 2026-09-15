@@ -283,7 +283,7 @@ def main():
     # ------------------------------------------------------------------ anexo C: detalle completo
     anx = [r"\bigskip", r"\section{Resultados numéricos por régimen}\label{anx:resultados}", "",
            r"\medskip \noindent",
-           r"Este anexo reporta, para cada régimen y cota de memoria, los estadísticos de los valores de los doce predicados sobre todas las instantáneas verificadas: número de instantáneas ($n$), media, desviación estándar, mínimo, mediana, máximo y proporción de instantáneas en que se satisface la cota. La media del Cuadro de resultados principal corresponde a la columna de media con $k = %d$." % kmin, ""]
+           r"Este anexo reporta, para cada régimen y cota de memoria, los estadísticos de los valores de los doce predicados sobre todas las instantáneas verificadas: número de instantáneas ($n$), media, desviación estándar, mínimo, mediana, máximo y proporción de instantáneas en que se satisface la cota. La media del Cuadro de resultados principal corresponde a la columna de media con $k = %d$. Las corridas de un régimen son réplicas independientes con semillas distintas, por lo que sus estadísticos describen la variabilidad entre trayectorias en el sentido del análisis de salidas por réplicas \\parencite{banks2005, law2015simulation}; las instantáneas de una misma corrida, en cambio, están correlacionadas en el tiempo, y la dispersión entre instantáneas no debe leerse como error de estimación." % kmin, ""]
     full = valid.groupby(["regime", "memory_k", "abbr"]).agg(
         n=("v", "size"), mean=("v", "mean"), sd=("v", "std"), vmin=("v", "min"), med=("v", "median"),
         vmax=("v", "max"), sat=("result", lambda x: (x == "SATISFIED").mean()))
