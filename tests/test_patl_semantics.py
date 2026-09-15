@@ -237,8 +237,9 @@ def test_esperanza_condicional_contra_integracion():
 def test_casos_que_no_particionan_el_soporte():
     broken = automaton("broken", ["A", "B"], load("GATE"),
                        T("GATE", "$x", prob("u"), case(c("$x", "<", 0.3), "A"), case(c("$x", ">", 0.6), "B")))
-    row = value([broken], snapshot(agent("Coal_1", ["broken"])), predicate(group("Coal_1", ("broken", ["A"]))))
-    assert row["result"] == "ERROR" and "masa" in row["reason"]
+    # La masa sin cubrir se rechaza al cargar los autómatas, antes de simular o verificar.
+    with pytest.raises(ValueError, match="uncovered probability mass"):
+        value([broken], snapshot(agent("Coal_1", ["broken"])), predicate(group("Coal_1", ("broken", ["A"]))))
 
 
 def test_estado_objetivo_no_final():
@@ -267,12 +268,30 @@ def test_c1_ramas_hermanas_no_comparten_escrituras():
     assert ok(row) == pytest.approx(0.5)
 
 
-def test_c2_falla_de_sesion_se_reporta_como_error():
-    aut = automaton("broken_read", ["A", "B"],
-                    load("READ", upd(agent_id="Coal_1", param_key="missing")),
-                    T("READ", "$v", read_agent(), case(c("$v", "==", 1), "A"), case(c("$v", "!=", 1), "B")))
-    row = value([aut], snapshot(agent("Coal_1", ["broken_read"])), predicate(group("Coal_1", ("broken_read", ["A"]))))
-    assert row["result"] == "ERROR" and "Resolved Value" in row["reason"]
+def _broken_read():
+    return automaton("broken_read", ["A", "B"],
+                     load("READ", upd(agent_id="Coal_1", param_key="missing")),
+                     T("READ", "$v", read_agent(), case(c("$v", "==", 1), "A"), case(c("$v", "!=", 1), "B")))
+
+
+def test_c2_parametro_inexistente_es_el_valor_vacio():
+    # Leer un parámetro que no existe devuelve el valor vacío: la comparación == 1 falla y se llega a B.
+    row = value([_broken_read()], snapshot(agent("Coal_1", ["broken_read"])),
+                predicate(group("Coal_1", ("broken_read", ["A"]))))
+    assert row["result"] == "VIOLATED" and ok(row) == pytest.approx(0.0)
+
+
+def test_c2_falla_de_sesion_se_reporta_como_error(monkeypatch):
+    # Una excepción dentro de la sesión no se convierte en valor: el predicado se reporta como ERROR.
+    from core.agents import Agents
+
+    def fails(self, agent_id, param_name):
+        raise KeyError(f"forced failure reading {param_name}")
+
+    monkeypatch.setattr(Agents, "read_agent_param", fails)
+    row = value([_broken_read()], snapshot(agent("Coal_1", ["broken_read"])),
+                predicate(group("Coal_1", ("broken_read", ["A"]))))
+    assert row["result"] == "ERROR" and "forced failure" in row["reason"]
 
 
 def test_c3_adversarios_implicitos_acotados():

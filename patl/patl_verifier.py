@@ -233,6 +233,18 @@ class _AgentsProxy:
         if self._get(agent_id) is None:
             return False
         self._node.amods[agent_id] = None
+        # Como en el motor: se retira de membresías, relaciones y canales de todo entorno.
+        envs = _EnvsProxy(self._v, self._node)
+        for env_id in list(self._v.base_envs) + [i for i in self._node.emods if i not in self._v.base_envs]:
+            env = envs._get(env_id)
+            if env is None:
+                continue
+            members = [m.get("agent_id") for m in env.get("members", [])]
+            relations = [x for r in env.get("relations", []) for x in r.get("members", [])]
+            channels = [x for ch in env.get("channels", []) for x in ch.get("members", [])]
+            if agent_id in members or agent_id in relations or agent_id in channels:
+                envs._tmp.data = [envs._own(env_id)]
+                Environments.purge_agent(envs._tmp, agent_id)
         return True
 
     def __getattr__(self, name):
@@ -257,6 +269,7 @@ class _EnvsProxy:
         self._tmp.distributions = verifier.safe_distributions
         self._tmp.config_data = verifier.envs_config
         self._tmp.event_sink = None
+        self._tmp.clock = lambda: verifier.base_time
 
     def _get(self, env_id):
         if env_id in self._node.emods:
@@ -367,6 +380,7 @@ class PATLVerifier:
         self.mixed_strategies = bool(mixed_strategies)
         self.base_agents = {}
         self.base_envs = {}
+        self.base_time = None
         self._propagates_cache = {}
 
     def verify(self, snapshot, predicates):
@@ -404,6 +418,8 @@ class PATLVerifier:
         agents_data = snapshot["agents_data"] or []
         self.base_agents = {a["agent_id"]: a for a in agents_data}
         self.base_envs = {e["env_id"]: e for e in (snapshot.get("environments_data") or [])}
+        # Tiempo simulado de la captura: fecha los eventos de canal escritos durante el juego.
+        self.base_time = snapshot.get("sim_time")
         trigger_id = snapshot.get("agent_id")
 
         coalition = self._resolve_group(pred["coalition"], trigger_id, with_targets=True)
