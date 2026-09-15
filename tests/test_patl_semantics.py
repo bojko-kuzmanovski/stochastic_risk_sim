@@ -313,6 +313,18 @@ def test_c4_la_sesion_en_curso_del_disparador_se_completa():
     assert ok(value(auts, snap, pred)) == pytest.approx(0.45)
 
 
+def test_nombre_de_distribucion_no_cuenta_como_uso_de_variable():
+    # La variable $u no se usa fuera de sus casos; que otra transición muestree la distribución u no la propaga.
+    aut = automaton("names", ["A", "B"], load("G1"),
+                    T("G1", "$u", prob("u"), case(c("$u", "<", 0.5), "G2"), case(c("$u", ">=", 0.5), "G2")),
+                    T("G2", "$y", prob("u"), case(c("$y", "<", 0.3), "A"), case(c("$y", ">=", 0.3), "B")))
+    v, _ = verifier([aut])
+    g1 = aut["transitions"][1]
+    assert v._propagates(aut, g1) is False
+    row = value([aut], snapshot(agent("Coal_1", ["names"])), predicate(group("Coal_1", ("names", ["A"]))))
+    assert ok(row) == pytest.approx(0.3)
+
+
 def test_c5_casos_solapados_con_regla_del_primer_caso():
     aut = automaton("overlap", ["A", "B", "C"], load("GATE"),
                     T("GATE", "$x", prob("u"),

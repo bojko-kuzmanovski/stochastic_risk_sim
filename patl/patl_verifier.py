@@ -51,6 +51,7 @@ Complejidad por predicado: O(|Str_{C,k}| * delta * |S_delta| * A_A * n! * b), co
 ronda y b los desenlaces distintos de una sesión; la parte aleatorizada multiplica por el tamaño de la rejilla.
 """
 
+import heapq
 import itertools
 import json
 import random
@@ -156,10 +157,31 @@ class _Node:
                 tuple(sorted(self.last.items())),
                 tuple(sorted((pid, a, s, repr(sorted(ctx.items())))
                              for pid, (a, s, ctx, _) in self.pending.items())),
-                repr(sorted(self.amods.items())),
-                repr(sorted(self.emods.items())),
+                tuple((i, _content(x)) for i, x in sorted(self.amods.items())),
+                tuple((i, _content(x)) for i, x in sorted(self.emods.items())),
             )
         return self._key
+
+
+# Representación textual de cada copia de entidad, reutilizada mientras no se escriba sobre ella. La entrada
+# conserva la referencia al objeto, así que su id no se recicla mientras siga en la caché. Toda escritura pasa
+# por los proxies, que invalidan la entrada del objeto modificado.
+_CONTENT = {}
+
+
+def _content(obj):
+    if obj is None:
+        return None
+    entry = _CONTENT.get(id(obj))
+    if entry is None or entry[0] is not obj:
+        entry = (obj, repr(obj))
+        _CONTENT[id(obj)] = entry
+    return entry[1]
+
+
+def _touched(obj):
+    if obj is not None:
+        _CONTENT.pop(id(obj), None)
 
 
 class _VerifierDistributions:
@@ -243,7 +265,9 @@ class _AgentsProxy:
             relations = [x for r in env.get("relations", []) for x in r.get("members", [])]
             channels = [x for ch in env.get("channels", []) for x in ch.get("members", [])]
             if agent_id in members or agent_id in relations or agent_id in channels:
-                envs._tmp.data = [envs._own(env_id)]
+                owned = envs._own(env_id)
+                _touched(owned)
+                envs._tmp.data = [owned]
                 Environments.purge_agent(envs._tmp, agent_id)
         return True
 
@@ -253,6 +277,8 @@ class _AgentsProxy:
         def call(*args):
             agent = self._own(args[0]) if name.startswith(_WRITE_PREFIXES) else self._get(args[0])
             self._tmp.data = [agent] if agent is not None else []
+            if name.startswith(_WRITE_PREFIXES):
+                _touched(agent)
             return fn(self._tmp, *args)
 
         return call
@@ -306,6 +332,8 @@ class _EnvsProxy:
             self._tmp.data = [env] if env is not None else []
             self._tmp.distributions._d = self._v.distributions
             self._tmp.distributions.rng = random.Random(0)
+            if name.startswith(_WRITE_PREFIXES):
+                _touched(env)
             return fn(self._tmp, *args)
 
         return call
@@ -382,9 +410,13 @@ class PATLVerifier:
         self.base_envs = {}
         self.base_time = None
         self._propagates_cache = {}
+        self._layout_cache = {}
+        self._round_cache = {}
 
     def verify(self, snapshot, predicates):
         """Una fila por predicado y por cota de memoria k."""
+        # Las claves de nodo son relativas a la instantánea base: la caché de rondas no cruza instantáneas.
+        self._round_cache = {}
         rows = []
         for pred in predicates:
             rows.extend(self._verify_predicate(snapshot, pred))
@@ -503,13 +535,18 @@ class PATLVerifier:
             self._grid = None
             self._nodes = 0
             self._memo = {}
+            _CONTENT.clear()
             v = float(self._V(root, self._initial_modes(sigma), 0, sigma))
             tracer.emit("patl", "strategy_value", predicate=pred["predicate_id"], memory_k=memory,
                         strategy={pid: s.describe() for pid, s in sigma.items()}, value=v, nodes=self._nodes)
             if best is None or pick(best, v) != best:
                 best = v
 
-        mixed = self._mixed_value(root, coalition, maximize, forall, pred)
+        # Las estrategias aleatorizadas son sin memoria: su valor es el mismo para toda cota k.
+        mixed_key = ("mixed", json.dumps(pred, sort_keys=True))
+        if mixed_key not in cache:
+            cache[mixed_key] = self._mixed_value(root, coalition, maximize, forall, pred)
+        mixed = cache[mixed_key]
         if mixed is not None and pick(best, mixed) != best and abs(mixed - best) > 1e-12:
             best, best_kind = mixed, "mixed"
         cache[cache_key] = (best, best_kind)
@@ -669,6 +706,7 @@ class PATLVerifier:
             self._grid = len(points)
             self._nodes = 0
             self._memo = {}
+            _CONTENT.clear()
             values = np.broadcast_to(self._V(root, self._initial_modes(sigma), 0, sigma), (len(points),))
             return np.asarray(values, dtype=float)
 
@@ -782,6 +820,18 @@ class PATLVerifier:
 
     def _round(self, node, actions):
         """Desenlaces de una ronda: promedio uniforme sobre los órdenes de activación de quienes actúan."""
+        # Los desenlaces dependen solo del estado global, de las acciones y de los participantes, no de la
+        # estrategia: se reutilizan entre estrategias, puntos de la malla y memorias de la misma instantánea.
+        round_key = (node.key(), tuple(sorted((p, a) for p, a in actions.items() if a is not None)),
+                     tuple(sorted(self._participants)))
+        cached = self._round_cache.get(round_key)
+        if cached is not None:
+            return cached
+        outcomes = self._round_outcomes(node, actions)
+        self._round_cache[round_key] = outcomes
+        return outcomes
+
+    def _round_outcomes(self, node, actions):
         acting = sorted(pid for pid in self._participants if pid in node.pending or actions.get(pid) is not None)
         if len(acting) > MAX_ORDER_PARTICIPANTS:
             raise VerificationError(
@@ -824,8 +874,45 @@ class PATLVerifier:
         self.automata.agents = node._agents
         self.automata.environments = node._envs
 
+    def _session_layout(self, aut_def):
+        """Orden topológico de los estados (None si hay ciclos) y variables muestreadas que no se propagan."""
+        name = aut_def["automaton_name"]
+        if name not in self._layout_cache:
+            succ = {}
+            for t in aut_def["transitions"]:
+                succ.setdefault(t["from"], set()).update(th["to"] for th in t["thresholds"])
+            states = set(succ) | {s for targets in succ.values() for s in targets}
+            indegree = {s: 0 for s in states}
+            for targets in succ.values():
+                for s in targets:
+                    indegree[s] += 1
+            queue = sorted(s for s in states if indegree[s] == 0)
+            order = []
+            while queue:
+                s = queue.pop(0)
+                order.append(s)
+                for x in sorted(succ.get(s, ())):
+                    indegree[x] -= 1
+                    if indegree[x] == 0:
+                        queue.append(x)
+            rank = {s: i for i, s in enumerate(order)} if len(order) == len(states) else None
+            dead = set()
+            for t in aut_def["transitions"]:
+                tv_key, tv_def = AutomatonSession.threshold_value(t)
+                if isinstance(tv_def, dict) and tv_def.get("type") == "probabilistic" and not self._propagates(aut_def, t):
+                    dead.add(tv_key)
+            self._layout_cache[name] = (rank, dead)
+        return self._layout_cache[name]
+
     def _session_outcomes(self, node, pid, action):
-        """Desenlaces (probabilidad, nodo) de una sesión completa del participante pid."""
+        """
+        Desenlaces (probabilidad, nodo) de una sesión completa del participante pid.
+
+        Las ramas se expanden en orden topológico de los estados del autómata (por número de pasos si tiene
+        ciclos). Dos ramas en el mismo estado, con el mismo estado global y el mismo contexto se fusionan
+        sumando su probabilidad. Del contexto se omiten los valores muestreados que no se propagan, porque
+        ninguna acción ni transición los vuelve a leer; la fusión no altera la distribución de desenlaces.
+        """
         if pid in node.pending:
             aut, state, ctx, event = node.pending.pop(pid)
             node._key = None
@@ -836,17 +923,32 @@ class PATLVerifier:
             event = {"signal": action, "agent_id": pid}
 
         aut_def = self.automata.by_name[aut]
-        finished = []
-        stack = [(1.0, node, state, ctx, 0)]
-        while stack:
-            prob, n, st, cx, steps = stack.pop()
+        rank, dead = self._session_layout(aut_def)
+        frontier, heap, seq, finished = {}, [], itertools.count(), {}
+
+        def push(prob, n, st, cx, steps):
             if self._is_final(aut_def, st):
                 n.last[pid] = (aut, st)
                 n._key = None
-                finished.append((prob, n))
-                continue
+                k = n.key()
+                finished[k] = (finished[k][0] + prob, finished[k][1]) if k in finished else (prob, n)
+                return
             if steps >= MAX_SESSION_STEPS:
                 raise VerificationError(f"{aut} no llega a un estado final en {MAX_SESSION_STEPS} pasos")
+            live_ctx = repr(sorted((v, x) for v, x in (cx or {}).items() if v not in dead))
+            k = (st, n.key(), live_ctx)
+            if k in frontier:
+                entry = frontier[k]
+                entry[0] += prob
+                entry[4] = max(entry[4], steps)
+            else:
+                frontier[k] = [prob, n, st, cx, steps]
+                heapq.heappush(heap, (rank[st] if rank is not None else steps, next(seq), k))
+
+        push(1.0, node, state, ctx, 0)
+        while heap:
+            _, _, k = heapq.heappop(heap)
+            prob, n, st, cx, steps = frontier.pop(k)
 
             self._bind(n)
             session = AutomatonSession(self.automata, aut_def, event, live=False, ctx=cx, state=st)
@@ -862,7 +964,7 @@ class PATLVerifier:
                     s = AutomatonSession(self.automata, aut_def, event, live=False, ctx=base_ctx, state=st)
                     s.apply_case(transition, case, value)
                     child._key = None
-                    stack.append((prob * mass, child, s.current_state, s.ctx, steps + 1))
+                    push(prob * mass, child, s.current_state, s.ctx, steps + 1)
             else:
                 X = session.resolve_threshold(transition)
                 case = session.select_case(transition, X)
@@ -870,8 +972,8 @@ class PATLVerifier:
                     raise VerificationError(f"{aut}::{st} ningún caso coincide con el valor {X}")
                 session.apply_case(transition, case, X)
                 n._key = None
-                stack.append((prob, n, session.current_state, session.ctx, steps + 1))
-        return finished
+                push(prob, n, session.current_state, session.ctx, steps + 1)
+        return list(finished.values())
 
     def _propagates(self, aut_def, transition):
         """¿El valor muestreado de este umbral se usa fuera de sus propias condiciones de caso?"""
@@ -881,8 +983,13 @@ class PATLVerifier:
             name = re.escape(tv_key.lstrip("$"))
             # Se busca el uso en las acciones de sus propios casos y en las demás transiciones; las condiciones
             # de sus casos y su propia declaración no cuentan como uso.
+            # El nombre de una distribución no es una variable: se omite para no confundir una variable $x con
+            # una distribución llamada x que usa otra transición.
             own_actions = [th.get("actions", []) for th in transition["thresholds"]]
-            others = [t for t in aut_def["transitions"] if t is not transition]
+            others = [{**t, "threshold_value": {k: ({f: x for f, x in v.items() if f != "distribution"}
+                                                    if isinstance(v, dict) else v)
+                                                for k, v in t["threshold_value"].items()}}
+                      for t in aut_def["transitions"] if t is not transition]
             blob = json.dumps({"own": own_actions, "others": others})
             self._propagates_cache[key] = bool(re.search(rf'"\$?{name}"|\${name}\b', blob))
         return self._propagates_cache[key]
