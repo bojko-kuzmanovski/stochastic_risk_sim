@@ -270,6 +270,8 @@ class PATLVerifier:
         coalition = self._resolve_group(pred["coalition"], trigger_id, with_targets=True)
         if not coalition:
             raise VerificationError("coalición vacía")
+        if not any(m["targets"] for m in coalition):
+            raise VerificationError("la coalición no declara ningún estado objetivo")
         coalition_ids = {m["id"] for m in coalition}
         if pred.get("adversaries"):
             adversaries = self._resolve_group(pred["adversaries"], trigger_id, with_targets=False)

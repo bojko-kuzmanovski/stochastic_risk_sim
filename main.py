@@ -84,7 +84,7 @@ def load_configs(config_dir: Path, distributions_file: str) -> dict:
 
 def run_single_simulation(run_id: int, configs: dict, max_time: float, output_dir: Path, seed: int,
                           queue_batch: int, memory: list, keep_objects: bool = False,
-                          trace_components=frozenset(), trace_name: str = ""):
+                          trace_components=frozenset(), trace_name: str = "run"):
     tracer.configure(output_dir / "traces" / f"{trace_name}_run{run_id}.jsonl", trace_components, run_id)
     tracer.emit("des", "run_start", seed=seed, max_time=max_time, queue_batch=queue_batch, memory=memory)
     metrics = MetricsCollector(enabled=True)
@@ -95,7 +95,9 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
 
     automata.set_objects(agents, environments)
 
-    snapshot_manager = SnapshotManager(configs["patl"], metrics, disk_dir=output_dir / ".snapshots" / f"run_{run_id}")
+    # El directorio incluye el nombre de la salida: dos invocaciones simultáneas no comparten instantáneas.
+    snapshot_manager = SnapshotManager(configs["patl"], metrics,
+                                       disk_dir=output_dir / ".snapshots" / f"{trace_name}_run_{run_id}")
     snapshot_manager.set_objects(agents, environments)
     agents.set_objects(automata, snapshot_manager)
 

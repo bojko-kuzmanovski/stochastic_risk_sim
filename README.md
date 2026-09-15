@@ -202,6 +202,33 @@ Analyze results for a completed scenario:
 python3 analytics/analyze_scenario.py --scenario <name>
 ```
 
+### Tracing a run
+
+`--trace` writes one JSONL file per run to `data/traces/<name>_run<i>.jsonl`. Components can be combined:
+`des` (calendar instants, dispatched events), `agents` (queueing, atomic sessions), `automata` (every
+transition with its threshold value and chosen case, every call and emitted event), `snapshots`,
+`patl` (participants, strategy sequences, value per sequence, result) and `patl_rounds` (every game node:
+adversary choice, round outcomes with their probability). Use `all` for everything, ideally with one short run.
+
+```bash
+python3 main.py --output trace_demo --runs 1 --time 12 --trace all --distributions distributions_1_base.json
+python3 analytics/trace_report.py data/traces/trace_demo_run1.jsonl
+python3 analytics/trace_report.py data/traces/trace_demo_run1.jsonl --automaton runway_lifecycle
+python3 analytics/trace_report.py data/traces/trace_demo_run1.jsonl --predicate PR_STOCHASTIC_DEMAND_STABILITY_VIA_PROFILE --limit 2
+```
+
+### Tests
+
+```bash
+python3 -m pytest -q tests
+```
+
+`tests/test_patl_semantics.py` checks the verifier against games whose value can be computed by hand
+(the 5/7 retention example, operator direction, memory k=2 against k=1, imperfect information of the
+coalition, an unrestricted adversary, exact Poisson support, reported errors) plus property-based checks
+(closed form 1-(1-p)^delta, duality, monotonicity in delta). `tests/test_des_engine.py` checks calendar
+ordering, reproducibility by seed and static activation times.
+
 ## Output & interpretation
 
 Each run produces three CSV files under `data/`, all sharing the `<name>` prefix:
