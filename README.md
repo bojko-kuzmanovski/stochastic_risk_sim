@@ -98,25 +98,32 @@ The verification step does not estimate probabilities by re-running the simulati
 From each snapshot it builds a bounded game between the coalition and the adversaries of the predicate and
 evaluates the PATL_b operator
 
-    <<C>>_k^{op d} psi  iff  exists sigma_C (observation-based, memory k)  for all sigma_A :  P(psi) op d
+    <<C>>_k^{op d} psi  iff  exists sigma_C (observation-based, memory at most k)  for all sigma_A :  P(psi) op d
 
-* Each probabilistic threshold becomes one branch per decision case, weighted by its exact mass: the CDF
-  for continuous families, the probability mass of each support value for Poisson, the label probability for
-  categorical ones. Nothing is sampled. For continuous families, the value passed on to the case's actions
-  is the conditional expectation inside the case region.
-* Deterministic and dynamic thresholds are evaluated on the game state and yield a single branch.
-* Coalition strategies are deterministic, observation-based and have `k` memory modes (`--memory` or
-  `max_memory` per predicate). Adversaries are unrestricted; for each coalition strategy their best response
-  is computed by backward induction over (state, memory modes, remaining depth).
+* Path formulas are bounded to `delta` rounds: `until` (phi1 U phi2), `release` (phi1 R phi2) and `next`
+  (X phi), over state formulas built from `true`, `target` (membership of the coalition in its target final
+  states), `prop` (an automaton and final states of a group), `not`, `and`, `or`. `reachability` and
+  `invariance` are shorthands for `true U target` and `false R not target`.
+* A round activates every participant once: each runs a complete atomic automaton session (the triggering
+  agent finishes its session in progress; the others start the automaton their strategy selects). The
+  activation order inside a round is uniformly random and the value averages over it, so results do not
+  depend on agent names.
+* Each probabilistic threshold becomes one branch per case under the first matching case rule, weighted by
+  its exact mass (CDF, Poisson support, categorical label). Nothing is sampled. When a sampled continuous value
+  is used later by the automaton, each case region is split into `--quantiles` equal-mass cells, each passing
+  its conditional expectation on (converges to the exact kernel as cells grow). Continuous distributions with
+  integer output are treated as discrete.
+* Coalition strategies are observation-based with memory at most `k`: deterministic tables `act` and `Delta`
+  over (mode, observation), plus memoryless randomized strategies (optimized on a refined grid when a single
+  coalition member has a choice). Adversaries are unrestricted; their best response is computed by backward
+  induction, choosing at the start of each round without seeing the realization of the coalition's mixture.
 * The direction follows the bound: for `>=`/`>` the coalition maximizes and the adversaries minimize; for
-  `<=`/`<` the coalition minimizes and the adversaries maximize. Invariance is evaluated on its own path
-  formula, not as a complement of reachability.
-* Each participant runs one automaton session within the horizon; a participant without an active session
-  chooses (by strategy) which of its assigned automata to start. Non-participants stay frozen, and events
-  emitted during verification are not propagated.
+  `<=`/`<` the reverse. Non-participants stay frozen and events emitted during verification are not
+  propagated. Verdicts are decided on the exact value with a 1e-9 tolerance; the CSV shows four decimals
+  and the strategy class that attained the value (`deterministic` or `mixed`).
 
-The result is a deterministic value per snapshot and predicate. A predicate whose automaton is not
-assigned to the agent type, or whose game exceeds the size limits, is reported as `ERROR` with its reason.
+A predicate whose automaton is not assigned to the agent type, whose cases do not cover the support, or
+whose game exceeds the size limits, is reported as `ERROR` with its reason.
 
 ## Project structure
 
