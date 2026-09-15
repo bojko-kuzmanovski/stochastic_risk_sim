@@ -51,10 +51,10 @@ class Tracer:
     def on(self, component):
         return component in self._components
 
-    def emit(self, component, event, **fields):
+    def emit(self, component, kind, **fields):
         if component not in self._components:
             return
-        record = {"run": self.run_id, "c": component, "e": event}
+        record = {"run": self.run_id, "c": component, "e": kind}
         if self.clock is not None:
             record["T"] = self.clock
         record.update(fields)

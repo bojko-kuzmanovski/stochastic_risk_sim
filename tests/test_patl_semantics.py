@@ -1,0 +1,245 @@
+"""
+Validación del verificador PATL_b frente al marco formal: juegos pequeños con valor calculable a mano
+y propiedades generales de la semántica.
+"""
+import math
+
+import pytest
+from hypothesis import given, settings, strategies as st
+from scipy import stats
+
+from game_kit import (COIN, UNIFORM, agent, automaton, c, case, gate, group, load, predicate, prob,
+                      read_agent, snapshot, T, upd, value, verifier, write)
+
+
+def ok(row):
+    assert row["result"] != "ERROR", row["reason"]
+    return row["value"]
+
+
+# ----------------------------------------------------------------------------------------------
+# Ejemplo de la tesis: retención de un cliente
+# ----------------------------------------------------------------------------------------------
+def test_ejemplo_retencion_cinco_septimos():
+    retention = gate("retention", 5 / 7, success="RENUEVA", failure="ABANDONA")
+    snap = snapshot(agent("Client_1", ["retention"]))
+    coalition = group("Client_1", ("retention", ["RENUEVA"]))
+
+    row = value([retention], snap, predicate(coalition, bound=0.45, depth=1))
+    assert ok(row) == pytest.approx(5 / 7)
+    assert row["result"] == "SATISFIED"
+
+    row = value([retention], snap, predicate(coalition, bound=0.80, depth=1))
+    assert row["result"] == "VIOLATED"
+
+
+# ----------------------------------------------------------------------------------------------
+# Formas cerradas, dualidad y monotonía
+# ----------------------------------------------------------------------------------------------
+@settings(max_examples=25, deadline=None)
+@given(p=st.floats(min_value=0.05, max_value=0.95), depth=st.integers(min_value=1, max_value=4))
+def test_alcanzabilidad_por_rondas_forma_cerrada(p, depth):
+    snap = snapshot(agent("Client_1", ["g"]))
+    reach = ok(value([gate("g", p)], snap, predicate(group("Client_1", ("g", ["SUCCESS"])), depth=depth)))
+    assert reach == pytest.approx(1 - (1 - p) ** depth)
+    assert 0.0 <= reach <= 1.0
+
+
+@settings(max_examples=25, deadline=None)
+@given(p=st.floats(min_value=0.05, max_value=0.95), depth=st.integers(min_value=1, max_value=4))
+def test_invarianza_y_dualidad_sin_eleccion(p, depth):
+    snap = snapshot(agent("Client_1", ["g"]))
+    coalition = group("Client_1", ("g", ["SUCCESS"]))
+    reach = ok(value([gate("g", p)], snap, predicate(coalition, depth=depth)))
+    inv = ok(value([gate("g", p)], snap, predicate(coalition, ptype="invariance", depth=depth)))
+    assert inv == pytest.approx((1 - p) ** depth)
+    assert inv == pytest.approx(1 - reach)
+
+
+@settings(max_examples=15, deadline=None)
+@given(p=st.floats(min_value=0.05, max_value=0.95))
+def test_alcanzabilidad_monotona_en_la_profundidad(p):
+    snap = snapshot(agent("Client_1", ["g"]))
+    coalition = group("Client_1", ("g", ["SUCCESS"]))
+    values = [ok(value([gate("g", p)], snap, predicate(coalition, depth=d))) for d in (1, 2, 3)]
+    assert values[0] <= values[1] <= values[2]
+
+
+# ----------------------------------------------------------------------------------------------
+# Dirección del operador y adversario que influye
+# ----------------------------------------------------------------------------------------------
+def adversarial_game():
+    # El adversario actúa antes que la coalición en cada ronda (orden por agent_id).
+    hurt = automaton("hurt", ["DONE"], load("DONE", write("Coal_1", "flag", 1)))
+    calm = automaton("calm", ["DONE"], load("DONE", write("Coal_1", "flag", 0)))
+    attempt = automaton("attempt", ["WIN", "LOSE"],
+                        load("CHECK", upd(agent_id="Coal_1", param_key="flag")),
+                        T("CHECK", "$flag", read_agent(),
+                          case(c("$flag", "==", 1), "HARD"),
+                          case(c("$flag", "!=", 1), "EASY")),
+                        T("HARD", "$x", prob("u"), case(c("$x", "<", 0.3), "WIN"), case(c("$x", ">=", 0.3), "LOSE")),
+                        T("EASY", "$y", prob("u"), case(c("$y", "<", 0.6), "WIN"), case(c("$y", ">=", 0.6), "LOSE")))
+    snap = snapshot(agent("Adv_1", ["hurt", "calm"]), agent("Coal_1", ["attempt"], flag=0))
+    return [hurt, calm, attempt], snap
+
+
+def test_cota_inferior_el_adversario_minimiza():
+    auts, snap = adversarial_game()
+    pred = predicate(group("Coal_1", ("attempt", ["WIN"])), group("Adv_1", ("hurt", None), ("calm", None)), op=">=")
+    assert ok(value(auts, snap, pred)) == pytest.approx(0.3)
+
+
+def test_cota_superior_el_adversario_maximiza():
+    auts, snap = adversarial_game()
+    pred = predicate(group("Coal_1", ("attempt", ["WIN"])), group("Adv_1", ("hurt", None), ("calm", None)), op="<=", bound=0.65)
+    row = value(auts, snap, pred)
+    assert ok(row) == pytest.approx(0.6)
+    assert row["result"] == "SATISFIED"
+
+
+def test_existencial_y_universal_sobre_la_coalicion():
+    auts = [gate("low", 0.2), gate("high", 0.7)]
+    snap = snapshot(agent("Coal_1", ["low", "high"]))
+    coalition = group("Coal_1", ("low", ["SUCCESS"]), ("high", ["SUCCESS"]))
+    exists = ok(value(auts, snap, predicate(coalition, quantifier="exists")))
+    forall = ok(value(auts, snap, predicate(coalition, quantifier="forall")))
+    assert exists == pytest.approx(0.7)
+    assert forall == pytest.approx(0.2)
+    assert exists >= forall
+
+
+# ----------------------------------------------------------------------------------------------
+# Memoria acotada
+# ----------------------------------------------------------------------------------------------
+def memory_game():
+    prep = automaton("prep", ["PREPARED"], load("PREPARED", write("Coal_1", "ready", 1)))
+    attempt = automaton("try", ["SUCCESS", "FAIL"],
+                        load("CHECK", upd(agent_id="Coal_1", param_key="ready")),
+                        T("CHECK", "$ready", read_agent(),
+                          case(c("$ready", "==", 1), "PREPARED_GATE"),
+                          case(c("$ready", "!=", 1), "COLD_GATE")),
+                        T("PREPARED_GATE", "$x", prob("u"), case(c("$x", "<", 0.9), "SUCCESS"), case(c("$x", ">=", 0.9), "FAIL")),
+                        T("COLD_GATE", "$y", prob("u"), case(c("$y", "<", 0.2), "SUCCESS"), case(c("$y", ">=", 0.2), "FAIL")))
+    snap = snapshot(agent("Coal_1", ["prep", "try"], ready=0))
+    pred = predicate(group("Coal_1", ("prep", []), ("try", ["SUCCESS"])), depth=2)
+    return [prep, attempt], snap, pred
+
+
+def test_memoria_k1_repite_la_misma_accion():
+    auts, snap, pred = memory_game()
+    # k = 1: (prep, prep) vale 0 y (try, try) vale 1 - 0.8^2 = 0.36.
+    assert ok(value(auts, snap, pred, memory=1)) == pytest.approx(0.36)
+
+
+def test_memoria_k2_alterna_y_supera_a_k1():
+    auts, snap, pred = memory_game()
+    # k = 2 permite (prep, try), que vale 0.9.
+    assert ok(value(auts, snap, pred, memory=2)) == pytest.approx(0.9)
+
+
+# ----------------------------------------------------------------------------------------------
+# Información imperfecta de la coalición y adversario sin restricción
+# ----------------------------------------------------------------------------------------------
+def coin_automata():
+    flip = automaton("coin", ["FLIPPED"],
+                     load("FLIP"),
+                     T("FLIP", "$side_draw", prob("coin"),
+                       case(c("$side_draw", "==", "L"), "FLIPPED", write("Coal_1", "side", "$side_draw")),
+                       case(c("$side_draw", "==", "R"), "FLIPPED", write("Coal_1", "side", "$side_draw"))))
+
+    def go(label):
+        return automaton(f"go_{label}", ["SUCCESS", "FAIL"],
+                         load("CHECK", upd(agent_id="Coal_1", param_key="side")),
+                         T("CHECK", "$side", read_agent(),
+                           case(c("$side", "==", label), "SUCCESS"),
+                           case(c("$side", "!=", label), "FAIL")))
+    return [flip, go("L"), go("R")]
+
+
+def test_coalicion_con_informacion_imperfecta_no_reacciona_a_la_moneda():
+    auts = coin_automata()
+    snap = snapshot(agent("Coal_1", ["coin", "go_L", "go_R"], side="none"))
+    coalition = group("Coal_1", ("coin", []), ("go_L", ["SUCCESS"]), ("go_R", ["SUCCESS"]))
+    pred = predicate(coalition, depth=2)
+    # Sin memoria no puede lanzar la moneda y después ir: vale 0.
+    assert ok(value(auts, snap, pred, memory=1, distributions=(UNIFORM, COIN))) == pytest.approx(0.0)
+    # Con memoria lanza y va a un lado fijo: 0.5. Con información perfecta valdría 1.
+    for k in (2, 3):
+        assert ok(value(auts, snap, pred, memory=k, distributions=(UNIFORM, COIN))) == pytest.approx(0.5)
+
+
+def test_adversario_sin_restriccion_reacciona_al_estado():
+    auts = coin_automata()
+
+    def block(label):
+        return automaton(f"block_{label}", ["DONE"], load("DONE", write("Coal_1", "blocked", label)))
+
+    go_l = automaton("go_L", ["SUCCESS", "FAIL"],
+                     load("CHECK", upd(agent_id="Coal_1", param_key="side")),
+                     T("CHECK", "$side", read_agent(),
+                       case(c("$side", "==", "L"), "CHECK_BLOCK", upd(agent_id="Coal_1", param_key="blocked")),
+                       case(c("$side", "!=", "L"), "FAIL")),
+                     T("CHECK_BLOCK", "$blocked", read_agent(),
+                       case(c("$blocked", "==", "L"), "FAIL"),
+                       case(c("$blocked", "!=", "L"), "SUCCESS")))
+    snap = snapshot(agent("Coal_1", ["coin", "go_L"], side="none", blocked="none"),
+                    agent("Zadv_1", ["block_L", "block_R"]))
+    pred = predicate(group("Coal_1", ("coin", []), ("go_L", ["SUCCESS"])),
+                     group("Zadv_1", ("block_L", None), ("block_R", None)), depth=2)
+    # El adversario actúa después de la moneda y bloquea el lado que salió: vale 0.
+    # Un adversario restringido a una acción fija dejaría 0.5.
+    assert ok(value([auts[0], go_l, block("L"), block("R")], snap, pred, memory=2,
+                    distributions=(UNIFORM, COIN))) == pytest.approx(0.0)
+
+
+# ----------------------------------------------------------------------------------------------
+# Ramas exactas y ausencia de muestreo
+# ----------------------------------------------------------------------------------------------
+def test_soporte_poisson_truncado_exacto():
+    poisson = {"distribution_name": "arrivals", "family": "poisson", "params": {"lambda": 1.0},
+               "output_type": "float", "truncation": {"min": 0.0, "max": 3.0}}
+    aut = automaton("arrive", ["ARRIVED", "QUIET"], load("DRAW"),
+                    T("DRAW", "$k", prob("arrivals"), case(c("$k", ">", 0.5), "ARRIVED"), case(c("$k", "<=", 0.5), "QUIET")))
+    snap = snapshot(agent("Shock_1", ["arrive"]))
+    got = ok(value([aut], snap, predicate(group("Shock_1", ("arrive", ["ARRIVED"]))), distributions=(poisson,)))
+    pmf = stats.poisson.pmf(range(4), 1.0)
+    assert got == pytest.approx(1 - pmf[0] / pmf.sum())
+
+
+def test_la_verificacion_no_consume_el_generador():
+    auts, snap, pred = memory_game()
+    v, dists = verifier(auts, memory=[2])
+    before = (dists.rng.getstate(), dists.np_rng.bit_generator.state)
+    first = v.verify(snap, [pred])[0]["value"]
+    second = v.verify(snap, [pred])[0]["value"]
+    assert first == second
+    assert (dists.rng.getstate(), dists.np_rng.bit_generator.state) == before
+
+
+def test_esperanza_condicional_contra_integracion():
+    _, dists = verifier([gate("g", 0.5)], distributions=({"distribution_name": "b", "family": "beta",
+                                                           "params": {"alpha": 2, "beta": 2}, "output_type": "float",
+                                                           "truncation": {"min": 0.0, "max": 1.0}},))
+    # E[X | X > 1/2] con X ~ Beta(2,2) = 0.6875
+    assert dists.conditional_mean("b", 0.5, 1.0, False, True) == pytest.approx(0.6875, rel=1e-6)
+
+
+# ----------------------------------------------------------------------------------------------
+# Errores reportados, no valores inventados
+# ----------------------------------------------------------------------------------------------
+def test_casos_que_no_particionan_el_soporte():
+    broken = automaton("broken", ["A", "B"], load("GATE"),
+                       T("GATE", "$x", prob("u"), case(c("$x", "<", 0.3), "A"), case(c("$x", ">", 0.6), "B")))
+    row = value([broken], snapshot(agent("Coal_1", ["broken"])), predicate(group("Coal_1", ("broken", ["A"]))))
+    assert row["result"] == "ERROR" and "masa" in row["reason"]
+
+
+def test_estado_objetivo_no_final():
+    row = value([gate("g", 0.5)], snapshot(agent("Coal_1", ["g"])), predicate(group("Coal_1", ("g", ["GATE"]))))
+    assert row["result"] == "ERROR" and "no son finales" in row["reason"]
+
+
+def test_automata_no_asignado_al_agente():
+    row = value([gate("g", 0.5), gate("h", 0.5)], snapshot(agent("Coal_1", ["g"])),
+                predicate(group("Coal_1", ("h", ["SUCCESS"]))))
+    assert row["result"] == "ERROR" and "no tiene asignado" in row["reason"]

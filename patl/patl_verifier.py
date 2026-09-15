@@ -258,7 +258,7 @@ class PATLVerifier:
             tracer.emit("patl", "predicate_result", predicate=pred["predicate_id"], memory_k=k, value=value,
                         operator=operator, bound=bound, result="SATISFIED" if satisfied else "VIOLATED")
             rows.append({**base, "result": "SATISFIED" if satisfied else "VIOLATED",
-                         "value": round(value, 6), "reason": ""})
+                         "value": round(value, 12), "reason": ""})
         return rows
 
     def _value(self, snapshot, pred, memory, cache):
@@ -276,7 +276,7 @@ class PATLVerifier:
         else:
             # Sin adversarios explícitos se consideran todos los agentes fuera de C.
             adversaries = [{"id": a["agent_id"], "opts": list(a.get("automata", []))}
-                           for a in agents_data if a["agent_id"] not in coalition_ids]
+                           for a in agents_data if a["agent_id"] not in coalition_ids and a.get("automata")]
         if coalition_ids & {m["id"] for m in adversaries}:
             raise VerificationError("un agente aparece en la coalición y en los adversarios")
 
@@ -337,7 +337,7 @@ class PATLVerifier:
         group = []
         for entry in spec:
             opts = [a["automaton_name"] for a in entry["automata"]]
-            tmap = {a["automaton_name"]: set(a["target_states"]) for a in entry["automata"]}
+            tmap = {a["automaton_name"]: set(a.get("target_states", [])) for a in entry["automata"]}
             max_agents = entry.get("max_agents", 10)
 
             if "agent_type" in entry:

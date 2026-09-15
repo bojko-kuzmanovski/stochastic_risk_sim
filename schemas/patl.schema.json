@@ -2,7 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PATL Sampling Configuration",
   "type": "object",
-  "required": ["observations"],
+  "required": [
+    "observations"
+  ],
   "properties": {
     "observations": {
       "type": "array",
@@ -10,14 +12,24 @@
       "maxItems": 50,
       "items": {
         "type": "object",
-        "required": ["automaton_name", "trigger_state", "predicates"],
+        "required": [
+          "automaton_name",
+          "trigger_state",
+          "predicates"
+        ],
         "properties": {
-          "automaton_name": { "type": "string" },
-          "trigger_state": { "type": "string" },
+          "automaton_name": {
+            "type": "string"
+          },
+          "trigger_state": {
+            "type": "string"
+          },
           "predicates": {
             "type": "array",
             "minItems": 1,
-            "items": { "$ref": "#/definitions/patl_predicate" }
+            "items": {
+              "$ref": "#/definitions/patl_predicate"
+            }
           }
         },
         "additionalProperties": false
@@ -27,12 +39,22 @@
   "definitions": {
     "patl_predicate": {
       "type": "object",
-      "required": ["predicate_id", "type", "coalition", "probability_bound"],
+      "required": [
+        "predicate_id",
+        "type",
+        "coalition",
+        "probability_bound"
+      ],
       "properties": {
-        "predicate_id": { "type": "string" },
+        "predicate_id": {
+          "type": "string"
+        },
         "type": {
           "type": "string",
-          "enum": ["reachability", "invariance"]
+          "enum": [
+            "reachability",
+            "invariance"
+          ]
         },
         "max_depth": {
           "type": "integer",
@@ -48,18 +70,25 @@
         },
         "coalition_quantifier": {
           "type": "string",
-          "enum": ["exists", "forall"],
+          "enum": [
+            "exists",
+            "forall"
+          ],
           "default": "exists"
         },
         "coalition": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/definitions/agent_coalition_target" }
+          "items": {
+            "$ref": "#/definitions/agent_coalition_target"
+          }
         },
         "adversaries": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/definitions/agent_coalition_target" }
+          "items": {
+            "$ref": "#/definitions/agent_adversary"
+          }
         },
         "probability_bound": {
           "type": "number",
@@ -68,7 +97,12 @@
         },
         "probability_operator": {
           "type": "string",
-          "enum": ["<", "<=", ">", ">="],
+          "enum": [
+            "<",
+            "<=",
+            ">",
+            ">="
+          ],
           "default": ">="
         }
       },
@@ -76,14 +110,21 @@
     },
     "agent_coalition_target": {
       "type": "object",
-      "required": ["automata", "max_agents"],
+      "required": [
+        "automata",
+        "max_agents"
+      ],
       "properties": {
-        "agent_type": { "type": "string" },
+        "agent_type": {
+          "type": "string"
+        },
         "agent_id": {
           "type": "array",
           "minItems": 1,
           "maxItems": 100,
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "max_agents": {
           "type": "integer",
@@ -95,27 +136,113 @@
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "items": { "$ref": "#/definitions/automaton_target" }
+          "items": {
+            "$ref": "#/definitions/automaton_target"
+          }
         }
       },
       "anyOf": [
-        { "required": ["agent_type"] },
-        { "required": ["agent_id"] }
+        {
+          "required": [
+            "agent_type"
+          ]
+        },
+        {
+          "required": [
+            "agent_id"
+          ]
+        }
       ],
       "additionalProperties": false
     },
     "automaton_target": {
       "type": "object",
-      "required": ["automaton_name", "target_states"],
+      "required": [
+        "automaton_name",
+        "target_states"
+      ],
       "properties": {
-        "automaton_name": { "type": "string" },
+        "automaton_name": {
+          "type": "string"
+        },
         "target_states": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Autómata habilitado para un miembro de la coalición. Un autómata auxiliar puede declarar target_states vacío; al menos uno de la coalición debe tener estados objetivo."
+    },
+    "automaton_adversary": {
+      "type": "object",
+      "required": [
+        "automaton_name"
+      ],
+      "properties": {
+        "automaton_name": {
+          "type": "string"
+        },
+        "target_states": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 5,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Autómata habilitado para un adversario; sus estados objetivo no forman parte de la fórmula y son opcionales."
+    },
+    "agent_adversary": {
+      "type": "object",
+      "required": [
+        "automata",
+        "max_agents"
+      ],
+      "properties": {
+        "agent_type": {
+          "type": "string"
+        },
+        "agent_id": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_agents": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 10
+        },
+        "automata": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "items": { "type": "string" }
+          "items": {
+            "$ref": "#/definitions/automaton_adversary"
+          }
         }
       },
+      "anyOf": [
+        {
+          "required": [
+            "agent_type"
+          ]
+        },
+        {
+          "required": [
+            "agent_id"
+          ]
+        }
+      ],
       "additionalProperties": false
     }
   }
