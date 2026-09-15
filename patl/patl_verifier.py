@@ -47,12 +47,14 @@ from scipy import stats
 
 from core.agents import Agents
 from core.environments import Environments
-from core.automata import AutomatonSession
+from core.automata import AutomatonSession, SessionError
 from core.utils.evaluator import resolve_ephemeral
 from core.trace import tracer
 from metrics.metrics_collector import MetricsCollector
 
 MAX_STRATEGIES = 10_000
+MAX_ADVERSARY_CHOICES = 1_000
+MAX_PARTICIPANTS = 50
 MAX_NODES = 200_000
 MAX_BRANCHES = 50_000
 MAX_SESSION_STEPS = 500
@@ -86,6 +88,10 @@ class _Node:
         self._envs = None
 
     def child(self):
+        # El hijo comparte las copias de entidades del padre. El padre pierde su propiedad, de modo que una
+        # escritura posterior sobre el padre vuelve a copiar y no altera a los hijos ya creados.
+        self._owned_a = set()
+        self._owned_e = set()
         return _Node(dict(self.amods), dict(self.emods), dict(self.last), dict(self.pending))
 
     def key(self):
@@ -250,7 +256,7 @@ class PATLVerifier:
             base = {"predicate_id": pred["predicate_id"], "bound": bound, "operator": operator, "memory_k": k}
             try:
                 value = self._value(snapshot, pred, k, cache)
-            except VerificationError as e:
+            except (VerificationError, SessionError) as e:
                 tracer.emit("patl", "predicate_error", predicate=pred["predicate_id"], memory_k=k, reason=str(e))
                 rows.append({**base, "result": "ERROR", "value": "", "reason": str(e)})
                 continue
@@ -283,14 +289,18 @@ class PATLVerifier:
             raise VerificationError("un agente aparece en la coalición y en los adversarios")
 
         participants = {m["id"]: m for m in coalition + adversaries}
+        if len(participants) > MAX_PARTICIPANTS:
+            raise VerificationError(f"{len(participants)} participantes exceden el límite {MAX_PARTICIPANTS}")
         self._order = sorted(participants)
         self._participants = participants
 
+        # La sesión en curso del agente disparador es parte del estado global de la instantánea: si el agente
+        # participa, la termina en la ronda 1 aunque ese autómata no esté entre sus opciones de elección.
         pending = {}
         ag = self.base_agents.get(trigger_id)
         if ag and trigger_id in participants:
             active = ag.get("current_automaton")
-            if active in participants[trigger_id]["opts"] and ag.get("current_state") is not None:
+            if active in self.automata.by_name and ag.get("current_state") is not None:
                 pending[trigger_id] = (active, ag["current_state"], dict(ag.get("session_ctx") or {}))
         root = _Node({}, {}, {}, pending)
 
@@ -424,6 +434,12 @@ class PATLVerifier:
             actions = {pid: self._coalition_action(pid, seq, r, node) for pid, seq in self._seq}
 
             idle_adv = [m for m in self._adversaries if m["id"] not in node.pending]
+            n_choices = 1
+            for m in idle_adv:
+                n_choices *= len(m["opts"])
+                if n_choices > MAX_ADVERSARY_CHOICES:
+                    raise VerificationError(
+                        f"las elecciones conjuntas de los adversarios exceden el límite {MAX_ADVERSARY_CHOICES}")
             choices = list(product(*[m["opts"] for m in idle_adv])) if idle_adv else [()]
 
             values = []
@@ -564,19 +580,31 @@ class PATLVerifier:
                 out.append((mass, value, case))
             total = sum(m for m, _, _ in out)
         else:
+            # Regla del primer caso que coincide: la región efectiva de un caso es su intervalo menos las
+            # regiones de los casos anteriores. Su masa es exacta y su valor representativo es la esperanza
+            # condicional sobre esa región.
             tv_key, _ = session.threshold_value(transition)
             total = 0.0
+            covered = []
             for case in transition.get("thresholds", []):
                 interval = self._interval(tv_key, case["threshold_case"], session.ctx)
                 if interval is None:
                     continue
-                low, high, li, ui = interval
-                mass = self.distributions.probability_interval(dist_name, low, high, li, ui)
+                pieces = [interval]
+                for previous in covered:
+                    pieces = [p for piece in pieces for p in self._minus(piece, previous)]
+                covered.append(interval)
+                weighted = []
+                for low, high, li, ui in pieces:
+                    m = self.distributions.probability_interval(dist_name, low, high, li, ui)
+                    if m > 0:
+                        weighted.append((m, self.distributions.conditional_mean(dist_name, low, high, li, ui)))
+                mass = sum(m for m, _ in weighted)
                 if mass <= 0:
                     continue
-                value = self.distributions.conditional_mean(dist_name, low, high, li, ui)
-                if value is None or session.select_case(transition, value) is not case:
-                    raise VerificationError(f"{where}: los casos no forman una partición del soporte")
+                if any(v is None for _, v in weighted):
+                    raise VerificationError(f"{where}: región sin valor representativo")
+                value = sum(m * v for m, v in weighted) / mass
                 out.append((mass, value, case))
                 total += mass
 
@@ -603,6 +631,22 @@ class PATLVerifier:
         pmf = stats.poisson.pmf(ks, mu=lam)
         pmf = pmf / pmf.sum()
         return [(float(k), float(p)) for k, p in zip(ks, pmf)]
+
+    @staticmethod
+    def _minus(a, r):
+        """a menos r, con extremos abiertos o cerrados; descarta puntos aislados (medida cero)."""
+        alo, ahi, ali, aui = a
+        rlo, rhi, rli, rui = r
+        disjoint = (rhi < alo or (rhi == alo and not (rui and ali)) or
+                    rlo > ahi or (rlo == ahi and not (rli and aui)))
+        if disjoint:
+            return [a]
+        pieces = []
+        if rlo > alo or (rlo == alo and ali and not rli):
+            pieces.append((alo, rlo, ali, not rli))
+        if rhi < ahi or (rhi == ahi and aui and not rui):
+            pieces.append((rhi, ahi, not rui, aui))
+        return [p for p in pieces if p[0] < p[1]]
 
     @staticmethod
     def _interval(tv_key, conditions, ctx):

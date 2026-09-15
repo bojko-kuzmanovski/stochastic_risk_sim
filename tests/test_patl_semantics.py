@@ -243,3 +243,55 @@ def test_automata_no_asignado_al_agente():
     row = value([gate("g", 0.5), gate("h", 0.5)], snapshot(agent("Coal_1", ["g"])),
                 predicate(group("Coal_1", ("h", ["SUCCESS"]))))
     assert row["result"] == "ERROR" and "no tiene asignado" in row["reason"]
+
+
+# ----------------------------------------------------------------------------------------------
+# Regresiones de la auditoría
+# ----------------------------------------------------------------------------------------------
+def test_c1_ramas_hermanas_no_comparten_escrituras():
+    # Escribe p=1, bifurca 50/50; la última rama escribe p=2. Éxito si al leer p vale 1: valor 0.5.
+    aut = automaton("alias", ["SUCCESS", "FAIL"],
+                    load("W1", write("Coal_1", "p", 1)),
+                    T("W1", "$x", prob("u"),
+                      case(c("$x", "<", 0.5), "READ", upd(agent_id="Coal_1", param_key="p")),
+                      case(c("$x", ">=", 0.5), "READ", write("Coal_1", "p", 2), upd(agent_id="Coal_1", param_key="p"))),
+                    T("READ", "$p", read_agent(), case(c("$p", "==", 1), "SUCCESS"), case(c("$p", "!=", 1), "FAIL")))
+    row = value([aut], snapshot(agent("Coal_1", ["alias"], p=0)), predicate(group("Coal_1", ("alias", ["SUCCESS"]))))
+    assert ok(row) == pytest.approx(0.5)
+
+
+def test_c2_falla_de_sesion_se_reporta_como_error():
+    aut = automaton("broken_read", ["A", "B"],
+                    load("READ", upd(agent_id="Coal_1", param_key="missing")),
+                    T("READ", "$v", read_agent(), case(c("$v", "==", 1), "A"), case(c("$v", "!=", 1), "B")))
+    row = value([aut], snapshot(agent("Coal_1", ["broken_read"])), predicate(group("Coal_1", ("broken_read", ["A"]))))
+    assert row["result"] == "ERROR" and "Resolved Value" in row["reason"]
+
+
+def test_c3_adversarios_implicitos_acotados():
+    auts, _ = adversarial_game()
+    many = [agent(f"Adv_{i}", ["hurt", "calm"]) for i in range(1, 13)]
+    snap = snapshot(agent("Coal_1", ["attempt"], flag=0), *many)
+    row = value(auts, snap, predicate(group("Coal_1", ("attempt", ["WIN"]))))
+    assert row["result"] == "ERROR" and "exceden el límite" in row["reason"]
+
+
+def test_c4_la_sesion_en_curso_del_disparador_se_completa():
+    auts, _ = adversarial_game()
+    adv = agent("Adv_1", ["hurt", "calm"])
+    adv.update({"current_automaton": "hurt", "current_state": "LOAD", "session_ctx": {}})
+    snap = snapshot(adv, agent("Coal_1", ["attempt"], flag=0), trigger="Adv_1")
+    # Aunque el adversario solo puede elegir "calm", termina primero su sesión de "hurt": flag=1 y vale 0.3.
+    pred = predicate(group("Coal_1", ("attempt", ["WIN"])), group("Adv_1", ("calm", None)))
+    assert ok(value(auts, snap, pred)) == pytest.approx(0.3)
+
+
+def test_c5_casos_solapados_con_regla_del_primer_caso():
+    aut = automaton("overlap", ["A", "B", "C"], load("GATE"),
+                    T("GATE", "$x", prob("u"),
+                      case(c("$x", "<", 0.5), "A"),
+                      case(c("$x", "<", 0.8), "B"),
+                      case(c("$x", ">=", 0.8), "C")))
+    snap = snapshot(agent("Coal_1", ["overlap"]))
+    assert ok(value([aut], snap, predicate(group("Coal_1", ("overlap", ["B"]))))) == pytest.approx(0.3)
+    assert ok(value([aut], snap, predicate(group("Coal_1", ("overlap", ["A"]))))) == pytest.approx(0.5)

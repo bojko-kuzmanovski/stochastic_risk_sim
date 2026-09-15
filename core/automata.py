@@ -9,6 +9,10 @@ from core.events import Events
 from core.trace import tracer
 
 
+class SessionError(Exception):
+    """Falla de una sesión ejecutada fuera del motor DES (verificador): se reporta, no aborta el proceso."""
+
+
 class Automata:
     def __init__(self, config_data, distributions, metrics_collector):
         schema_path = "schemas/automata.schema.json"
@@ -71,6 +75,13 @@ class AutomatonSession:
         else:
             self.ctx = dict(ctx)
 
+    def _fatal(self, message):
+        # En el motor DES una configuración inconsistente detiene la corrida; en el verificador se reporta.
+        if self.live:
+            print(f"[FATAL] {message}", file=sys.stderr, flush=True)
+            os._exit(1)
+        raise SessionError(message)
+
     def _init_params(self):
         for k, vdef in self.automaton_def.get("params", {}).items():
             self.ctx[k] = self._resolve_value(vdef)
@@ -102,11 +113,11 @@ class AutomatonSession:
                 return call_method(target, method, [param_keys],
                                  self.automata.agents, self.automata.environments,
                                  resolve_fn=self._resolve)
+            except SessionError:
+                raise
             except Exception as e:
-                print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                      f"math_pipeline execution failed. Error: {type(e).__name__} - {e}", file=sys.stderr, flush=True)
-                print(f"        pipeline_def: {param_keys}", file=sys.stderr, flush=True)
-                os._exit(1)
+                self._fatal(f"{self.automaton_name}::{self.current_state}: math_pipeline execution failed. "
+                            f"Error: {type(e).__name__} - {e}; pipeline_def: {param_keys}")
 
         resolved_keys = [resolve_ephemeral(k, self.ctx) for k in param_keys]
         args = [self.ctx.get(k) if isinstance(k, str) and k.startswith("$") else k for k in resolved_keys]
@@ -118,10 +129,8 @@ class AutomatonSession:
                         state=self.current_state, target=target, method=method, args=args, result=result)
 
         if result is None:
-            print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                  f"Target: {target} | Method: {method} | Params/Args: {args} -> Resolved Value: {result}",
-                  flush=True)
-            os._exit(1)
+            self._fatal(f"{self.automaton_name}::{self.current_state}: "
+                        f"Target: {target} | Method: {method} | Params/Args: {args} -> Resolved Value: {result}")
 
         return result
 
@@ -185,9 +194,7 @@ class AutomatonSession:
         chosen = self.select_case(transition, X)
 
         if not chosen:
-            print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                  f"no threshold_case matched for value {X}", file=sys.stderr, flush=True)
-            os._exit(1)
+            self._fatal(f"{self.automaton_name}::{self.current_state}: no threshold_case matched for value {X}")
 
         if self.live and tracer.on("automata"):
             tv_key, tv_def = self.threshold_value(transition)
@@ -227,9 +234,8 @@ class AutomatonSession:
                     found = True
 
             if not found:
-                print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                      f"undefined ephemeral variable '{raw_var}' in threshold_rule", file=sys.stderr, flush=True)
-                os._exit(1)
+                self._fatal(f"{self.automaton_name}::{self.current_state}: "
+                            f"undefined ephemeral variable '{raw_var}' in threshold_rule")
 
             try:
                 if op == "<" and not (actual < expected):

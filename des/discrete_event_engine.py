@@ -36,9 +36,20 @@ class DiscreteEventSimulator:
         self.T = 0.0
         self._dispatching = False
 
-    def _emit(self, event):
-        if self._dispatching:
-            self.calendar.push(self.T + self.event_latency, event)
+    def _emit(self, event, delay=None, from_channel=False):
+        if not self._dispatching:
+            return
+        if from_channel:
+            # Un evento de canal solo llega a los participantes que implementan el autómata de esa señal.
+            agent = self.agents._find(event.get("agent_id"))
+            if agent is None or event.get("signal") not in agent.get("automata", []):
+                return
+        delay = self.event_latency if delay is None else delay
+        if delay < 0:
+            raise ValueError(f"event latency must be non-negative, got {delay}")
+        self.calendar.push(self.T + delay, event)
+        tracer.emit("des", "schedule_dynamic", at=self.T + delay, agent=event.get("agent_id"),
+                    signal=event.get("signal"), channel=event.get("channel_id"))
 
     def _process_ready(self, ready):
         for agent_id in list(ready):
@@ -48,6 +59,7 @@ class DiscreteEventSimulator:
 
     def run_simulation(self, max_time: float = 60.0):
         self.automata.set_event_sink(self._emit)
+        self.environments.event_sink = self._emit
         self.agents.set_on_agent_added(lambda agent: self.event_scheduler.schedule_agent(agent, self.T))
 
         # Inicialización (T = 0)

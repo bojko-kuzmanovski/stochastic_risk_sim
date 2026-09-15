@@ -104,3 +104,31 @@ def test_el_motor_no_contiene_nombres_de_ninguna_configuracion():
                 if re.search(rf"\b{re.escape(name)}\b", source):
                     offenders.append((path.relative_to(ROOT).as_posix(), name))
     assert not offenders, f"lógica de dominio en el motor: {offenders}"
+
+
+def test_c6_periodicidad_nula_se_rechaza_al_cargar():
+    from core.distributions import Distributions
+    from core.events import Events
+    dists = Distributions(toy_scenario.scenario()["distributions"], None, seed=0)
+    with pytest.raises(ValueError):
+        Events([{"event_category": "static", "signal": "wear_check", "agent_type": "Machine",
+                 "periodicity": {"type": "deterministic", "value": 0}}], dists)
+
+
+def test_c7_eventos_de_canal_llegan_con_la_latencia_del_canal(tmp_path):
+    config_dir = toy_scenario.write(tmp_path / "toy_channel", with_channel=True)
+    configs = main.load_configs(config_dir, "distributions.json")
+    main.run_single_simulation(1, configs, 12, tmp_path, 5, 5, [1], trace_components=frozenset({"des", "agents"}),
+                               trace_name="channel")
+    tracer.close()
+    records = [json.loads(l) for l in (tmp_path / "traces" / "channel_run1.jsonl").read_text().splitlines()]
+    scheduled = [r for r in records if r["e"] == "schedule_dynamic" and r.get("channel") == "maintenance"]
+    failures = [r for r in records if r["e"] == "session_end" and r["agent"] == "Machine_1" and r["final"] == "FAILED"]
+    assert failures, "la semilla debe producir al menos una falla de Machine_1"
+    assert len(scheduled) == len(failures)
+    for s in scheduled:
+        assert s["agent"] == "Technician_1" and s["signal"] == "repair"
+        assert s["at"] == pytest.approx(s["T"] + toy_scenario.CHANNEL_LATENCY)
+    dispatched = [(r["T"], a, sig) for r in records if r["e"] == "instant" for a, sig, cat in r["events"] if cat == "dynamic"]
+    for s in scheduled:
+        assert (s["at"], "Technician_1", "repair") in dispatched

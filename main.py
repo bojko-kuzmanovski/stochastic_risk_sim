@@ -51,6 +51,8 @@ def parse_args():
     parser.add_argument("--memory", type=str, default="1",
                         help="Memory bounds k of coalition strategies, e.g. 1 or 1,2 (each 1-4); "
                              "predicates with max_memory use their own")
+    parser.add_argument("--event-latency", type=float, default=0.0,
+                        help="Delay Δt of dynamic events emitted by automata (channel events use the channel latency)")
     parser.add_argument("--trace", type=str, default="",
                         help=f"Write a JSONL trace per run to data/traces/: comma list of {', '.join(COMPONENTS)} or all")
     return parser.parse_args()
@@ -69,6 +71,8 @@ def validate_args(args):
     if not args.memory or any(not (1 <= m <= 4) for m in args.memory):
         raise ValueError(f"--memory values must be between 1 and 4, got {args.memory}")
     args.trace = parse_components(args.trace)
+    if args.event_latency < 0:
+        raise ValueError(f"--event-latency must be non-negative, got {args.event_latency}")
     if args.threads > args.runs:
         args.threads = args.runs
 
@@ -84,7 +88,7 @@ def load_configs(config_dir: Path, distributions_file: str) -> dict:
 
 def run_single_simulation(run_id: int, configs: dict, max_time: float, output_dir: Path, seed: int,
                           queue_batch: int, memory: list, keep_objects: bool = False,
-                          trace_components=frozenset(), trace_name: str = "run"):
+                          trace_components=frozenset(), trace_name: str = "run", event_latency: float = 0.0):
     tracer.configure(output_dir / "traces" / f"{trace_name}_run{run_id}.jsonl", trace_components, run_id)
     tracer.emit("des", "run_start", seed=seed, max_time=max_time, queue_batch=queue_batch, memory=memory)
     metrics = MetricsCollector(enabled=True)
@@ -107,7 +111,7 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
 
     sim = DiscreteEventSimulator(
         distributions, environments, automata, agents, events,
-        event_scheduler, snapshot_manager, queue_batch=queue_batch
+        event_scheduler, snapshot_manager, queue_batch=queue_batch, event_latency=event_latency
     )
 
     # --- DES ---
@@ -184,13 +188,14 @@ def main():
         for run_id in range(1, args.runs + 1):
             last = run_single_simulation(run_id, configs, args.time, output_dir, seed_for(run_id),
                                          args.queue_batch, args.memory, keep_objects=(args.runs == 1),
-                                         trace_components=args.trace, trace_name=base_name)
+                                         trace_components=args.trace, trace_name=base_name,
+                                         event_latency=args.event_latency)
             record(last)
     else:
         with ProcessPoolExecutor(max_workers=args.threads) as pool:
             futures = [pool.submit(run_single_simulation, run_id, configs, args.time, output_dir,
                                    seed_for(run_id), args.queue_batch, args.memory,
-                                   False, args.trace, base_name)
+                                   False, args.trace, base_name, args.event_latency)
                        for run_id in range(1, args.runs + 1)]
             for future in as_completed(futures):
                 record(future.result())

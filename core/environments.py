@@ -22,6 +22,8 @@ class Environments:
         self.config_data = config_data
         self.distributions = distributions
         self.metrics_collector = metrics_collector
+        # Receptor de eventos de canal: el motor DES los programa en T + latencia del canal.
+        self.event_sink = None
 
         for env_entry in config_data:
             for n in range(1, env_entry["quantity"] + 1):
@@ -467,5 +469,14 @@ class Environments:
             "signal": signal
         })
         self.metrics_collector.record_environment_action(env["environment_type"], "write_ch_event")
+
+        # El evento de canal genera un evento dinámico para cada otro participante, con la latencia del canal.
+        sink = getattr(self, "event_sink", None)
+        if sink is not None:
+            latency = float(ch.get("metadata", {}).get("latency", 0.0) or 0.0)
+            for member in ch.get("members", []):
+                if member != agent_id:
+                    sink({"event_category": "dynamic", "signal": signal, "agent_id": member,
+                          "env_id": env_id, "channel_id": ch_id}, latency, True)
         return True
     
