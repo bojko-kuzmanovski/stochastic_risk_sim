@@ -128,7 +128,7 @@ def main():
     parser.add_argument(
         "--scenario",
         required=True,
-        help="Scenario prefix (e.g., runway_risk_base, runway_risk_crisis)",
+        help="Output prefix passed to main.py --output",
     )
     # By default, we calculate the relative path going up out of analytics/ and entering data/
     default_data_dir = Path(__file__).resolve().parent.parent / "data"

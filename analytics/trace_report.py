@@ -2,9 +2,9 @@
 Reporte legible de una traza JSONL generada con main.py --trace.
 
 Ejemplos:
-  python3 analytics/trace_report.py data/traces/probe_run1.jsonl
-  python3 analytics/trace_report.py data/traces/probe_run1.jsonl --automaton runway_lifecycle
-  python3 analytics/trace_report.py data/traces/probe_run1.jsonl --predicate PR_STOCHASTIC_DEAD_VIA_SENTIMENT --limit 2
+  python3 analytics/trace_report.py data/traces/<salida>_run1.jsonl
+  python3 analytics/trace_report.py data/traces/<salida>_run1.jsonl --automaton <nombre_del_autómata>
+  python3 analytics/trace_report.py data/traces/<salida>_run1.jsonl --predicate <predicate_id> --limit 2
 """
 import argparse
 import json
@@ -63,7 +63,7 @@ def report_automata(records, automaton=None):
         total = sum(tos.values())
         shares = ", ".join(f"{to} {n / total:.0%}" for to, n in tos.most_common())
         vals = values[(aut, frm, source)]
-        rng = f"  valores [{min(vals):.4g}, {max(vals):.4g}]" if vals else ""
+        rng = f"  valores [{min(vals):.4f}, {max(vals):.4f}]" if vals else ""
         print(f"   {aut}::{frm} <{source}> n={total}: {shares}{rng}")
     if automaton:
         calls = [r for r in records if r["c"] == "automata" and r["e"] == "call" and r["automaton"] == automaton]
@@ -97,8 +97,8 @@ def report_patl(records, predicate=None, limit=3):
         vals = [r["value"] for r in rows]
         sat = sum(r["result"] == "SATISFIED" for r in rows) / len(rows)
         degenerate = sum(v <= 1e-9 or v >= 1 - 1e-9 for v in vals) / len(vals)
-        print(f"   {pid:44s} k={k} n={len(rows):4d} min={min(vals):.4g} max={max(vals):.4g} "
-              f"media={sum(vals) / len(vals):.4g} SAT={sat:.0%} degenerados={degenerate:.0%}")
+        print(f"   {pid:44s} k={k} n={len(rows):4d} min={min(vals):.4f} max={max(vals):.4f} "
+              f"media={sum(vals) / len(vals):.4f} SAT={sat:.0%} degenerados={degenerate:.0%}")
     for (pid, reason), n in errors.items():
         print(f"   {pid:44s} ERROR x{n}: {reason}")
 
@@ -120,15 +120,15 @@ def report_patl(records, predicate=None, limit=3):
             print(f"   sesión en curso={r['pending']}  secuencias={r['sequences']}")
         elif current and r["c"] == "patl_rounds":
             if r["e"] == "round":
-                outs = "; ".join(f"p={o['p']:.4g} -> {o['last']}" for o in r["outcomes"][:6])
+                outs = "; ".join(f"p={o['p']:.4f} -> {o['last']}" for o in r["outcomes"][:6])
                 more = f" (+{len(r['outcomes']) - 6})" if len(r["outcomes"]) > 6 else ""
-                print(f"      ronda {r['round']} acciones={r['actions']} valor={r['value']:.6g}: {outs}{more}")
+                print(f"      ronda {r['round']} acciones={r['actions']} valor={r['value']:.4f}: {outs}{more}")
             elif r["e"] == "adversary_choice":
-                print(f"      ronda {r['round']} adversario {r['extremum']} sobre {r['choices']} -> {r['values']} = {r['value']:.6g}")
+                print(f"      ronda {r['round']} adversario {r['extremum']} sobre {r['choices']} -> {r['values']} = {r['value']:.4f}")
         elif current and r["c"] == "patl" and r["e"] == "sequence_value" and r["predicate"] == predicate:
-            print(f"   secuencia {r['sequence']} -> {r['value']:.6g} ({r['nodes']} nodos)")
+            print(f"   secuencia {r['sequence']} -> {r['value']:.4f} ({r['nodes']} nodos)")
         elif current and r["c"] == "patl" and r["e"] == "predicate_result" and r["predicate"] == predicate:
-            print(f"   RESULTADO {r['value']:.6g} {r['operator']} {r['bound']} -> {r['result']}")
+            print(f"   RESULTADO {r['value']:.4f} {r['operator']} {r['bound']} -> {r['result']}")
             current = None
 
 

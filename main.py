@@ -42,10 +42,10 @@ def parse_args():
                         help="Number of simulations run in parallel processes (1-10)")
     parser.add_argument("--seed", type=int, default=1,
                         help="Base seed; run i uses seed * 1000000 + i")
-    parser.add_argument("--config-dir", type=str, default="configs/startups/runway-risk",
+    parser.add_argument("--config-dir", type=str, required=True,
                         help="Scenario directory with the six JSON configuration files")
     parser.add_argument("--distributions", type=str, default="distributions.json",
-                        help="Distributions file inside --config-dir (e.g. distributions_1_base.json)")
+                        help="Distributions file inside --config-dir (default distributions.json)")
     parser.add_argument("--queue-batch", type=int, default=5,
                         help="K: maximum events an agent extracts from its queue per instant")
     parser.add_argument("--memory", type=str, default="1",
@@ -129,9 +129,11 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
             if not predicates:
                 continue
             for r in verifier.verify(snap, predicates):
+                # El veredicto se decide con el valor exacto; la salida se escribe con cuatro decimales.
+                value = f"{r['value']:.4f}" if r["result"] != "ERROR" else ""
                 patl_rows.append([
                     run_id, snap["automaton_name"], snap["state"], snap["agent_id"],
-                    r["predicate_id"], r["value"], r["bound"], r["operator"], r["memory_k"],
+                    r["predicate_id"], value, f"{r['bound']:.4f}", r["operator"], r["memory_k"],
                     r["result"], r["reason"]
                 ])
     elapsed_patl = time.time() - t0

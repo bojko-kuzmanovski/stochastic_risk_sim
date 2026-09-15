@@ -1,5 +1,8 @@
 """
-Generador del caso runway: automata.json y patl.json conformes a los esquemas, con calibración de umbrales.
+Herramienta de autoría del caso runway (no forma parte del motor y nada del motor la importa).
+
+Genera configs/startups/runway-risk/automata.json y patl.json conformes a los esquemas y calibra los
+umbrales binarios. El motor solo lee los JSON resultantes; cualquier otra configuración funciona igual.
 
 Uso: python3 tools/build_runway_config.py .
 """
@@ -302,9 +305,9 @@ automata.append(A("investment_decision", "LOAD_PARAMS", ["INVESTED", "PASSED"],
     T("WATCHING", "$engaged", rd_agent("$investor_id", "is_engaged"),
       case(c("$engaged", "==", True), "STOCHASTIC_SENTIMENT_GATE"),
       case(c("$engaged", "!=", True), "COLD_INTEREST")),
-    fixed(T("COLD_INTEREST", "$cold", prob("investor_appetite"),
-      case(c("$cold", ">", 0.42), "STOCHASTIC_SENTIMENT_GATE"),
-      case(c("$cold", "<=", 0.42), "CHECK_RELATION"))),
+    fixed(T("COLD_INTEREST", "$cold", prob("market_noise"),
+      case(c("$cold", ">=", -0.03), "STOCHASTIC_SENTIMENT_GATE"),
+      case(c("$cold", "<", -0.03), "CHECK_RELATION"))),
     fixed(T("STOCHASTIC_SENTIMENT_GATE", "$market_sentiment", prob("market_sentiment"),
       case(c("$market_sentiment", ">", 0.4), "APPETITE_GATE"),
       case(c("$market_sentiment", "<=", 0.4), "TRACTION_CHECK"))),
@@ -334,8 +337,8 @@ automata.append(A("investment_decision", "LOAD_PARAMS", ["INVESTED", "PASSED"],
       case(c("$diligence", "<=", 1.05), "MAKE_OFFER"),
       case(c("$diligence", ">", 1.05), "CHECK_RELATION"))),
     fixed(T("TERM_NEGOTIATION", "$terms", prob("cost_inflation"),
-      case(c("$terms", "<=", 1.06), "MAKE_OFFER"),
-      case(c("$terms", ">", 1.06), "CHECK_RELATION"))),
+      case(c("$terms", "<=", 1.08), "MAKE_OFFER"),
+      case(c("$terms", ">", 1.08), "CHECK_RELATION"))),
     T("MAKE_OFFER", "$cash_id", rd_agent(S, "cash"),
       case(c("$cash_id", "!=", None), "PREPARE_INVESTMENT_EMIT", w_agent("inyectar_capital", S, "cash", pipe("$cash_id", ("+", "$amount"))))),
     always("PREPARE_INVESTMENT_EMIT", "INVESTED",

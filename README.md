@@ -183,15 +183,17 @@ pip install -r requirements.txt
 Run a simulation (results are written to `data/`):
 
 ```bash
-python3 main.py --output runway_risk_base --runs 50 --time 60 --threads 10 \
-    --distributions distributions_1_base.json
+python3 main.py --config-dir configs/startups/runway-risk --output runway_risk_base \
+    --runs 100 --time 60 --threads 10 --distributions distributions_1_base.json
 ```
 
 - `--runs`: number of independent simulations (1–1000)
 - `--time`: simulated time horizon `T_max` per run, in model time units (10–500)
 - `--threads`: runs executed in parallel processes (1–10)
 - `--seed`: base seed (default 1)
-- `--config-dir`: scenario directory (default `configs/startups/runway-risk`)
+- `--config-dir` (required): scenario directory with the six JSON files. The engine contains no domain
+  logic; any scenario that validates against `schemas/` runs unchanged. `tools/build_runway_config.py` is an
+  optional authoring script that produced the runway JSON files; nothing in the engine imports it.
 - `--distributions`: distributions file inside the scenario directory (default `distributions.json`)
 - `--queue-batch`: `K`, events an agent takes from its queue per instant (default 5)
 - `--memory`: default memory bound `k` of coalition strategies (1–4, default 1)
