@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import asyncio
 from jsonschema import validate
 from typing import Any, Optional
 
@@ -25,45 +24,68 @@ class Automata:
             )
 
         self.data = config_data
+        self.by_name = {d["automaton_name"]: d for d in config_data}
         self.distributions = distributions
         self.metrics_collector = metrics_collector
         self.agents = None
         self.environments = None
+        # Receptor de eventos dinámicos: el motor DES los inserta en el calendario Q.
+        self.event_sink = None
 
     def set_objects(self, agents, environments):
         self.agents = agents
         self.environments = environments
 
-    def create_session(self, signal: str, event: dict, async_mode=True) -> Optional["AutomatonSession"]:
-        automaton_def = next(
-            (a for a in self.data if a["automaton_name"] == signal), None
-        )
+    def set_event_sink(self, sink):
+        self.event_sink = sink
+
+    def create_session(self, signal: str, event: dict, live=True) -> Optional["AutomatonSession"]:
+        automaton_def = self.by_name.get(signal)
         if not automaton_def:
             return None
-        return AutomatonSession(self, automaton_def, event, async_mode)
+        return AutomatonSession(self, automaton_def, event, live)
 
 
 class AutomatonSession:
-    def __init__(self, automata: Automata, automaton_def: dict, event: dict, async_mode=True):
+    """
+    Sesión de un autómata estocástico. La función de evolución se separa en
+    tau_dist (resolver el valor del umbral) y tau_dec (elegir el caso y aplicarlo).
+
+    live=True: ejecución dentro del motor DES (muestrea, registra métricas y emite eventos).
+    live=False: ejecución dentro del verificador PATL (no muestrea ni emite eventos).
+    """
+
+    def __init__(self, automata: Automata, automaton_def: dict, event: dict, live=True,
+                 ctx: Optional[dict] = None, state: Optional[str] = None):
         self.automata = automata
         self.automaton_def = automaton_def
         self.automaton_name = automaton_def["automaton_name"]
         self.event = event
-        self.current_state = automaton_def["states"]["initial"]
+        self.current_state = state if state is not None else automaton_def["states"]["initial"]
         self.final_states = set(automaton_def["states"].get("final", []))
-        self.async_mode = async_mode
-        self.ctx = {}
-        self._init_params()
+        self.live = live
+        if ctx is None:
+            self.ctx = {}
+            self._init_params()
+        else:
+            self.ctx = dict(ctx)
 
     def _init_params(self):
         for k, vdef in self.automaton_def.get("params", {}).items():
-            self.ctx[k] = resolve_value(vdef, self.automata.distributions)
+            self.ctx[k] = self._resolve_value(vdef)
+
+    def _resolve_value(self, vdef: dict) -> Any:
+        # En el verificador un parámetro probabilístico no se muestrea: se usa su esperanza.
+        if not self.live and vdef.get("type") == "probabilistic":
+            return self.automata.distributions.conditional_mean(
+                vdef.get("distribution"), float("-inf"), float("inf"))
+        return resolve_value(vdef, self.automata.distributions)
 
     def _resolve(self, vdef: Any) -> Any:
         if isinstance(vdef, dict) and "target" in vdef:
             return self._exec_logic(vdef)
         if isinstance(vdef, dict) and "type" in vdef:
-            return resolve_value(vdef, self.automata.distributions)
+            return self._resolve_value(vdef)
         return resolve_ephemeral(vdef, self.ctx)
 
     def _exec_logic(self, logic_def: dict) -> Any:
@@ -74,7 +96,7 @@ class AutomatonSession:
         if target == "system":
             try:
                 return call_method(target, method, [param_keys],
-                                 self.automata.agents, self.automata.environments, 
+                                 self.automata.agents, self.automata.environments,
                                  resolve_fn=self._resolve)
             except Exception as e:
                 print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
@@ -89,47 +111,77 @@ class AutomatonSession:
 
         if result is None:
             print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                  f"Target: {target} | Method: {method} | Params/Args: {args} -> Resolved Value: {result}", 
+                  f"Target: {target} | Method: {method} | Params/Args: {args} -> Resolved Value: {result}",
                   flush=True)
             os._exit(1)
-        
+
         return result
-    
-    def step(self, forced_X=None) -> Optional[str]:
-        if self.current_state in self.final_states:
-            if self.async_mode:
+
+    # ------------------------------------------------------------------
+    # Estructura de la transición
+    # ------------------------------------------------------------------
+    def is_final(self) -> bool:
+        return self.current_state in self.final_states
+
+    def transition(self) -> Optional[dict]:
+        return next(
+            (t for t in self.automaton_def["transitions"] if t["from"] == self.current_state), None)
+
+    @staticmethod
+    def threshold_value(transition: dict):
+        tv = transition["threshold_value"]
+        tv_key = next(iter(tv))
+        return tv_key, tv[tv_key]
+
+    def resolve_threshold(self, transition: dict) -> Any:
+        """tau_dist: resuelve (muestrea, en ejecución viva) el valor que se compara con los umbrales."""
+        _, tv_def = self.threshold_value(transition)
+        return self._resolve(tv_def)
+
+    def select_case(self, transition: dict, X: Any) -> Optional[dict]:
+        """tau_dec: primer caso cuyas condiciones cumple X."""
+        tv_key, _ = self.threshold_value(transition)
+        previous = self.ctx.get(tv_key, _MISSING)
+        self.ctx[tv_key] = X
+        chosen = next((th for th in transition.get("thresholds", [])
+                       if self._check_case(th["threshold_case"])), None)
+        if previous is _MISSING:
+            self.ctx.pop(tv_key, None)
+        else:
+            self.ctx[tv_key] = previous
+        return chosen
+
+    def apply_case(self, transition: dict, case: dict, X: Any) -> str:
+        """Fija X en el contexto, mueve al estado destino del caso y ejecuta sus acciones."""
+        tv_key, _ = self.threshold_value(transition)
+        self.ctx[tv_key] = X
+        self.current_state = case["to"]
+        self._apply_actions(case.get("actions", []))
+        return self.current_state
+
+    def step(self) -> Optional[str]:
+        if self.is_final():
+            if self.live:
                 self.automata.metrics_collector.record_automaton_execution(
                     self.automaton_name, "success", self.current_state)
             return None
 
-        transition = next(
-            (t for t in self.automaton_def["transitions"] if t["from"] == self.current_state), None)
+        transition = self.transition()
         if not transition:
-            if self.async_mode:
+            if self.live:
                 self.automata.metrics_collector.record_automaton_execution(
                     self.automaton_name, "failure", self.current_state)
             return None
 
-        tv = transition["threshold_value"]
-        tv_key = next(iter(tv))
-        tv_def = tv[tv_key]
-        X = forced_X if forced_X is not None else self._resolve(tv_def)
-        self.ctx[tv_key] = X
-
-        chosen = None
-        for th in transition.get("thresholds", []):
-            if self._check_case(th["threshold_case"]):
-                chosen = th
-                break
+        X = self.resolve_threshold(transition)
+        chosen = self.select_case(transition, X)
 
         if not chosen:
             print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
                   f"no threshold_case matched for value {X}", file=sys.stderr, flush=True)
             os._exit(1)
 
-        self.current_state = chosen["to"]
-        self._apply_actions(chosen.get("actions", []))
-        return self.current_state
+        return self.apply_case(transition, chosen, X)
 
     def _check_case(self, conditions: list) -> bool:
         for cond in conditions:
@@ -195,13 +247,17 @@ class AutomatonSession:
                     self.ctx[k] = result
 
             elif "event_emit" in action_obj:
+                # En el verificador los eventos no se propagan: la interacción entre
+                # agentes queda representada por las estrategias de la coalición y de los adversarios.
+                if not self.live:
+                    continue
+
                 event_array = action_obj["event_emit"]
                 resolved = [resolve_ephemeral(k, self.ctx) for k in event_array]
-                
-                # Fallback agresivo a strings si se resuelven como None
+
                 signal = self.ctx.get(resolved[0]) if resolved[0].startswith("$") else resolved[0]
                 if signal is None: signal = "UNKNOWN_SIGNAL"
-                
+
                 agent_id = self.ctx.get(resolved[1]) if resolved[1].startswith("$") else resolved[1]
                 if agent_id is None: agent_id = "UNKNOWN_AGENT"
 
@@ -210,7 +266,7 @@ class AutomatonSession:
                     "signal": str(signal),
                     "agent_id": str(agent_id)
                 }
-                
+
                 if len(resolved) > 2:
                     env_id = self.ctx.get(resolved[2]) if resolved[2].startswith("$") else resolved[2]
                     if env_id is not None: event_data["env_id"] = str(env_id)
@@ -225,8 +281,8 @@ class AutomatonSession:
                           f"event_emit failed validation: {e}", file=sys.stderr, flush=True)
                     os._exit(1)
 
-                if agent_id is not None:
-                    if self.async_mode:
-                        agent_exists = any(ag.get("agent_id") == agent_id for ag in self.automata.agents.data) if hasattr(self.automata.agents, 'data') else False
-                        if agent_exists:
-                            asyncio.create_task(self.automata.agents.receive_event(agent_id, event_data))
+                if self.automata.event_sink is not None:
+                    self.automata.event_sink(event_data)
+
+
+_MISSING = object()

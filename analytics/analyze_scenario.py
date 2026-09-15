@@ -105,12 +105,20 @@ def analyze_patl(file_path: Path):
     )
     print(summary_qual.to_string())
 
-    # 2. Quantitative analysis of the reached probability values (p_value)
-    print("\n🎲 Statistical Distribution of Probability Values (p_value):")
-    p_stats = df.groupby(["automaton_name", "predicate_id"])["p_value"].agg(
+    # 2. Quantitative analysis of the property values against their bounds
+    print("\n🎲 Statistical Distribution of Property Values (value):")
+    valued = df[df["result"] != "ERROR"].copy()
+    valued["value"] = valued["value"].astype(float)
+    p_stats = valued.groupby(["automaton_name", "predicate_id"])["value"].agg(
         ["count", "mean", "std", "min", "median", "max"]
     )
     print(p_stats.to_string())
+
+    # 3. Predicates that could not be verified, with their reason
+    errors = df[df["result"] == "ERROR"]
+    if not errors.empty:
+        print("\n⚠️ Predicates not verified (ERROR):")
+        print(errors.groupby(["predicate_id", "reason"])["run_id"].count().to_string())
 
 
 def main():

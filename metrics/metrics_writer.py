@@ -1,17 +1,20 @@
 import csv
-import asyncio
 from pathlib import Path
+
+
+PATL_HEADER = ["run_id", "automaton_name", "trigger_state", "agent_id", "predicate_id",
+               "value", "bound", "operator", "memory_k", "result", "reason"]
 
 
 class MetricsWriter:
     """
-    Thread-safe CSV writer designed for analytical consumption (Pandas, SQL).
+    CSV writer designed for analytical consumption (Pandas, SQL).
     Replicates the exact structured hierarchy of MetricsCollector.print_report()
     into structured CSV records, guaranteeing zero JSON/OrderedDict dumps.
+    Runs are written from the main process as they finish, so no locking is required.
     """
 
     def __init__(self, output_dir: Path, base_name: str):
-        self._lock = asyncio.Lock()
         self._output_dir = output_dir
         self._base_name = base_name
 
@@ -19,91 +22,58 @@ class MetricsWriter:
         self._des_path = output_dir / f"{base_name}_des.csv"
         self._patl_path = output_dir / f"{base_name}_patl.csv"
 
-        self._summary_header_written = False
-        self._des_header_written = False
-        self._patl_header_written = False
-
         # Reset states
         for f in [self._summary_path, self._des_path, self._patl_path]:
             f.unlink(missing_ok=True)
 
-    async def write_simulation_results(self, run_id: int, seed: int, elapsed_des: float, 
-                                      metrics, configs: dict, snapshot_manager):
-        """
-        Unified entry point called right after DES completion. Writes clean rows to 
-        summary and des files.
-        """
-        async with self._lock:
-            # 1. Handle Summary
-            write_sum_header = not self._summary_header_written
-            self._summary_header_written = True
-            _write_summary_csv(str(self._summary_path), run_id, seed, elapsed_des, metrics, configs, snapshot_manager, write_sum_header)
+        with open(self._summary_path, "w", newline="") as f:
+            csv.writer(f).writerow(["run_id", "category", "key", "subkey", "value"])
+        with open(self._des_path, "w", newline="") as f:
+            csv.writer(f).writerow(["run_id", "runtime_section", "entity_key", "metric_subkey", "execution_value"])
+        with open(self._patl_path, "w", newline="") as f:
+            csv.writer(f).writerow(PATL_HEADER)
 
-            # 2. Handle DES
-            write_des_header = not self._des_header_written
-            self._des_header_written = True
-            _write_des_csv(str(self._des_path), run_id, metrics, write_des_header)
+    def write_simulation_results(self, result: dict, configs: dict):
+        """Writes the summary and DES rows of one finished run."""
+        _write_summary_csv(str(self._summary_path), result, configs)
+        _write_des_csv(str(self._des_path), result["run_id"], result["metrics"])
 
-    async def update_summary_patl_time(self, run_id: int, elapsed_patl: float):
-        """
-        Updates the execution duration row for PATL after verification threads terminate.
-        """
-        async with self._lock:
-            with open(str(self._summary_path), "a", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow([run_id, "performance", "elapsed_patl_sec", "", round(elapsed_patl, 3)])
-
-    async def write_patl_rows(self, run_id: int, patl_results: list):
-        """Writes analytical rows for verifying predicates."""
-        async with self._lock:
-            write_header = not self._patl_header_written
-            self._patl_header_written = True
-            
-            mode = "w" if write_header else "a"
-            with open(str(self._patl_path), mode, newline="") as f:
-                writer = csv.writer(f)
-                if write_header:
-                    writer.writerow(["run_id", "automaton_name", "trigger_state", "agent_id",
-                                     "predicate_id", "p_value", "bound", "operator", "result"])
-                for snap, results in patl_results:
-                    for r in results:
-                        writer.writerow([
-                            run_id, snap["automaton_name"], snap["state"], snap["agent_id"],
-                            r["predicate_id"], r["p_value"], r["bound"], r["operator"], r["result"]
-                        ])
+    def write_patl_rows(self, rows: list):
+        """Writes one row per verified predicate per snapshot."""
+        with open(str(self._patl_path), "a", newline="") as f:
+            csv.writer(f).writerows(rows)
 
 
-def _write_summary_csv(csv_path: str, run_id: int, seed: int, elapsed_des: float, 
-                       metrics, configs: dict, snapshot_manager, write_header: bool):
-    mode = "w" if write_header else "a"
-    with open(csv_path, mode, newline="") as f:
+def _write_summary_csv(csv_path: str, result: dict, configs: dict):
+    run_id = result["run_id"]
+    with open(csv_path, "a", newline="") as f:
         writer = csv.writer(f)
-        if write_header:
-            writer.writerow(["run_id", "category", "key", "subkey", "value"])
 
         def row(category, key, subkey, value):
             writer.writerow([run_id, category, key, subkey, value])
 
         # METADATA & PERFORMANCE
-        row("metadata", "seed", "", seed)
-        row("performance", "elapsed_des_sec", "", round(elapsed_des, 3))
+        row("metadata", "seed", "", result["seed"])
+        row("metadata", "simulated_time_reached", "", round(result["final_time"], 6))
+        row("performance", "elapsed_des_sec", "", round(result["elapsed_des"], 3))
+        row("performance", "elapsed_patl_sec", "", round(result["elapsed_patl"], 3))
 
         # ==========================================
         # 🧱 BUILDTIME METRICS
         # ==========================================
-        
+
         # Distributions Buildtime
-        dists = configs.get("distributions", [])  # Cambiado por defecto a lista []
+        dists = configs.get("distributions", [])
         row("buildtime_summary", "distributions_total_declared", "", len(dists))
-        
+
         for dist_body in dists:
             if not isinstance(dist_body, dict):
                 continue
-            
+
             dist_name = dist_body.get("distribution_name", "unknown")
             family = dist_body.get("family", "unknown")
             row("buildtime_detail", "distribution.family", dist_name, family)
-            
+
             # Recursive extraction of distribution params/categories to prevent dict dumps
             if "params" in dist_body and isinstance(dist_body["params"], dict):
                 for p_key, p_val in dist_body["params"].items():
@@ -155,27 +125,23 @@ def _write_summary_csv(csv_path: str, run_id: int, seed: int, elapsed_des: float
             row("buildtime_detail", f"static_event_trigger.{sig}", "periodicity_type", evt.get("periodicity", {}).get("type", ""))
 
         # PATL Specification Buildtime
-        patl_data = snapshot_manager.data
+        patl_data = result["patl_spec"]
         total_preds = sum(len(preds) for preds in patl_data.values())
         row("buildtime_summary", "patl_predicates_total_declared", "", total_preds)
+        row("buildtime_summary", "patl_observations_total_declared", "", len(patl_data))
         for (aut_name, state_name), preds in patl_data.items():
             for pred in preds:
                 pid = pred.get("predicate_id", "unknown")
                 row("buildtime_detail", f"patl_specification.{aut_name}.{state_name}", pid, pred.get("type", "reachability"))
 
 
-def _write_des_csv(csv_path: str, run_id: int, metrics, write_header: bool):
+def _write_des_csv(csv_path: str, run_id: int, data: dict):
     """
     Writes the runtime telemetry directly into its own transactional CSV log.
     Ensures that every execution path matches the granular tree layout.
     """
-    mode = "w" if write_header else "a"
-    with open(csv_path, mode, newline="") as f:
+    with open(csv_path, "a", newline="") as f:
         writer = csv.writer(f)
-        if write_header:
-            writer.writerow(["run_id", "runtime_section", "entity_key", "metric_subkey", "execution_value"])
-
-        data = metrics.to_dict()
 
         # 1.🎲 Distribution Runtime Usage
         for dist_name, families in data.get("distribution_usage", {}).items():

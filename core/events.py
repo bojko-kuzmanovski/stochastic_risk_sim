@@ -37,5 +37,7 @@ class Events:
                     )
                 
                 event_resolved["periodicity"] = periodicity
+                # La periodicidad probabilista se vuelve a muestrear en cada reprogramación.
+                event_resolved["periodicity_def"] = pdef
 
             self.data.append(event_resolved)

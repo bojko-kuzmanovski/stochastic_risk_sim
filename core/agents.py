@@ -1,11 +1,16 @@
 import os
 import json
-import asyncio
+from collections import deque
 from jsonschema import validate
 from copy import deepcopy
 
 # Importar funciones de evaluación estandarizadas
 from core.utils.evaluator import resolve_value
+
+# Cota de pasos por sesión: una sesión que no llega a estado final en este número
+# de transiciones indica un ciclo en la configuración del autómata.
+MAX_SESSION_STEPS = 10_000
+
 
 class Agents:
     def __init__(self, config_data, distributions, metrics_collector, worker_mode=True):
@@ -25,8 +30,9 @@ class Agents:
         self.automata = None
         self.snapshot_manager = None
         self.worker_mode = worker_mode
-        self._tasks = {}
         self._running = False
+        # Se invoca con cada agente creado en ejecución para programar sus eventos estáticos.
+        self._on_agent_added = None
 
         for agent_entry in config_data:
             for n in range(1, agent_entry["quantity"] + 1):
@@ -48,7 +54,8 @@ class Agents:
         agent_resolved["params"] = resolved_params
 
         if self.worker_mode:
-            agent_resolved["event_queue"] = asyncio.Queue()
+            # Cola Q_i de eventos pendientes del agente.
+            agent_resolved["event_queue"] = deque()
 
         return agent_resolved
 
@@ -58,127 +65,94 @@ class Agents:
         self.snapshot_manager = snapshot_manager
 
 
-    def _start_worker(self, agent):
-        async def _run_automaton_lifecycle(session, automaton_name):
-            """Maneja el ciclo de vida de un autómata en una tarea independiente."""
-            while self._running:
-                while self.snapshot_manager.is_sampling():
-                    await asyncio.sleep(0.01)
-
-                self.snapshot_manager.enter_transition()
-                new_state = session.step()
-                self.snapshot_manager.exit_transition()
-
-                if new_state is None:
-                    agent.pop("current_state", None)
-                    break
-
-                agent["current_state"] = new_state
-                await self.snapshot_manager.capture(
-                    agent["agent_id"], automaton_name, new_state
-                )
-                await asyncio.sleep(0.025)
-
-        async def _worker():
-            try:
-                while self._running:
-                    try:
-                        event = await asyncio.wait_for(
-                            agent["event_queue"].get(), timeout=0.5
-                        )
-                    except asyncio.TimeoutError:
-                        continue
-
-                    signal = event.get("signal")
-                    automaton_def = next(
-                        (a for a in self.automata.data if a["automaton_name"] == signal), None
-                    )
-                    
-                    if not automaton_def:
-                        continue
-
-                    if automaton_def["automaton_name"] not in agent.get("automata", []):
-                        print(f"[FATAL] Agent {agent['agent_id']} rejected signal '{signal}' because it does not have that automaton assigned.")
-                        os._exit(1)
-                        continue
-
-                    session = self.automata.create_session(signal, event)
-                    if not session:
-                        continue
-
-                    automaton_name = session.automaton_name
-                    agent["current_state"] = session.current_state
-                    
-                    asyncio.create_task(_run_automaton_lifecycle(session, automaton_name))
-                    
-            except asyncio.CancelledError:
-                pass
-
-        self._tasks[agent["agent_id"]] = asyncio.create_task(_worker())
+    def set_on_agent_added(self, callback):
+        self._on_agent_added = callback
 
 
-    def _stop_worker(self, agent_id):
-        task = self._tasks.pop(agent_id, None)
-        if task and not task.done():
-            task.cancel()
-            return task
-        return None
+    def _find(self, agent_id):
+        return next((a for a in self.data if a.get("agent_id") == agent_id), None)
 
 
-    async def start(self):
-        """Start async workers for each agent."""
+    def start(self):
         self._running = True
-        for agent in self.data:
-            self._start_worker(agent)
 
 
-    async def stop(self):
+    def stop(self):
         self._running = False
-        tasks_to_cancel = []
-        for agent_id in list(self._tasks.keys()):
-            task = self._stop_worker(agent_id)
-            if task:
-                tasks_to_cancel.append(task)
-        if tasks_to_cancel:
-            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
 
-    
-    async def receive_event(self, agent_id, event):
-        agent = next((a for a in self.data if a["agent_id"] == agent_id), None)
+
+    def receive_event(self, agent_id, event):
+        """Paso 1 (despacho): encola el evento en Q_i. Devuelve False si el agente ya no existe."""
+        agent = self._find(agent_id)
+        if agent is None or "event_queue" not in agent:
+            return False
+        agent["event_queue"].append(event)
+        if self.metrics_collector:
+            self.metrics_collector.record_agent_event(event.get("event_category"), event.get("signal"))
+        return True
+
+
+    def pending(self, agent_id):
+        agent = self._find(agent_id)
+        if agent is None or "event_queue" not in agent:
+            return 0
+        return len(agent["event_queue"])
+
+
+    def process_queue(self, agent_id, max_events):
+        """Paso 2 (procesamiento): extrae hasta K eventos de Q_i y ejecuta cada sesión de forma atómica."""
+        agent = self._find(agent_id)
         if agent is None:
+            return 0
+        processed = 0
+        while agent["event_queue"] and processed < max_events and self._find(agent_id) is not None:
+            event = agent["event_queue"].popleft()
+            self._run_event(agent, event)
+            processed += 1
+        return processed
+
+
+    def _run_event(self, agent, event):
+        signal = event.get("signal")
+        automaton_def = self.automata.by_name.get(signal)
+        if not automaton_def:
             return
-        if "event_queue" in agent:
-            await agent["event_queue"].put(event)
-            if self.metrics_collector:
-                event_category = event.get("event_category")
-                signal = event.get("signal")
-                self.metrics_collector.record_agent_event(event_category, signal)
 
+        if signal not in agent.get("automata", []):
+            print(f"[FATAL] Agent {agent['agent_id']} rejected signal '{signal}' because it does not have that automaton assigned.")
+            os._exit(1)
 
-    def load_snapshot(self, agents_data):
-        """Carga estado desde un snapshot (para verificación PATL)."""
-        self.data = deepcopy(agents_data)
-        for agent in self.data:
-            if "current_state" not in agent or agent["current_state"] is None:
-                automata_list = agent.get("automata", [])
-                if automata_list and self.automata:
-                    aut_name = automata_list[0]
-                    aut_def = next((a for a in self.automata.data 
-                                if a["automaton_name"] == aut_name), None)
-                    if aut_def:
-                        agent["current_state"] = aut_def["states"]["initial"]
-            
-            if "automaton_name" not in agent:
-                automata_list = agent.get("automata", [])
-                if automata_list:
-                    agent["automaton_name"] = automata_list[0]
+        session = self.automata.create_session(signal, event)
+        if not session:
+            return
+
+        # El estado de la sesión activa forma parte del estado global que capturan las instantáneas.
+        agent["current_automaton"] = session.automaton_name
+        agent["current_state"] = session.current_state
+        agent["session_ctx"] = session.ctx
+
+        for _ in range(MAX_SESSION_STEPS):
+            new_state = session.step()
+            if new_state is None:
+                break
+            agent["current_state"] = new_state
+            self.snapshot_manager.capture(agent["agent_id"], session.automaton_name, new_state)
+        else:
+            print(f"[FATAL] Agent {agent['agent_id']}: automaton '{signal}' did not reach a final state "
+                  f"after {MAX_SESSION_STEPS} steps.")
+            os._exit(1)
+
+        agent.pop("current_automaton", None)
+        agent.pop("current_state", None)
+        agent.pop("session_ctx", None)
 
 
     # DES / PATL METHODS
     def get_all_agents(self, agent_type):
-        self.metrics_collector.record_agent_action(agent_type, "get_all_agents")
+        if self.metrics_collector:
+            self.metrics_collector.record_agent_action(agent_type, "get_all_agents")
         return [a["agent_id"] for a in self.data if a.get("agent_type") == agent_type]
-    
+
 
     def add_agent(self, agent_type):
         """
@@ -205,39 +179,40 @@ class Agents:
         agent_resolved = self._build_agent(agent_entry, n)
         self.data.append(agent_resolved)
 
-        # Start worker si ya está corriendo
-        if self._running and self.automata:
-            self._start_worker(agent_resolved)
+        # Sus eventos estáticos se programan desde el instante actual del calendario.
+        if self._running and self._on_agent_added:
+            self._on_agent_added(agent_resolved)
 
-        self.metrics_collector.record_agent_action(agent_type, "add_agent")
+        if self.metrics_collector:
+            self.metrics_collector.record_agent_action(agent_type, "add_agent")
         return agent_resolved["agent_id"]
 
 
     def remove_agent(self, agent_id):
         """
-        Elimina el agente con agent_id y detiene su worker.
+        Elimina el agente con agent_id; sus eventos pendientes se descartan.
         Retorna True si se eliminó, False si no existe.
         """
         for i, a in enumerate(self.data):
             if a["agent_id"] == agent_id:
                 agent_type = a["agent_type"]
                 del self.data[i]
-                if agent_id in self._tasks:
-                    self._stop_worker(agent_id)
-                self.metrics_collector.record_agent_action(agent_type, "remove_agent")
+                if self.metrics_collector:
+                    self.metrics_collector.record_agent_action(agent_type, "remove_agent")
                 return True
         return False
-    
+
 
     def read_agent_param(self, agent_id, param_name):
         """
         Lee un parámetro específico del agente.
         Retorna el valor si existe, None si no existe el agente o el parámetro.
         """
-        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        agent = self._find(agent_id)
         if agent is None:
             return None
-        self.metrics_collector.record_agent_action(agent["agent_type"], "read_agent_param")
+        if self.metrics_collector:
+            self.metrics_collector.record_agent_action(agent["agent_type"], "read_agent_param")
         return agent.get("params", {}).get(param_name)
 
 
@@ -246,11 +221,12 @@ class Agents:
         Escribe un parámetro del agente.
         Retorna True si se escribió, False si el agente no existe.
         """
-        agent = next((a for a in self.data if a.get("agent_id") == agent_id), None)
+        agent = self._find(agent_id)
         if agent is None:
             return False
         if "params" not in agent:
             agent["params"] = {}
         agent["params"][param_name] = value
-        self.metrics_collector.record_agent_action(agent["agent_type"], "write_agent_param")
+        if self.metrics_collector:
+            self.metrics_collector.record_agent_action(agent["agent_type"], "write_agent_param")
         return True

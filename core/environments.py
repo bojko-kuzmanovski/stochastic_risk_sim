@@ -59,10 +59,9 @@ class Environments:
             resolved_meta = {}
             for mname, mdef in rel.get("metadata", {}).items():
                 resolved_meta[mname] = resolve_value(vdef=mdef, distributions=self.distributions)
-            members = rel.get("members", [])
+            # Misma forma que add_rel, para que read_rel y remove_rel encuentren las relaciones iniciales.
             resolved_relations.append({
-                "agent_a_id": members[0] if len(members) > 0 else None,
-                "agent_b_id": members[1] if len(members) > 1 else None,
+                "members": list(rel.get("members", [])),
                 "metadata": resolved_meta
             })
         env_resolved["relations"] = resolved_relations
@@ -335,8 +334,9 @@ class Environments:
             return None
 
         existing_ids = {ch["channel_id"] for ch in env.get("channels", [])}
+        rng = getattr(self.distributions, "rng", random)
         while True:
-            ch_id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=12))
+            ch_id = ''.join(rng.choices(string.ascii_lowercase + string.digits, k=12))
             if ch_id not in existing_ids:
                 break
 

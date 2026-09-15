@@ -8,7 +8,12 @@ from jsonschema import validate
 from scipy import stats
 
 class Distributions:
-    def __init__(self, config_data, metrics_collector):
+    def __init__(self, config_data, metrics_collector, seed=None):
+        # Generadores propios sembrados: la semilla registrada determina la trayectoria.
+        self.seed = seed
+        self.rng = random.Random(seed)
+        self.np_rng = np.random.default_rng(seed)
+
         schema_path = "schemas/distributions.schema.json"
         with open(schema_path, 'r') as f:
             schema = json.load(f)
@@ -100,19 +105,19 @@ class Distributions:
 
                     for _ in range(max_attempts):
                         if f_fam == "categorical":
-                            val = random.choices(lbls, weights=probs)[0]
+                            val = self.rng.choices(lbls, weights=probs)[0]
                         elif f_fam == "normal":
-                            val = random.normalvariate(p["mean"], p["sigma"])
+                            val = self.rng.normalvariate(p["mean"], p["sigma"])
                         elif f_fam == "exponential":
-                            val = random.expovariate(p["rate"])
+                            val = self.rng.expovariate(p["rate"])
                         elif f_fam == "poisson":
-                            val = np.random.poisson(p["lambda"])
+                            val = int(self.np_rng.poisson(p["lambda"]))
                         elif f_fam == "gamma":
-                            val = random.gammavariate(p["shape"], p["scale"])
+                            val = self.rng.gammavariate(p["shape"], p["scale"])
                         elif f_fam == "beta":
-                            val = random.betavariate(p["alpha"], p["beta"])
+                            val = self.rng.betavariate(p["alpha"], p["beta"])
                         elif f_fam == "lognormal":
-                            val = random.lognormvariate(p["mean"], p["sigma"])
+                            val = self.rng.lognormvariate(p["mean"], p["sigma"])
                         else:
                             raise ValueError(f"Unknown family {f_fam}")
 
@@ -235,3 +240,59 @@ class Distributions:
         # Aplicación del Teorema de Probabilidad Condicional para Truncamiento Formal
         result = max(0.0, (cdf_upper - cdf_lower) / trunc_factor)
         return min(1.0, result)
+
+    def probability_label(self, name, label):
+        """Probabilidad exacta de una etiqueta en una distribución categórica."""
+        entry = self.samplers.get(name)
+        if not entry:
+            raise ValueError(f"Distribution {name} not found")
+        if entry['family'] != "categorical":
+            raise ValueError(f"Distribution {name} is not categorical")
+        return sum(p for l, p in zip(entry['labels'], entry['probabilities']) if l == label)
+
+    def conditional_mean(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
+        """
+        E[X | X en el intervalo], respetando el truncamiento de la distribución.
+        Es el representante determinista del valor muestreado dentro de la región
+        de un caso de decisión; no consume el generador.
+        """
+        entry = self.samplers.get(name)
+        if not entry:
+            raise ValueError(f"Distribution {name} not found")
+        family, params, truncation = entry['family'], entry['params'], entry['truncation']
+
+        lo = -np.inf if lower == float("-inf") else lower
+        hi = np.inf if upper == float("inf") else upper
+        if truncation:
+            lo = max(lo, truncation["min"])
+            hi = min(hi, truncation["max"])
+        if lo > hi:
+            return None
+
+        if family == "poisson":
+            k_min = int(np.ceil(lo)) if (lower_inclusive or lo != lower) else int(np.floor(lo)) + 1
+            k_max = int(np.floor(hi)) if (upper_inclusive or hi != upper) else int(np.ceil(hi)) - 1
+            k_min = max(k_min, 0)
+            if k_min > k_max:
+                return None
+            ks = np.arange(k_min, k_max + 1)
+            w = stats.poisson.pmf(ks, mu=params["lambda"])
+            return float((ks * w).sum() / w.sum()) if w.sum() > 0 else float(k_min)
+
+        if family == "normal":
+            dist = stats.norm(loc=params["mean"], scale=params["sigma"])
+        elif family == "exponential":
+            dist = stats.expon(scale=1.0 / params["rate"])
+        elif family == "gamma":
+            dist = stats.gamma(a=params["shape"], scale=params["scale"])
+        elif family == "beta":
+            dist = stats.beta(a=params["alpha"], b=params["beta"])
+        elif family == "lognormal":
+            dist = stats.lognorm(s=params["sigma"], scale=np.exp(params["mean"]))
+        else:
+            raise ValueError(f"Conditional mean not supported for {family}")
+
+        mass = dist.cdf(hi) - dist.cdf(lo)
+        if mass <= 0:
+            return float(lo if np.isfinite(lo) else hi)
+        return float(dist.expect(lambda x: x, lb=lo, ub=hi, conditional=True))

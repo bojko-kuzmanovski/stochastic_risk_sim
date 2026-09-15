@@ -38,11 +38,6 @@
     ]
   },
   {
-    "automaton_name": "shock_lifecycle", "trigger_state": "DORMANT", "predicates": [
-      {"predicate_id": "PR_STOCHASTIC_SHOCK_CASCADE_VIA_ARRIVAL", "type": "reachability", "max_depth": 15, "coalition_quantifier": "exists", "coalition": [{"agent_type": "ShockEvent", "max_agents": 1, "automata": [{"automaton_name": "shock_lifecycle", "target_states": ["DONE"]}]}], "adversaries": [{"agent_type": "Startup", "max_agents": 1, "automata": [{"automaton_name": "runway_lifecycle", "target_states": ["DONE_CYCLE"]}]}], "probability_bound": 0.30, "probability_operator": ">="}
-    ]
-  },
-  {
     "automaton_name": "headcount_controller", "trigger_state": "IDLE", "predicates": [
       {"predicate_id": "PR_STOCHASTIC_LAYOFFS_VIA_SHOCK", "type": "reachability", "max_depth": 15, "coalition_quantifier": "exists", "coalition": [{"agent_type": "Startup", "max_agents": 1, "automata": [{"automaton_name": "headcount_controller", "target_states": ["LAYOFFS_DONE"]}]}], "adversaries": [{"agent_type": "Investor", "max_agents": 1, "automata": [{"automaton_name": "investment_decision", "target_states": ["PASSED"]}]}], "probability_bound": 0.40, "probability_operator": ">="}
     ]
