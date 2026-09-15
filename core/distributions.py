@@ -159,6 +159,14 @@ class Distributions:
         return entry['sampler']()
 
     def probability_interval(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
+        # Cálculo determinista: se memoriza por (distribución, intervalo).
+        key = ("p", name, float(lower), float(upper), bool(lower_inclusive), bool(upper_inclusive))
+        cache = self.__dict__.setdefault("_exact_cache", {})
+        if key not in cache:
+            cache[key] = self._probability_interval(name, lower, upper, lower_inclusive, upper_inclusive)
+        return cache[key]
+
+    def _probability_interval(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
         entry = self.samplers.get(name)
         if not entry:
             raise ValueError(f"Distribution {name} not found")
@@ -251,6 +259,14 @@ class Distributions:
         return sum(p for l, p in zip(entry['labels'], entry['probabilities']) if l == label)
 
     def conditional_mean(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
+        # Integración numérica costosa y determinista: se memoriza por (distribución, intervalo).
+        key = ("m", name, float(lower), float(upper), bool(lower_inclusive), bool(upper_inclusive))
+        cache = self.__dict__.setdefault("_exact_cache", {})
+        if key not in cache:
+            cache[key] = self._conditional_mean(name, lower, upper, lower_inclusive, upper_inclusive)
+        return cache[key]
+
+    def _conditional_mean(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
         """
         E[X | X en el intervalo], respetando el truncamiento de la distribución.
         Es el representante determinista del valor muestreado dentro de la región
