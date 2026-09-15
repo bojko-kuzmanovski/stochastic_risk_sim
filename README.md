@@ -196,7 +196,11 @@ python3 main.py --config-dir configs/startups/runway-risk --output runway_risk_b
   optional authoring script that produced the runway JSON files; nothing in the engine imports it.
 - `--distributions`: distributions file inside the scenario directory (default `distributions.json`)
 - `--queue-batch`: `K`, events an agent takes from its queue per instant (default 5)
-- `--memory`: default memory bound `k` of coalition strategies (1–4, default 1)
+- `--memory`: memory bounds `k` of coalition strategies, e.g. `1` or `1,2` (each 1–4, default 1)
+- `--event-latency`: delay of dynamic events emitted by automata (default 0). Events published with
+  `write_ch_event` reach the other channel participants that implement the signal after the channel's
+  `latency` metadata.
+- `--trace`: see *Tracing a run*
 
 Analyze results for a completed scenario:
 
