@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from thesis_automata_diagrams import (DEFAULT_CONFIG, DEFAULT_OUT, Automaton, break_cycles, case_label,  # noqa: E402
                                       load_abbreviations, longest_path_layers, tex_escape)
 
-LANDSCAPE_FROM = 13      # estados a partir de los cuales la matriz va en página horizontal
+LANDSCAPE_FROM = 10**9   # todas las matrices van en página vertical (decisión del autor)
 NOTE_COLUMNS = 2         # columnas de la lista de notas, en página vertical y horizontal
 
 UNKNOWN = ("unk",)
