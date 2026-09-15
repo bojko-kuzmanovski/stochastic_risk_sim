@@ -37,7 +37,13 @@ class SnapshotManager:
             disk_dir = Path(__file__).parent.parent / "data" / ".snapshots"
         self._disk_dir = Path(disk_dir)
         self._disk_dir.mkdir(parents=True, exist_ok=True)
+        # Instantáneas de una corrida anterior en el mismo directorio no pertenecen a esta corrida.
+        for filename in os.listdir(self._disk_dir):
+            if filename.startswith("snap_") and filename.endswith(".json"):
+                os.remove(self._disk_dir / filename)
         self._snapshot_index = 0
+        # Reloj simulado (callable sin argumentos); el motor DES lo fija al iniciar la corrida.
+        self._clock = None
 
 
     def set_objects(self, agents, environments):
@@ -45,12 +51,20 @@ class SnapshotManager:
         self.environments = environments
 
 
-    def capture(self, agent_id, automaton_name, state):
+    def set_clock(self, clock):
+        self._clock = clock
+
+
+    def capture(self, agent_id, automaton_name, state, trigger_event=None):
         """
         Congela el estado global (agentes, incluida la sesión activa, y entornos) cuando un
         agente alcanza un estado disparador, y lo escribe a disco sin conservarlo en memoria.
         Como cada sesión es atómica dentro del motor DES, ningún otro agente modifica el
         estado durante la captura.
+
+        Campos de la instantánea: timestamp (reloj de pared), sim_time (tiempo simulado T, None fuera
+        del motor), trigger_event (copia del evento cuya sesión está ejecutando el agente, o None),
+        agent_id, automaton_name, state, agents_data y environments_data.
         """
         if (automaton_name, state) not in self.data:
             return
@@ -63,6 +77,8 @@ class SnapshotManager:
 
         snapshot = {
             "timestamp": time.time(),
+            "sim_time": self._clock() if callable(self._clock) else None,
+            "trigger_event": dict(trigger_event) if isinstance(trigger_event, dict) else None,
             "agent_id": agent_id,
             "automaton_name": automaton_name,
             "state": state,
@@ -104,12 +120,13 @@ class SnapshotManager:
 
             for filename in batch_files:
                 filepath = self._disk_dir / filename
+                # Una instantánea ilegible es un error: omitirla cambiaría en silencio los resultados PATL.
                 try:
                     with open(filepath, "r") as f:
                         batch.append(json.load(f))
-                    os.remove(filepath)
-                except (OSError, json.JSONDecodeError):
-                    pass
+                except (OSError, json.JSONDecodeError) as e:
+                    raise RuntimeError(f"unreadable snapshot file {filepath}: {e}") from e
+                os.remove(filepath)
 
             if batch:
                 yield batch

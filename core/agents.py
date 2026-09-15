@@ -34,11 +34,19 @@ class Agents:
         self._running = False
         # Se invoca con cada agente creado en ejecución para programar sus eventos estáticos.
         self._on_agent_added = None
+        # Contador monótono por agent_type: el mayor sufijo emitido. Un identificador nunca se reutiliza.
+        self._id_counter = {}
+        # Agente cuya sesión se está ejecutando y agentes cuya eliminación espera el fin de esa sesión.
+        self._active_agent_id = None
+        self._pending_removal = set()
 
         for agent_entry in config_data:
-            for n in range(1, agent_entry["quantity"] + 1):
+            agent_type = agent_entry["agent_type"]
+            start = self._id_counter.get(agent_type, 0)
+            for n in range(start + 1, start + agent_entry["quantity"] + 1):
                 agent_resolved = self._build_agent(agent_entry, n)
                 self.data.append(agent_resolved)
+            self._id_counter[agent_type] = start + agent_entry["quantity"]
 
 
     def _build_agent(self, agent_entry, n):
@@ -83,9 +91,14 @@ class Agents:
 
 
     def receive_event(self, agent_id, event):
-        """Paso 1 (despacho): encola el evento en Q_i. Devuelve False si el agente ya no existe."""
+        """
+        Paso 1 (despacho): encola el evento en Q_i. Devuelve False si el agente ya no existe: el evento
+        se descarta y, si es estático, deja de reprogramarse.
+        """
         agent = self._find(agent_id)
         if agent is None or "event_queue" not in agent:
+            tracer.emit("agents", "discard", agent=agent_id, signal=event.get("signal"),
+                        category=event.get("event_category"))
             return False
         agent["event_queue"].append(event)
         tracer.emit("agents", "enqueue", agent=agent_id, signal=event.get("signal"),
@@ -103,7 +116,7 @@ class Agents:
 
 
     def process_queue(self, agent_id, max_events):
-        """Paso 2 (procesamiento): extrae hasta K eventos de Q_i y ejecuta cada sesión de forma atómica."""
+        """Paso 2 (procesamiento): extrae hasta max_events eventos de Q_i y ejecuta cada sesión de forma atómica."""
         agent = self._find(agent_id)
         if agent is None:
             return 0
@@ -119,26 +132,27 @@ class Agents:
         signal = event.get("signal")
         automaton_def = self.automata.by_name.get(signal)
         if not automaton_def:
-            return
+            print(f"[FATAL] Agent {agent['agent_id']} received signal '{signal}', which is not a declared automaton.")
+            os._exit(1)
 
         if signal not in agent.get("automata", []):
             print(f"[FATAL] Agent {agent['agent_id']} rejected signal '{signal}' because it does not have that automaton assigned.")
             os._exit(1)
 
         session = self.automata.create_session(signal, event)
-        if not session:
-            return
+        agent_id = agent["agent_id"]
 
         # El estado de la sesión activa forma parte del estado global que capturan las instantáneas.
         agent["current_automaton"] = session.automaton_name
         agent["current_state"] = session.current_state
         agent["session_ctx"] = session.ctx
+        self._active_agent_id = agent_id
 
-        tracer.emit("agents", "session_start", agent=agent["agent_id"], automaton=session.automaton_name,
+        tracer.emit("agents", "session_start", agent=agent_id, automaton=session.automaton_name,
                     state=session.current_state, category=event.get("event_category"))
 
         # El agente también alcanza el estado inicial de la sesión, que puede ser un estado disparador.
-        self.snapshot_manager.capture(agent["agent_id"], session.automaton_name, session.current_state)
+        self.snapshot_manager.capture(agent_id, session.automaton_name, session.current_state, event)
 
         steps = 0
         for _ in range(MAX_SESSION_STEPS):
@@ -147,18 +161,24 @@ class Agents:
                 break
             steps += 1
             agent["current_state"] = new_state
-            self.snapshot_manager.capture(agent["agent_id"], session.automaton_name, new_state)
+            self.snapshot_manager.capture(agent_id, session.automaton_name, new_state, event)
         else:
-            print(f"[FATAL] Agent {agent['agent_id']}: automaton '{signal}' did not reach a final state "
+            print(f"[FATAL] Agent {agent_id}: automaton '{signal}' did not reach a final state "
                   f"after {MAX_SESSION_STEPS} steps.")
             os._exit(1)
 
-        tracer.emit("agents", "session_end", agent=agent["agent_id"], automaton=session.automaton_name,
+        tracer.emit("agents", "session_end", agent=agent_id, automaton=session.automaton_name,
                     final=session.current_state, steps=steps)
 
         agent.pop("current_automaton", None)
         agent.pop("current_state", None)
         agent.pop("session_ctx", None)
+        self._active_agent_id = None
+
+        # Una eliminación pedida durante la sesión del propio agente se aplica al terminar la sesión.
+        if agent_id in self._pending_removal:
+            self._pending_removal.discard(agent_id)
+            self._purge(agent_id)
 
 
     # DES / PATL METHODS
@@ -171,24 +191,16 @@ class Agents:
     def add_agent(self, agent_type):
         """
         Crea un nuevo agente del tipo dado usando la definición en config_data.
+        El sufijo es el siguiente del contador monótono del tipo, de modo que un identificador
+        de un agente eliminado nunca se vuelve a emitir.
         Retorna el agent_id si se creó, None si no existe el tipo en config_data.
         """
         agent_entry = next((a for a in self.config_data if a["agent_type"] == agent_type), None)
         if agent_entry is None:
             return None
 
-        # Next agent_id
-        max_n = 0
-        for a in self.data:
-            if a["agent_type"] == agent_type:
-                suffix = a["agent_id"].split("_")[-1]
-                try:
-                    n = int(suffix)
-                    if n > max_n:
-                        max_n = n
-                except ValueError:
-                    pass
-        n = max_n + 1
+        n = self._id_counter.get(agent_type, 0) + 1
+        self._id_counter[agent_type] = n
 
         agent_resolved = self._build_agent(agent_entry, n)
         self.data.append(agent_resolved)
@@ -204,17 +216,31 @@ class Agents:
 
     def remove_agent(self, agent_id):
         """
-        Elimina el agente con agent_id; sus eventos pendientes se descartan.
-        Retorna True si se eliminó, False si no existe.
+        Elimina el agente con agent_id: sus eventos pendientes se descartan y se retira de todo entorno
+        (membresía y rol, relaciones donde aparece y participantes de canales). Si la sesión en curso es
+        la del propio agente, la eliminación se difiere al fin de esa sesión y las instantáneas tomadas
+        durante ella todavía lo contienen.
+        Retorna True si se eliminó (o quedó programada su eliminación), False si no existe o ya estaba programada.
         """
-        for i, a in enumerate(self.data):
-            if a["agent_id"] == agent_id:
-                agent_type = a["agent_type"]
-                del self.data[i]
-                if self.metrics_collector:
-                    self.metrics_collector.record_agent_action(agent_type, "remove_agent")
-                return True
-        return False
+        agent = self._find(agent_id)
+        if agent is None or agent_id in self._pending_removal:
+            return False
+        if self.metrics_collector:
+            self.metrics_collector.record_agent_action(agent["agent_type"], "remove_agent")
+        if agent_id == self._active_agent_id:
+            self._pending_removal.add(agent_id)
+            tracer.emit("agents", "remove_deferred", agent=agent_id)
+            return True
+        self._purge(agent_id)
+        return True
+
+
+    def _purge(self, agent_id):
+        self.data = [a for a in self.data if a.get("agent_id") != agent_id]
+        environments = getattr(self.automata, "environments", None) if self.automata else None
+        if environments is not None and hasattr(environments, "purge_agent"):
+            environments.purge_agent(agent_id)
+        tracer.emit("agents", "removed", agent=agent_id)
 
 
     def read_agent_param(self, agent_id, param_name):

@@ -24,6 +24,8 @@ class Environments:
         self.metrics_collector = metrics_collector
         # Receptor de eventos de canal: el motor DES los programa en T + latencia del canal.
         self.event_sink = None
+        # Reloj simulado (callable sin argumentos); el motor DES lo fija para fechar los eventos de canal.
+        self.clock = None
 
         for env_entry in config_data:
             for n in range(1, env_entry["quantity"] + 1):
@@ -76,9 +78,11 @@ class Environments:
                 resolved_ch_meta[mname] = resolve_value(vdef=mdef, distributions=self.distributions)
             resolved_events = []
             for ev in ch.get("events", []):
+                # Historia previa al inicio de la corrida: sin tiempo simulado de escritura.
                 resolved_events.append({
                     "agent_id": ev["agent_id"],
-                    "signal": ev["signal"]
+                    "signal": ev["signal"],
+                    "timestamp": None
                 })
             resolved_channels.append({
                 "channel_id": ch["channel_id"],
@@ -220,34 +224,44 @@ class Environments:
         return True
 
 
+    @staticmethod
+    def _find_rel(env, agent_a_id, agent_b_id):
+        """Relación dirigida: el par ordenado (agent_a_id, agent_b_id)."""
+        return next((r for r in env.get("relations", [])
+                     if list(r.get("members", [])) == [agent_a_id, agent_b_id]), None)
+
+
+    def purge_agent(self, agent_id):
+        """Retira un agente eliminado de todo entorno: membresía y rol, relaciones donde aparece y canales."""
+        for env in self.data:
+            env["members"] = [m for m in env.get("members", []) if m.get("agent_id") != agent_id]
+            env["relations"] = [r for r in env.get("relations", []) if agent_id not in r.get("members", [])]
+            for ch in env.get("channels", []):
+                ch["members"] = [m for m in ch.get("members", []) if m != agent_id]
+
+
     def read_rel(self, env_id, agent_a_id, agent_b_id):
         """
-        Verifica si existe una relación entre agent_a_id y agent_b_id.
+        Verifica si existe la relación dirigida de agent_a_id hacia agent_b_id.
         Retorna True si existe, False si no existe o el entorno no existe.
         """
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
         self.metrics_collector.record_environment_action(env["environment_type"], "read_rel")
-        target_members = {agent_a_id, agent_b_id}
-        for r in env.get("relations", []):
-            if set(r.get("members", [])) == target_members:
-                return True
-        return False
+        return self._find_rel(env, agent_a_id, agent_b_id) is not None
 
 
     def add_rel(self, env_id, agent_a_id, agent_b_id):
         """
-        Crea una nueva relación con metadata vacía.
-        Retorna True si se creó, False si el entorno no existe o ya existe la relación.
+        Crea la relación dirigida (agent_a_id, agent_b_id) con metadata vacía.
+        Retorna True si se creó, False si el entorno no existe o ya existe esa relación dirigida.
         """
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
-        target_members = {agent_a_id, agent_b_id}
-        for r in env.get("relations", []):
-            if set(r.get("members", [])) == target_members:
-                return False
+        if self._find_rel(env, agent_a_id, agent_b_id) is not None:
+            return False
         env.setdefault("relations", []).append({
             "members": [agent_a_id, agent_b_id],
             "metadata": {}
@@ -258,34 +272,29 @@ class Environments:
 
     def remove_rel(self, env_id, agent_a_id, agent_b_id):
         """
-        Elimina una relación entre agent_a_id y agent_b_id.
+        Elimina la relación dirigida (agent_a_id, agent_b_id).
         Retorna True si se eliminó, False si el entorno o la relación no existen.
         """
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
-        target_members = {agent_a_id, agent_b_id}
-        for i, r in enumerate(env.get("relations", [])):
-            if set(r.get("members", [])) == target_members:
-                del env["relations"][i]
-                self.metrics_collector.record_environment_action(env["environment_type"], "remove_rel")
-                return True
-        return False
+        rel = self._find_rel(env, agent_a_id, agent_b_id)
+        if rel is None:
+            return False
+        env["relations"] = [r for r in env["relations"] if r is not rel]
+        self.metrics_collector.record_environment_action(env["environment_type"], "remove_rel")
+        return True
 
 
     def read_rel_param(self, env_id, agent_a_id, agent_b_id, param_name):
         """
-        Lee un parámetro de metadata de una relación.
+        Lee un parámetro de metadata de la relación dirigida (agent_a_id, agent_b_id).
         Retorna el valor si existe, None si no existe el entorno, relación o parámetro.
         """
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return None
-        target_members = {agent_a_id, agent_b_id}
-        rel = next(
-            (r for r in env.get("relations", []) if set(r.get("members", [])) == target_members),
-            None
-        )
+        rel = self._find_rel(env, agent_a_id, agent_b_id)
         if rel is None:
             return None
         self.metrics_collector.record_environment_action(env["environment_type"], "read_rel_param")
@@ -294,17 +303,13 @@ class Environments:
 
     def write_rel_param(self, env_id, agent_a_id, agent_b_id, param_name, value):
         """
-        Escribe un parámetro de metadata en una relación existente.
+        Escribe un parámetro de metadata en la relación dirigida (agent_a_id, agent_b_id).
         Retorna True si se escribió, False si no existe el entorno o la relación.
         """
         env = next((e for e in self.data if e["env_id"] == env_id), None)
         if env is None:
             return False
-        target_members = {agent_a_id, agent_b_id}
-        rel = next(
-            (r for r in env.get("relations", []) if set(r.get("members", [])) == target_members),
-            None
-        )
+        rel = self._find_rel(env, agent_a_id, agent_b_id)
         if rel is None:
             return False
         if "metadata" not in rel:
@@ -380,7 +385,7 @@ class Environments:
         if ch is None:
             return None
         self.metrics_collector.record_environment_action(env["environment_type"], "read_ch_members")
-        return ch.get("members", [])
+        return list(ch.get("members", []))
 
 
     def write_ch_member(self, env_id, ch_id, agent_id):
@@ -447,7 +452,7 @@ class Environments:
             return None
         self.metrics_collector.record_environment_action(env["environment_type"], "read_ch_events")
         events = ch.get("events", [])
-        return list(reversed(events))
+        return [dict(ev) for ev in reversed(events)]
 
 
     def write_ch_event(self, env_id, ch_id, agent_id, signal):
@@ -464,9 +469,12 @@ class Environments:
         if agent_id not in ch.get("members", []):
             return False
 
+        clock = getattr(self, "clock", None)
         ch.setdefault("events", []).append({
             "agent_id": agent_id,
-            "signal": signal
+            "signal": signal,
+            # Tiempo simulado T en que se escribe; None fuera del motor DES.
+            "timestamp": clock() if callable(clock) else None
         })
         self.metrics_collector.record_environment_action(env["environment_type"], "write_ch_event")
 

@@ -128,7 +128,8 @@ class Distributions:
                         if out_t == "int":
                             val = int(val)
                         elif out_t == "float":
-                            val = round(float(val), 4)
+                            # Sin redondeo: el valor muestreado es el de la distribución declarada.
+                            val = float(val)
                         else:
                             val = str(val)
 

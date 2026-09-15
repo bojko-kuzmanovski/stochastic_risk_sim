@@ -3,6 +3,13 @@ import re
 import math
 
 
+_VAR_TOKEN = re.compile(r'\$[a-zA-Z_][a-zA-Z0-9_]*')
+
+
+class EvaluationError(ValueError):
+    """Error explícito de evaluación: variable sin resolver, operando no numérico o división entre cero."""
+
+
 def resolve_value(vdef: Dict[str, Any], distributions: Any) -> Any:
     """Resolve a param_definition (deterministic or probabilistic)."""
     t = vdef.get("type")
@@ -13,8 +20,25 @@ def resolve_value(vdef: Dict[str, Any], distributions: Any) -> Any:
     return None
 
 
+def unresolved_variables(value: Any, ctx: Dict[str, Any]) -> list:
+    """
+    Referencias "$x" de una cadena que resolve_ephemeral no puede resolver contra ctx.
+    Una referencia completa "$x" se resuelve con "$x" o con "x"; dentro de un texto solo con "$x".
+    """
+    if not isinstance(value, str) or "$" not in value:
+        return []
+    if value.startswith("$") and " " not in value and (value in ctx or value[1:] in ctx):
+        return []
+    return [tok for tok in _VAR_TOKEN.findall(value) if tok not in ctx]
+
+
 def call_method(target: str, method: str, args: list, agents_obj: Any, environments_obj: Any, event_obj: Any = None, resolve_fn: Callable = None) -> Any:
-    """Call a method on agents, environments, events, or system."""
+    """
+    Llama un método sobre agents, environments, events o system.
+
+    Un None devuelto por el método es el valor vacío y se devuelve tal cual. Una excepción dentro del
+    método, un target desconocido o un método inexistente no se convierten en None: se propagan.
+    """
     if target == "agents":
         target_obj = agents_obj
     elif target == "environments":
@@ -29,20 +53,19 @@ def call_method(target: str, method: str, args: list, agents_obj: Any, environme
             }
             if method in mapping:
                 return event_obj.get(mapping[method])
-        target_obj = event_obj
+        raise EvaluationError(f"unknown events method '{method}'")
     elif target == "system":
         return _call_system(method, args, resolve_fn)
     else:
-        return None
+        raise EvaluationError(f"unknown target '{target}'")
 
     if target_obj is None:
-        return None
+        raise EvaluationError(f"target '{target}' is not bound")
 
-    try:
-        fn = getattr(target_obj, method)
-        return fn(*args)
-    except Exception:
-        return None
+    fn = getattr(target_obj, method, None)
+    if fn is None or not callable(fn):
+        raise EvaluationError(f"target '{target}' has no method '{method}'")
+    return fn(*args)
 
 
 def _call_system(method: str, args: list, resolve_fn: Callable = None) -> Any:
@@ -50,20 +73,27 @@ def _call_system(method: str, args: list, resolve_fn: Callable = None) -> Any:
     if method == "math_pipeline":
         pipeline_def = args[0] if args else {}
         return _execute_math_pipeline(pipeline_def, resolve_fn)
-    return None
+    raise EvaluationError(f"unknown system method '{method}'")
+
+
+def _force_numeric(val, role):
+    """Convierte un operando a número; rechaza None, cadenas no numéricas y referencias sin resolver."""
+    if isinstance(val, bool):
+        return int(val)
+    if isinstance(val, (int, float)):
+        return val
+    if isinstance(val, str):
+        if "$" in val:
+            raise EvaluationError(f"math_pipeline {role} references an unresolved variable: '{val}'")
+        try:
+            return float(val) if ("." in val or "e" in val.lower()) else int(val)
+        except ValueError:
+            raise EvaluationError(f"math_pipeline {role} is not numeric: '{val}'") from None
+    raise EvaluationError(f"math_pipeline {role} is not numeric: {val!r}")
 
 
 def _execute_math_pipeline(pipeline_def: dict, resolve_fn: Callable = None) -> Any:
     """Execute a math_pipeline definition, resolving inner variables dynamically."""
-    
-    def _force_numeric(val):
-        if isinstance(val, str):
-            try:
-                return float(val) if "." in val else int(val)
-            except ValueError:
-                return 0
-        return val if val is not None else 0
-
     if not pipeline_def:
         return 0
 
@@ -74,19 +104,22 @@ def _execute_math_pipeline(pipeline_def: dict, resolve_fn: Callable = None) -> A
     if isinstance(initial, dict) and "type" in initial:
         initial = resolve_value(initial, None)
 
-    value = _force_numeric(initial)
-    
+    value = _force_numeric(initial, "initial_value")
+
     # 2. Iterar y resolver dinámicamente cada operación
-    for op_def in pipeline_def.get("operations", []):
+    for i, op_def in enumerate(pipeline_def.get("operations", [])):
         op = op_def["operator"]
+        if op in ("ceil", "floor"):
+            value = math.ceil(value) if op == "ceil" else math.floor(value)
+            continue
+
         operand = op_def.get("with", 0)
-        
         if resolve_fn:
             operand = resolve_fn(operand)
         if isinstance(operand, dict) and "type" in operand:
             operand = resolve_value(operand, None)
 
-        operand = _force_numeric(operand)
+        operand = _force_numeric(operand, f"operand {i} ('{op}')")
 
         if op == "+":
             value = value + operand
@@ -95,15 +128,15 @@ def _execute_math_pipeline(pipeline_def: dict, resolve_fn: Callable = None) -> A
         elif op == "*":
             value = value * operand
         elif op == "/":
-            value = value / operand if operand != 0 else 0
-        elif op == "ceil":
-            value = math.ceil(value)
-        elif op == "floor":
-            value = math.floor(value)
+            if operand == 0:
+                raise EvaluationError(f"math_pipeline division by zero at operation {i}")
+            value = value / operand
         elif op == "max":
             value = max(value, operand)
         elif op == "min":
             value = min(value, operand)
+        else:
+            raise EvaluationError(f"math_pipeline unknown operator '{op}'")
 
     return value
 
@@ -125,9 +158,9 @@ def resolve_ephemeral(value: Any, ctx: Dict[str, Any]) -> Any:
             if var_name not in ctx:
                 return var_name
             return str(ctx[var_name])
-        
-        res = re.sub(r'\$[a-zA-Z_][a-zA-Z0-9_]*', replacer, value)
-        
+
+        res = _VAR_TOKEN.sub(replacer, value)
+
         try:
             return float(res) if "." in res else int(res)
         except ValueError:
