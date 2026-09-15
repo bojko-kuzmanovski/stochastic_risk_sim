@@ -1,45 +1,60 @@
 """
 Verificador de predicados PATL_b sobre instantáneas del motor DES.
 
-Semántica implementada (sección de Verificación con PATL de la tesis):
+Semántica (sección de Verificación con PATL de la tesis):
 
     G, pi |= <<C>>_k^{op d} psi   sii   existe sigma_C en prod_{a en C} Str_{a,k}
                                         tal que para toda sigma_A:  P(psi | sigma_C, sigma_A) op d
 
-* psi es alcanzabilidad acotada  <>^{<=delta} Target_C  o invarianza acotada  []^{<=delta} not Target_C.
-* Target_C contiene únicamente pares (autómata, estado final) de la coalición.
-* Las estrategias de la coalición son deterministas, basadas en observación y con memoria k:
-  sigma_a = (Q_a, act_a, Delta_a, start_a) con |Q_a| = k. Las proposiciones atómicas son las de
-  pertenencia a Target_C y todo estado que satisface Target_C cierra el valor de psi, así que la
-  observación en los estados donde se decide es siempre el conjunto vacío. Una estrategia queda
-  determinada entonces por la secuencia de acciones que su autómata de memoria produce en delta
-  rondas; se enumeran las secuencias distintas generadas por las tablas (act_a, Delta_a) con k modos.
-* Los adversarios no tienen restricción de memoria ni de información: fijada sigma_C, su mejor
-  respuesta en horizonte acotado se obtiene por inducción hacia atrás sobre (estado, ronda).
-* La dirección del operador depende de op: para >= y > la coalición maximiza y los adversarios
-  minimizan; para <= y < la coalición minimiza y los adversarios maximizan. La invarianza se evalúa
-  sobre su propia fórmula de camino (valor 0 al tocar Target_C).
-* coalition_quantifier = "forall" (extensión fuera de la gramática de la tesis) cuantifica también
-  universalmente sobre sigma_C.
+Fórmulas de camino acotadas (delta rondas), sobre fórmulas de estado sin coaliciones (verdadero,
+pertenencia a Target_C, proposiciones atómicas (autómata, estados finales), negación, conjunción y
+disyunción):
+
+* until       phi1 U^{<=delta} phi2
+* release     phi1 R^{<=delta} phi2
+* next        X phi (una ronda)
+* reachability = true U^{<=delta} Target_C      (abreviatura <>^{<=delta} Target_C)
+* invariance   = false R^{<=delta} not Target_C (abreviatura []^{<=delta} not Target_C)
+
+Estrategias de la coalición, basadas en observación y con memoria a lo sumo k:
+
+* Una estrategia es sigma_a = (Q_a, act_a, Delta_a, start_a) con |Q_a| = k, act_a y Delta_a definidas sobre
+  (modo, observación), donde la observación es el conjunto de proposiciones atómicas de la fórmula que se
+  cumplen. Solo importan las observaciones compatibles con continuar la evaluación de la fórmula.
+* Deterministas: se enumeran las tablas (act_a, Delta_a) con start_a = 0 (sin pérdida de generalidad).
+* Aleatorizadas sin memoria (k = 1): act_a asigna a cada observación una distribución sobre las acciones.
+  Se optimiza cuando un solo miembro de la coalición tiene elección y la dimensión de la mezcla es a lo
+  sumo 2, por rejilla y refinamiento local (tolerancia del orden de 1e-6). Para k >= 2 se toma el mejor valor
+  entre las deterministas con k modos y las aleatorizadas sin memoria, que también tienen memoria a lo sumo k.
+* Los adversarios no tienen restricción de memoria ni de información: fijada sigma_C, su mejor respuesta en
+  horizonte acotado se obtiene por inducción hacia atrás; eligen al inicio de cada ronda sin conocer la
+  realización de la mezcla de la coalición en esa ronda.
+* Dirección: para >= y > la coalición maximiza y los adversarios minimizan; para <= y < al revés.
+  coalition_quantifier = "forall" cuantifica universalmente sobre sigma_C (extensión declarada).
 
 Modelo de transición del juego (cadena embebida en los instantes de evento):
 
 * El estado global es la instantánea: agentes, con la sesión en curso del agente disparador, y entornos.
 * Participan la coalición y los adversarios; los demás agentes permanecen congelados.
-* Una ronda activa a cada participante una vez, en orden de agent_id. Activarlo es ejecutar una sesión
-  completa y atómica de un autómata: el participante con sesión en curso la termina; los demás eligen,
-  según su estrategia, cuál de sus autómatas asignados iniciar. delta cuenta rondas.
-* Dentro de una sesión, un umbral probabilístico abre una rama por caso con probabilidad exacta tomada de
-  la CDF (continuas), de la masa de cada valor del soporte (Poisson) o de cada etiqueta (categóricas). En
-  continuas el valor que se propaga a las acciones es la esperanza condicional dentro de la región del caso.
-  No se muestrea. Un umbral determinista o dinámico se evalúa sobre el estado y produce una sola rama.
+* Una ronda activa a cada participante una vez. Activarlo es ejecutar una sesión completa y atómica de un
+  autómata: quien tiene una sesión en curso la termina; los demás inician el autómata que su estrategia elige.
+  El orden de activación dentro de la ronda es aleatorio y uniforme sobre las permutaciones, y el valor
+  promedia sobre él (entrelazado estocástico de eventos).
+* Umbral probabilístico: una rama por caso bajo la regla del primer caso que coincide, con masa exacta (CDF,
+  soporte Poisson o etiqueta). En continuas, si el valor muestreado se usa después en el autómata, la región
+  se divide en celdas de igual masa y cada celda propaga su esperanza condicional (converge al núcleo exacto
+  al crecer el número de celdas); si no se usa, basta la masa exacta del caso. Una continua con salida entera
+  se trata como discreta sobre los enteros resultantes. Umbral determinista o dinámico: una sola rama.
 * Los eventos emitidos durante la verificación no se propagan.
 
-Complejidad por predicado: O(|Seq_{C,k}| * delta * |S_delta| * A_A * b), con b el número de desenlaces
-distintos de una ronda.
+Complejidad por predicado: O(|Str_{C,k}| * delta * |S_delta| * A_A * n! * b), con n los participantes de la
+ronda y b los desenlaces distintos de una sesión; la parte aleatorizada multiplica por el tamaño de la rejilla.
 """
 
+import itertools
+import json
 import random
+import re
 from itertools import product
 
 import numpy as np
@@ -55,10 +70,18 @@ from metrics.metrics_collector import MetricsCollector
 MAX_STRATEGIES = 10_000
 MAX_ADVERSARY_CHOICES = 1_000
 MAX_PARTICIPANTS = 50
+MAX_ORDER_PARTICIPANTS = 5
 MAX_NODES = 200_000
 MAX_BRANCHES = 50_000
 MAX_SESSION_STEPS = 500
+MAX_ATOMS = 4
+MAX_INTEGER_SUPPORT = 2_000
 PARTITION_TOLERANCE = 1e-6
+COMPARE_TOLERANCE = 1e-9
+DEFAULT_QUANTILES = 8
+GRID_1D = 201
+GRID_2D = 41
+REFINEMENTS = 3
 
 _DISABLED = MetricsCollector(enabled=False)
 _WRITE_PREFIXES = ("write_", "add_", "remove_")
@@ -66,6 +89,39 @@ _WRITE_PREFIXES = ("write_", "add_", "remove_")
 
 class VerificationError(Exception):
     pass
+
+
+# ----------------------------------------------------------------------
+# Fórmulas de estado
+# ----------------------------------------------------------------------
+TRUE = {"true": True}
+TARGET = {"target": True}
+
+
+def _atoms(formula, acc):
+    if "target" in formula or "prop" in formula:
+        acc.append(json.dumps(formula, sort_keys=True))
+    elif "not" in formula:
+        _atoms(formula["not"], acc)
+    elif "and" in formula or "or" in formula:
+        for f in formula.get("and", formula.get("or", [])):
+            _atoms(f, acc)
+    return acc
+
+
+def _evaluate(formula, truth):
+    """truth: función átomo_serializado -> bool."""
+    if "true" in formula:
+        return True
+    if "target" in formula or "prop" in formula:
+        return truth(json.dumps(formula, sort_keys=True))
+    if "not" in formula:
+        return not _evaluate(formula["not"], truth)
+    if "and" in formula:
+        return all(_evaluate(f, truth) for f in formula["and"])
+    if "or" in formula:
+        return any(_evaluate(f, truth) for f in formula["or"])
+    raise VerificationError(f"fórmula de estado no reconocida: {formula}")
 
 
 # ----------------------------------------------------------------------
@@ -80,7 +136,7 @@ class _Node:
         self.amods = amods        # agent_id -> dict del agente (copia) o None si fue eliminado
         self.emods = emods        # env_id -> dict del entorno (copia)
         self.last = last          # agent_id -> (autómata, estado final) de su última sesión
-        self.pending = pending    # agent_id -> (autómata, estado, ctx) de una sesión en curso
+        self.pending = pending    # agent_id -> (autómata, estado, ctx, evento) de una sesión en curso
         self._owned_a = set()
         self._owned_e = set()
         self._key = None
@@ -98,11 +154,26 @@ class _Node:
         if self._key is None:
             self._key = (
                 tuple(sorted(self.last.items())),
-                tuple(sorted((pid, a, s, repr(sorted(ctx.items()))) for pid, (a, s, ctx) in self.pending.items())),
+                tuple(sorted((pid, a, s, repr(sorted(ctx.items())))
+                             for pid, (a, s, ctx, _) in self.pending.items())),
                 repr(sorted(self.amods.items())),
                 repr(sorted(self.emods.items())),
             )
         return self._key
+
+
+class _VerifierDistributions:
+    """Vista de las distribuciones para el verificador: nunca muestrea ni consume el generador del motor."""
+
+    def __init__(self, distributions):
+        self._d = distributions
+        self.rng = random.Random(0)
+
+    def sample(self, name):
+        raise SessionError(f"el verificador no muestrea la distribución {name}")
+
+    def __getattr__(self, name):
+        return getattr(self._d, name)
 
 
 class _AgentsProxy:
@@ -113,7 +184,7 @@ class _AgentsProxy:
         self._node = node
         self._tmp = Agents.__new__(Agents)
         self._tmp.metrics_collector = _DISABLED
-        self._tmp.distributions = verifier.distributions
+        self._tmp.distributions = verifier.safe_distributions
         self._tmp.config_data = verifier.agents_config
 
     def _get(self, agent_id):
@@ -147,8 +218,9 @@ class _AgentsProxy:
         entry = next((a for a in self._v.agents_config if a["agent_type"] == agent_type), None)
         if entry is None:
             return None
-        numbers = [int(a["agent_id"].rsplit("_", 1)[-1]) for a in self._current()
-                   if a.get("agent_type") == agent_type and a["agent_id"].rsplit("_", 1)[-1].isdigit()]
+        known = list(self._v.base_agents) + list(self._node.amods)
+        numbers = [int(i.rsplit("_", 1)[-1]) for i in known
+                   if i.rsplit("_", 1)[0] == agent_type and i.rsplit("_", 1)[-1].isdigit()]
         agent_id = f"{agent_type}_{max(numbers, default=0) + 1}"
         params = {k: self._v.expected_value(vdef) for k, vdef in entry.get("params", {}).items()}
         agent = {"agent_id": agent_id, "agent_type": agent_type,
@@ -182,8 +254,9 @@ class _EnvsProxy:
         self._node = node
         self._tmp = Environments.__new__(Environments)
         self._tmp.metrics_collector = _DISABLED
-        self._tmp.distributions = verifier.distributions
+        self._tmp.distributions = verifier.safe_distributions
         self._tmp.config_data = verifier.envs_config
+        self._tmp.event_sink = None
 
     def _get(self, env_id):
         if env_id in self._node.emods:
@@ -218,25 +291,83 @@ class _EnvsProxy:
         def call(*args):
             env = self._own(args[0]) if name.startswith(_WRITE_PREFIXES) else self._get(args[0])
             self._tmp.data = [env] if env is not None else []
+            self._tmp.distributions._d = self._v.distributions
+            self._tmp.distributions.rng = random.Random(0)
             return fn(self._tmp, *args)
 
         return call
 
 
 # ----------------------------------------------------------------------
+# Estrategias
+# ----------------------------------------------------------------------
+class _Constant:
+    """Miembro con una sola acción habilitada."""
+
+    kind = "deterministic"
+
+    def __init__(self, action):
+        self.action = action
+
+    def decide(self, mode, obs):
+        return self.action, mode
+
+    def describe(self):
+        return self.action
+
+
+class _Table:
+    """Estrategia determinista con memoria: act y Delta sobre (modo, observación)."""
+
+    kind = "deterministic"
+
+    def __init__(self, act, delta):
+        self.act = act
+        self.delta = delta
+
+    def decide(self, mode, obs):
+        return self.act[(mode, obs)], self.delta[(mode, obs)]
+
+    def describe(self):
+        return {f"q{m}|{sorted(o)}": a for (m, o), a in sorted(self.act.items(), key=str)}
+
+
+class _Mixed:
+    """Estrategia aleatorizada sin memoria: una distribución de acciones por observación, evaluada en rejilla."""
+
+    kind = "mixed"
+
+    def __init__(self, opts, observations, weights):
+        self.opts = opts
+        self.observations = observations
+        self.weights = weights          # obs -> {acción: arreglo de pesos sobre la rejilla}
+
+    def decide(self, mode, obs):
+        return self.weights[obs], mode
+
+    def describe(self):
+        return "mezcla"
+
+
+# ----------------------------------------------------------------------
 # Verificador
 # ----------------------------------------------------------------------
 class PATLVerifier:
-    def __init__(self, automata, distributions, configs=None, default_memory=1):
+    def __init__(self, automata, distributions, configs=None, default_memory=1,
+                 quantiles=DEFAULT_QUANTILES, mixed_strategies=True):
         self.automata = automata
         self.distributions = distributions
+        self.safe_distributions = _VerifierDistributions(distributions)
         self.configs = configs or {}
         self.agents_config = self.configs.get("agents", [])
         self.envs_config = self.configs.get("environments", [])
         memories = default_memory if isinstance(default_memory, (list, tuple)) else [default_memory]
         self.default_memories = list(memories)
+        self.quantiles = int(quantiles)
+        self.mixed_strategies = bool(mixed_strategies)
         self.base_agents = {}
         self.base_envs = {}
+        self._propagates_cache = {}
 
     def verify(self, snapshot, predicates):
         """Una fila por predicado y por cota de memoria k."""
@@ -255,16 +386,18 @@ class PATLVerifier:
         for k in memories:
             base = {"predicate_id": pred["predicate_id"], "bound": bound, "operator": operator, "memory_k": k}
             try:
-                value = self._value(snapshot, pred, k, cache)
-            except (VerificationError, SessionError) as e:
-                tracer.emit("patl", "predicate_error", predicate=pred["predicate_id"], memory_k=k, reason=str(e))
-                rows.append({**base, "result": "ERROR", "value": "", "reason": str(e)})
+                value, strategy = self._value(snapshot, pred, k, cache)
+            except (VerificationError, SessionError, ValueError, KeyError, ZeroDivisionError) as e:
+                reason = f"{type(e).__name__}: {e}" if not isinstance(e, (VerificationError, SessionError)) else str(e)
+                tracer.emit("patl", "predicate_error", predicate=pred["predicate_id"], memory_k=k, reason=reason)
+                rows.append({**base, "result": "ERROR", "value": "", "strategy": "", "reason": reason})
                 continue
             satisfied = self._compare(value, bound, operator)
             tracer.emit("patl", "predicate_result", predicate=pred["predicate_id"], memory_k=k, value=value,
-                        operator=operator, bound=bound, result="SATISFIED" if satisfied else "VIOLATED")
+                        operator=operator, bound=bound, strategy=strategy,
+                        result="SATISFIED" if satisfied else "VIOLATED")
             rows.append({**base, "result": "SATISFIED" if satisfied else "VIOLATED",
-                         "value": round(value, 12), "reason": ""})
+                         "value": value, "strategy": strategy, "reason": ""})
         return rows
 
     def _value(self, snapshot, pred, memory, cache):
@@ -276,8 +409,6 @@ class PATLVerifier:
         coalition = self._resolve_group(pred["coalition"], trigger_id, with_targets=True)
         if not coalition:
             raise VerificationError("coalición vacía")
-        if not any(m["targets"] for m in coalition):
-            raise VerificationError("la coalición no declara ningún estado objetivo")
         coalition_ids = {m["id"] for m in coalition}
         if pred.get("adversaries"):
             adversaries = self._resolve_group(pred["adversaries"], trigger_id, with_targets=False)
@@ -291,58 +422,82 @@ class PATLVerifier:
         participants = {m["id"]: m for m in coalition + adversaries}
         if len(participants) > MAX_PARTICIPANTS:
             raise VerificationError(f"{len(participants)} participantes exceden el límite {MAX_PARTICIPANTS}")
-        self._order = sorted(participants)
         self._participants = participants
+        self._coalition = coalition
+        self._adversaries = adversaries
+        self._targets = {m["id"]: m["targets"] for m in coalition}
 
-        # La sesión en curso del agente disparador es parte del estado global de la instantánea: si el agente
-        # participa, la termina en la ronda 1 aunque ese autómata no esté entre sus opciones de elección.
+        # Fórmula de camino.
+        ptype = pred["type"]
+        if ptype == "reachability":
+            left, right = TRUE, TARGET
+        elif ptype == "invariance":
+            left, right = {"not": TRUE}, {"not": TARGET}
+        elif ptype in ("until", "release"):
+            left, right = pred["left"], pred["right"]
+        elif ptype == "next":
+            left, right = TRUE, pred["right"]
+        else:
+            raise VerificationError(f"tipo de predicado no reconocido: {ptype}")
+        self._ptype = "until" if ptype == "reachability" else "release" if ptype == "invariance" else ptype
+        self._left, self._right = left, right
+        atoms = sorted(set(_atoms(left, []) + _atoms(right, [])))
+        if len(atoms) > MAX_ATOMS:
+            raise VerificationError(f"la fórmula usa {len(atoms)} proposiciones; el límite es {MAX_ATOMS}")
+        if any("target" in json.loads(a) for a in atoms) and not any(m["targets"] for m in coalition):
+            raise VerificationError("la coalición no declara ningún estado objetivo")
+        self._atoms = atoms
+        self._observations = self._decision_observations(atoms)
+        self._depth = 1 if ptype == "next" else pred.get("max_depth", 20)
+
+        # La sesión en curso del agente disparador es parte del estado global de la instantánea.
         pending = {}
         ag = self.base_agents.get(trigger_id)
         if ag and trigger_id in participants:
             active = ag.get("current_automaton")
             if active in self.automata.by_name and ag.get("current_state") is not None:
-                pending[trigger_id] = (active, ag["current_state"], dict(ag.get("session_ctx") or {}))
+                event = snapshot.get("trigger_event") or {"signal": active, "agent_id": trigger_id}
+                pending[trigger_id] = (active, ag["current_state"], dict(ag.get("session_ctx") or {}), event)
         root = _Node({}, {}, {}, pending)
 
-        depth = pred.get("max_depth", 20)
-        sequences = self._coalition_sequences(coalition, memory, depth, pending)
-        cache_key = tuple(sequences)
+        maximize = pred.get("probability_operator", ">=") in (">=", ">")
+        self._adversary_ext = np.minimum if maximize else np.maximum
+        forall = pred.get("coalition_quantifier", "exists") == "forall"
+        pick = (lambda a, b: min(a, b)) if (forall == maximize) else (lambda a, b: max(a, b))
+
+        cache_key = (memory, json.dumps(pred, sort_keys=True))
         if cache_key in cache:
             return cache[cache_key]
 
-        self._pred_type = pred["type"]
-        self._depth = depth
-        self._coalition = coalition
-        self._adversaries = adversaries
-        self._targets = {m["id"]: m["targets"] for m in coalition}
-        maximize = pred.get("probability_operator", ">=") in (">=", ">")
-        self._adversary_ext = min if maximize else max
-        forall = pred.get("coalition_quantifier", "exists") == "forall"
-        coalition_ext = self._adversary_ext if forall else (max if maximize else min)
-        self._nodes = 0
-
+        strategies = self._deterministic_strategies(coalition, memory)
         if tracer.on("patl"):
             tracer.emit("patl", "predicate_start", predicate=pred["predicate_id"], memory_k=memory,
                         snapshot_agent=trigger_id, snapshot_automaton=snapshot.get("automaton_name"),
-                        snapshot_state=snapshot.get("state"), type=pred["type"], depth=depth,
+                        snapshot_state=snapshot.get("state"), type=ptype, depth=self._depth,
                         operator=pred.get("probability_operator", ">="), bound=pred["probability_bound"],
                         quantifier=pred.get("coalition_quantifier", "exists"),
                         coalition=[(m["id"], m["opts"], sorted(m["targets"])) for m in coalition],
                         adversaries=[(m["id"], m["opts"]) for m in adversaries],
-                        pending={pid: (a, s) for pid, (a, s, _) in pending.items()},
-                        coalition_ext=coalition_ext.__name__, adversary_ext=self._adversary_ext.__name__,
-                        sequences=[list(s) for s in sequences])
+                        pending={pid: (a, s) for pid, (a, s, _, _) in pending.items()},
+                        observations=[sorted(o) for o in self._observations],
+                        deterministic_strategies=len(strategies))
 
-        best = None
-        for seq in sequences:
-            self._seq = seq
+        best, best_kind = None, "deterministic"
+        for sigma in strategies:
+            self._grid = None
+            self._nodes = 0
             self._memo = {}
-            v = self._V(root, 0)
-            tracer.emit("patl", "sequence_value", predicate=pred["predicate_id"], memory_k=memory,
-                        sequence=list(seq), value=v, nodes=self._nodes)
-            best = v if best is None else coalition_ext(best, v)
-        cache[cache_key] = best
-        return best
+            v = float(self._V(root, self._initial_modes(sigma), 0, sigma))
+            tracer.emit("patl", "strategy_value", predicate=pred["predicate_id"], memory_k=memory,
+                        strategy={pid: s.describe() for pid, s in sigma.items()}, value=v, nodes=self._nodes)
+            if best is None or pick(best, v) != best:
+                best = v
+
+        mixed = self._mixed_value(root, coalition, maximize, forall, pred)
+        if mixed is not None and pick(best, mixed) != best and abs(mixed - best) > 1e-12:
+            best, best_kind = mixed, "mixed"
+        cache[cache_key] = (best, best_kind)
+        return best, best_kind
 
     # --------------------------------------------------------------
     def _resolve_group(self, spec, trigger_id, with_targets):
@@ -385,117 +540,260 @@ class PATLVerifier:
                 group.append(member)
         return group
 
-    def _coalition_sequences(self, coalition, memory, depth, pending):
-        """
-        Secuencias de acciones de las estrategias deterministas con k modos (act: Q -> Act, Delta: Q -> Q,
-        start = 0). En la ronda donde el agente termina una sesión en curso no decide.
-        """
+    # --------------------------------------------------------------
+    def _truth(self, node):
+        def truth(atom):
+            f = json.loads(atom)
+            if "target" in f:
+                return any(node.last.get(pid) in tset for pid, tset in self._targets.items())
+            p = f["prop"]
+            group = p.get("group", "coalition")
+            ids = ([m["id"] for m in self._coalition] if group == "coalition" else
+                   [m["id"] for m in self._adversaries] if group == "adversaries" else list(self._participants))
+            wanted = {(p["automaton"], s) for s in p["states"]}
+            return any(node.last.get(pid) in wanted for pid in ids)
+        return truth
+
+    def _observation(self, node):
+        truth = self._truth(node)
+        return frozenset(a for a in self._atoms if truth(a))
+
+    def _status(self, node, r):
+        """Valor terminal de la fórmula de camino en el nodo, o None si la evaluación continúa."""
+        truth = self._truth(node)
+        if self._ptype == "until":
+            if _evaluate(self._right, truth):
+                return 1.0
+            if not _evaluate(self._left, truth):
+                return 0.0
+            return 0.0 if r == self._depth else None
+        if self._ptype == "release":
+            if not _evaluate(self._right, truth):
+                return 0.0
+            if _evaluate(self._left, truth):
+                return 1.0
+            return 1.0 if r == self._depth else None
+        # next
+        if r == 1:
+            return 1.0 if _evaluate(self._right, truth) else 0.0
+        return None
+
+    def _decision_observations(self, atoms):
+        """Observaciones posibles en los nodos donde la evaluación continúa y alguien decide."""
+        observations = []
+        for bits in product([False, True], repeat=len(atoms)):
+            true_atoms = {a for a, b in zip(atoms, bits) if b}
+            truth = lambda a, s=true_atoms: a in s
+            if self._ptype == "until":
+                keep = (not _evaluate(self._right, truth)) and _evaluate(self._left, truth)
+            elif self._ptype == "release":
+                keep = _evaluate(self._right, truth) and not _evaluate(self._left, truth)
+            else:
+                keep = True
+            if keep:
+                observations.append(frozenset(true_atoms))
+        return observations or [frozenset()]
+
+    def _deterministic_strategies(self, coalition, memory):
         per_agent = []
         for m in coalition:
-            decision_rounds = depth - (1 if m["id"] in pending else 0)
-            if decision_rounds <= 0:
-                per_agent.append([()])
-                continue
-            seqs = set()
             if len(m["opts"]) == 1:
-                seqs.add((m["opts"][0],) * decision_rounds)
-            else:
-                for act in product(m["opts"], repeat=memory):
-                    for delta in product(range(memory), repeat=memory):
-                        mode, seq = 0, []
-                        for _ in range(decision_rounds):
-                            seq.append(act[mode])
-                            mode = delta[mode]
-                        seqs.add(tuple(seq))
-            per_agent.append(sorted(seqs))
+                per_agent.append([_Constant(m["opts"][0])])
+                continue
+            cells = [(q, o) for q in range(memory) for o in self._observations]
+            options = []
+            for acts in product(m["opts"], repeat=len(cells)):
+                for nexts in product(range(memory), repeat=len(cells)):
+                    options.append(_Table(dict(zip(cells, acts)), dict(zip(cells, nexts))))
+                    if len(options) > MAX_STRATEGIES:
+                        raise VerificationError(f"las estrategias de {m['id']} exceden el límite {MAX_STRATEGIES}")
+            per_agent.append(options)
         total = 1
         for s in per_agent:
             total *= len(s)
         if total > MAX_STRATEGIES:
             raise VerificationError(f"{total} estrategias de coalición exceden el límite {MAX_STRATEGIES}")
-        return [tuple(zip([m["id"] for m in coalition], combo)) for combo in product(*per_agent)]
+        ids = [m["id"] for m in coalition]
+        return [dict(zip(ids, combo)) for combo in product(*per_agent)]
+
+    @staticmethod
+    def _initial_modes(sigma):
+        return tuple(sorted((pid, 0) for pid in sigma))
 
     # --------------------------------------------------------------
-    def _V(self, node, r):
-        key = (node.key(), r)
+    def _mixed_value(self, root, coalition, maximize, forall, pred):
+        """Mejor valor con estrategias aleatorizadas sin memoria, o None si no aplica."""
+        if not self.mixed_strategies:
+            return None
+        choosers = [m for m in coalition if len(m["opts"]) > 1]
+        if len(choosers) != 1:
+            return None
+        chooser = choosers[0]
+        opts, observations = chooser["opts"], self._observations
+        dims = (len(opts) - 1) * len(observations)
+        if dims > 2:
+            return None
+
+        want_max = maximize != forall
+
+        def evaluate(points):
+            # points: arreglo (G, dims) con coordenadas libres de cada simplex
+            weights, col = {}, 0
+            for o in observations:
+                w = {}
+                rest = np.ones(len(points))
+                for a in opts[:-1]:
+                    w[a] = points[:, col]
+                    rest = rest - points[:, col]
+                    col += 1
+                w[opts[-1]] = rest
+                weights[o] = w
+            sigma = {m["id"]: (_Mixed(opts, observations, weights) if m is chooser else _Constant(m["opts"][0]))
+                     for m in coalition}
+            self._grid = len(points)
+            self._nodes = 0
+            self._memo = {}
+            values = np.broadcast_to(self._V(root, self._initial_modes(sigma), 0, sigma), (len(points),))
+            return np.asarray(values, dtype=float)
+
+        def feasible(points):
+            ok = np.all(points >= -1e-12, axis=1)
+            if len(opts) == 3:
+                ok &= points.sum(axis=1) <= 1 + 1e-12
+            return points[ok]
+
+        if dims == 1:
+            points = np.linspace(0.0, 1.0, GRID_1D).reshape(-1, 1)
+        else:
+            axis = np.linspace(0.0, 1.0, GRID_2D)
+            points = feasible(np.array(list(product(axis, axis))))
+        values = evaluate(points)
+        idx = int(np.argmax(values) if want_max else np.argmin(values))
+        center, best, width = points[idx], float(values[idx]), 1.0
+        for _ in range(REFINEMENTS):
+            width /= 10.0
+            if dims == 1:
+                local = np.clip(np.linspace(center[0] - width, center[0] + width, 41), 0, 1).reshape(-1, 1)
+            else:
+                ax0 = np.linspace(center[0] - width, center[0] + width, 11)
+                ax1 = np.linspace(center[1] - width, center[1] + width, 11)
+                local = np.clip(np.array(list(product(ax0, ax1))), 0, 1)
+                local = feasible(local)
+            vals = evaluate(local)
+            j = int(np.argmax(vals) if want_max else np.argmin(vals))
+            if (vals[j] > best) if want_max else (vals[j] < best):
+                best, center = float(vals[j]), local[j]
+        self._grid = None
+        tracer.emit("patl", "mixed_strategy", predicate=pred["predicate_id"], chooser=chooser["id"],
+                    options=opts, mixture=[float(x) for x in center], value=best)
+        return best
+
+    # --------------------------------------------------------------
+    def _V(self, node, modes, r, sigma):
+        key = (node.key(), modes, r)
         if key in self._memo:
             return self._memo[key]
 
-        reach = self._pred_type == "reachability"
-        if self._in_target(node):
-            val = 1.0 if reach else 0.0
-        elif r == self._depth:
-            val = 0.0 if reach else 1.0
-        else:
-            self._nodes += 1
-            if self._nodes > MAX_NODES:
-                raise VerificationError(f"el espacio de estados excede {MAX_NODES} nodos")
+        status = self._status(node, r)
+        if status is not None:
+            self._memo[key] = status
+            return status
 
-            actions = {pid: self._coalition_action(pid, seq, r, node) for pid, seq in self._seq}
+        self._nodes += 1
+        if self._nodes > MAX_NODES:
+            raise VerificationError(f"el espacio de estados excede {MAX_NODES} nodos")
 
-            idle_adv = [m for m in self._adversaries if m["id"] not in node.pending]
-            n_choices = 1
-            for m in idle_adv:
-                n_choices *= len(m["opts"])
-                if n_choices > MAX_ADVERSARY_CHOICES:
-                    raise VerificationError(
-                        f"las elecciones conjuntas de los adversarios exceden el límite {MAX_ADVERSARY_CHOICES}")
-            choices = list(product(*[m["opts"] for m in idle_adv])) if idle_adv else [()]
+        obs = self._observation(node)
+        mode_of = dict(modes)
+        pure, mixtures, next_modes = {}, {}, dict(mode_of)
+        for pid, strat in sigma.items():
+            if pid in node.pending:
+                continue
+            if obs not in self._observations and not isinstance(strat, _Constant):
+                raise VerificationError(f"observación no prevista {sorted(obs)} en un nodo de decisión")
+            decision, nxt = strat.decide(mode_of[pid], obs)
+            next_modes[pid] = nxt
+            if isinstance(decision, dict):
+                mixtures[pid] = decision
+            else:
+                pure[pid] = decision
+        next_modes = tuple(sorted(next_modes.items()))
 
-            values = []
-            for choice in choices:
-                acts = dict(actions)
+        idle_adv = [m for m in self._adversaries if m["id"] not in node.pending]
+        n_choices = 1
+        for m in idle_adv:
+            n_choices *= len(m["opts"])
+            if n_choices > MAX_ADVERSARY_CHOICES:
+                raise VerificationError(
+                    f"las elecciones conjuntas de los adversarios exceden el límite {MAX_ADVERSARY_CHOICES}")
+        choices = list(product(*[m["opts"] for m in idle_adv])) if idle_adv else [()]
+
+        realizations = [({}, 1.0)]
+        for pid, weights in mixtures.items():
+            realizations = [({**acts, pid: a}, w * weights[a]) for acts, w in realizations for a in weights]
+
+        values = []
+        for choice in choices:
+            total = 0.0
+            for mixed_acts, weight in realizations:
+                acts = {**pure, **mixed_acts}
                 for m, c in zip(idle_adv, choice):
                     acts[m["id"]] = c
                 outcomes = self._round(node, acts)
-                values.append(sum(p * self._V(child, r + 1) for p, child in outcomes))
-                if tracer.on("patl_rounds"):
+                expected = sum(p * self._V(child, next_modes, r + 1, sigma) for p, child in outcomes)
+                total = total + weight * expected
+                if tracer.on("patl_rounds") and self._grid is None:
                     tracer.emit("patl_rounds", "round", round=r + 1, last_before=dict(node.last),
-                                actions=acts, value=values[-1],
+                                actions=acts, value=float(expected),
                                 outcomes=[{"p": p, "last": dict(child.last),
                                            "agents_modified": sorted(child.amods), "envs_modified": sorted(child.emods)}
                                           for p, child in outcomes])
-            val = self._adversary_ext(values)
-            if tracer.on("patl_rounds") and len(values) > 1:
+            values.append(total)
+        if len(values) == 1:
+            val = values[0]
+        else:
+            val = values[0]
+            for v in values[1:]:
+                val = self._adversary_ext(val, v)
+            if tracer.on("patl_rounds") and self._grid is None:
                 tracer.emit("patl_rounds", "adversary_choice", round=r + 1, choices=[list(ch) for ch in choices],
-                            values=values, extremum=self._adversary_ext.__name__, value=val)
-
+                            values=[float(v) for v in values], extremum=self._adversary_ext.__name__,
+                            value=float(val))
+        if self._grid is None:
+            val = float(val)
         self._memo[key] = val
         return val
 
-    def _coalition_action(self, pid, seq, r, node):
-        if pid in node.pending:
-            return None
-        # Si el agente empezó con una sesión en curso, su primera decisión ocurre en la ronda 1.
-        started_pending = len(seq) < self._depth
-        idx = r - 1 if started_pending else r
-        if idx < 0 or idx >= len(seq):
-            return None
-        return seq[idx]
-
-    def _in_target(self, node):
-        for pid, tset in self._targets.items():
-            last = node.last.get(pid)
-            if last is not None and last in tset:
-                return True
-        return False
-
     def _round(self, node, actions):
-        current = [(1.0, node.child())]
-        for pid in self._order:
-            nxt = {}
-            for p, n in current:
-                outcomes = self._session_outcomes(n, pid, actions.get(pid))
-                for q, c in outcomes:
-                    k = c.key()
-                    if k in nxt:
-                        nxt[k] = (nxt[k][0] + p * q, nxt[k][1])
-                    else:
-                        nxt[k] = (p * q, c)
-            if len(nxt) > MAX_BRANCHES:
-                raise VerificationError(f"la ronda excede {MAX_BRANCHES} desenlaces")
-            current = list(nxt.values())
-        return current
+        """Desenlaces de una ronda: promedio uniforme sobre los órdenes de activación de quienes actúan."""
+        acting = sorted(pid for pid in self._participants if pid in node.pending or actions.get(pid) is not None)
+        if len(acting) > MAX_ORDER_PARTICIPANTS:
+            raise VerificationError(
+                f"{len(acting)} participantes activos exceden el límite {MAX_ORDER_PARTICIPANTS} del orden uniforme")
+        orders = list(itertools.permutations(acting)) or [()]
+        weight = 1.0 / len(orders)
+        merged = {}
+        for order in orders:
+            current = [(weight, node.child())]
+            for pid in order:
+                nxt = {}
+                for p, n in current:
+                    for q, c in self._session_outcomes(n, pid, actions.get(pid)):
+                        k = c.key()
+                        if k in nxt:
+                            nxt[k] = (nxt[k][0] + p * q, nxt[k][1])
+                        else:
+                            nxt[k] = (p * q, c)
+                if len(nxt) > MAX_BRANCHES:
+                    raise VerificationError(f"la ronda excede {MAX_BRANCHES} desenlaces")
+                current = list(nxt.values())
+            for p, c in current:
+                k = c.key()
+                if k in merged:
+                    merged[k] = (merged[k][0] + p, merged[k][1])
+                else:
+                    merged[k] = (p, c)
+        return list(merged.values())
 
     # --------------------------------------------------------------
     def _is_final(self, aut_def, state):
@@ -513,12 +811,13 @@ class PATLVerifier:
     def _session_outcomes(self, node, pid, action):
         """Desenlaces (probabilidad, nodo) de una sesión completa del participante pid."""
         if pid in node.pending:
-            aut, state, ctx = node.pending.pop(pid)
+            aut, state, ctx, event = node.pending.pop(pid)
             node._key = None
         elif action is None:
             return [(1.0, node)]
         else:
             aut, state, ctx = action, self.automata.by_name[action]["states"]["initial"], None
+            event = {"signal": action, "agent_id": pid}
 
         aut_def = self.automata.by_name[aut]
         finished = []
@@ -534,8 +833,7 @@ class PATLVerifier:
                 raise VerificationError(f"{aut} no llega a un estado final en {MAX_SESSION_STEPS} pasos")
 
             self._bind(n)
-            session = AutomatonSession(self.automata, aut_def, {"signal": aut, "agent_id": pid},
-                                       live=False, ctx=cx, state=st)
+            session = AutomatonSession(self.automata, aut_def, event, live=False, ctx=cx, state=st)
             transition = session.transition()
             _, tv_def = session.threshold_value(transition)
 
@@ -545,8 +843,7 @@ class PATLVerifier:
                 for i, (mass, value, case) in enumerate(cases):
                     child = n if i == len(cases) - 1 else n.child()
                     self._bind(child)
-                    s = AutomatonSession(self.automata, aut_def, {"signal": aut, "agent_id": pid},
-                                         live=False, ctx=base_ctx, state=st)
+                    s = AutomatonSession(self.automata, aut_def, event, live=False, ctx=base_ctx, state=st)
                     s.apply_case(transition, case, value)
                     child._key = None
                     stack.append((prob * mass, child, s.current_state, s.ctx, steps + 1))
@@ -560,17 +857,43 @@ class PATLVerifier:
                 stack.append((prob, n, session.current_state, session.ctx, steps + 1))
         return finished
 
+    def _propagates(self, aut_def, transition):
+        """¿El valor muestreado de este umbral se usa fuera de sus propias condiciones de caso?"""
+        key = (aut_def["automaton_name"], transition["from"])
+        if key not in self._propagates_cache:
+            tv_key, _ = AutomatonSession.threshold_value(transition)
+            name = re.escape(tv_key.lstrip("$"))
+            # Se busca el uso en las acciones de sus propios casos y en las demás transiciones; las condiciones
+            # de sus casos y su propia declaración no cuentan como uso.
+            own_actions = [th.get("actions", []) for th in transition["thresholds"]]
+            others = [t for t in aut_def["transitions"] if t is not transition]
+            blob = json.dumps({"own": own_actions, "others": others})
+            self._propagates_cache[key] = bool(re.search(rf'"\$?{name}"|\${name}\b', blob))
+        return self._propagates_cache[key]
+
     def _probabilistic_cases(self, session, transition, dist_name):
         """Ramas (probabilidad, valor representativo, caso) de un umbral probabilístico, sin muestrear."""
         entry = self.distributions.samplers[dist_name]
         family = entry["family"]
+        output = entry.get("output_type", "float")
         where = f"{session.automaton_name}::{session.current_state}"
         out = []
 
-        if family in ("categorical", "poisson"):
-            support = (list(zip(entry["labels"], entry["probabilities"])) if family == "categorical"
-                       else self._poisson_support(entry))
-            by_case = {}
+        if family == "categorical" or family == "poisson" or output == "int":
+            if family == "categorical":
+                cast = {"int": lambda x: int(float(x)), "float": float}.get(output, str)
+                support = []
+                for label, p in zip(entry["labels"], entry["probabilities"]):
+                    try:
+                        support.append((cast(label), p))
+                    except (TypeError, ValueError):
+                        raise VerificationError(f"{where}: la etiqueta {label} no se convierte a {output}")
+            elif family == "poisson":
+                support = self._poisson_support(entry)
+                if output == "int":
+                    support = [(int(v), p) for v, p in support]
+            else:
+                support = self._integer_support(dist_name, entry)
             for value, mass in support:
                 if mass <= 0:
                     continue
@@ -581,9 +904,9 @@ class PATLVerifier:
             total = sum(m for m, _, _ in out)
         else:
             # Regla del primer caso que coincide: la región efectiva de un caso es su intervalo menos las
-            # regiones de los casos anteriores. Su masa es exacta y su valor representativo es la esperanza
-            # condicional sobre esa región.
+            # regiones de los casos anteriores.
             tv_key, _ = session.threshold_value(transition)
+            propagates = self._propagates(session.automaton_def, transition)
             total = 0.0
             covered = []
             for case in transition.get("thresholds", []):
@@ -594,23 +917,47 @@ class PATLVerifier:
                 for previous in covered:
                     pieces = [p for piece in pieces for p in self._minus(piece, previous)]
                 covered.append(interval)
-                weighted = []
-                for low, high, li, ui in pieces:
-                    m = self.distributions.probability_interval(dist_name, low, high, li, ui)
-                    if m > 0:
-                        weighted.append((m, self.distributions.conditional_mean(dist_name, low, high, li, ui)))
-                mass = sum(m for m, _ in weighted)
-                if mass <= 0:
-                    continue
-                if any(v is None for _, v in weighted):
-                    raise VerificationError(f"{where}: región sin valor representativo")
-                value = sum(m * v for m, v in weighted) / mass
-                out.append((mass, value, case))
-                total += mass
+                if propagates:
+                    for low, high, li, ui in pieces:
+                        for m, v in self.distributions.quantile_cells(dist_name, low, high, li, ui, self.quantiles):
+                            if m > 0:
+                                out.append((m, v, case))
+                                total += m
+                else:
+                    weighted = []
+                    for low, high, li, ui in pieces:
+                        m = self.distributions.probability_interval(dist_name, low, high, li, ui)
+                        if m > 0:
+                            weighted.append((m, self.distributions.conditional_mean(dist_name, low, high, li, ui)))
+                    mass = sum(m for m, _ in weighted)
+                    if mass <= 0:
+                        continue
+                    if any(v is None for _, v in weighted):
+                        raise VerificationError(f"{where}: región sin valor representativo")
+                    out.append((mass, sum(m * v for m, v in weighted) / mass, case))
+                    total += mass
 
         if abs(total - 1.0) > PARTITION_TOLERANCE:
             raise VerificationError(f"{where}: la masa de los casos suma {total:.6f}, no 1")
         return out
+
+    def _integer_support(self, dist_name, entry):
+        """Continua con salida entera: masa de cada entero producido por int() (truncamiento hacia cero)."""
+        trunc = entry["truncation"]
+        lo, hi = int(np.floor(trunc["min"])), int(np.ceil(trunc["max"]))
+        if hi - lo > MAX_INTEGER_SUPPORT:
+            raise VerificationError(f"el soporte entero de {dist_name} excede {MAX_INTEGER_SUPPORT} valores")
+        support = []
+        for v in range(lo, hi + 1):
+            if v > 0:
+                m = self.distributions.probability_interval(dist_name, v, v + 1, True, False)
+            elif v < 0:
+                m = self.distributions.probability_interval(dist_name, v - 1, v, False, True)
+            else:
+                m = self.distributions.probability_interval(dist_name, -1, 1, False, False)
+            if m > 0:
+                support.append((v, m))
+        return support
 
     def expected_value(self, vdef):
         """Valor determinista de un parámetro para agentes creados durante la verificación."""
@@ -684,8 +1031,9 @@ class PATLVerifier:
 
     @staticmethod
     def _compare(value, bound, operator):
-        if operator == ">=": return value >= bound
-        if operator == ">":  return value > bound
-        if operator == "<=": return value <= bound
-        if operator == "<":  return value < bound
+        # La cota es un racional; se tolera el error de redondeo de punto flotante.
+        if operator == ">=": return value >= bound - COMPARE_TOLERANCE
+        if operator == ">":  return value > bound + COMPARE_TOLERANCE
+        if operator == "<=": return value <= bound + COMPARE_TOLERANCE
+        if operator == "<":  return value < bound - COMPARE_TOLERANCE
         return False

@@ -66,7 +66,7 @@ def test_verificacion_patl_de_punta_a_punta_con_otro_dominio(tmp_path):
     expected = 1 - (1 - p) ** 2
     for row in rows:
         assert row[4] == "MACHINE_FAILS"
-        assert row[9] in ("SATISFIED", "VIOLATED")
+        assert row[10] in ("SATISFIED", "VIOLATED")
         assert float(row[5]) == pytest.approx(expected, abs=5e-5)
 
 

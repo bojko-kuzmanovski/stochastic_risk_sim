@@ -258,6 +258,58 @@ class Distributions:
             raise ValueError(f"Distribution {name} is not categorical")
         return sum(p for l, p in zip(entry['labels'], entry['probabilities']) if l == label)
 
+    def quantile_cells(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True, cells=8):
+        """
+        Divide la región [lower, upper] (con el truncamiento aplicado) en celdas de igual masa y devuelve
+        [(masa, esperanza condicional en la celda)]. La suma de masas es probability_interval de la región.
+        Solo para familias continuas; se memoriza por (distribución, región, número de celdas).
+        """
+        key = ("q", name, float(lower), float(upper), bool(lower_inclusive), bool(upper_inclusive), int(cells))
+        cache = self.__dict__.setdefault("_exact_cache", {})
+        if key in cache:
+            return cache[key]
+        entry = self.samplers.get(name)
+        if not entry:
+            raise ValueError(f"Distribution {name} not found")
+        family, params, truncation = entry['family'], entry['params'], entry['truncation']
+        dist = self._frozen(family, params)
+        lo = -np.inf if lower == float("-inf") else lower
+        hi = np.inf if upper == float("inf") else upper
+        if truncation:
+            lo = max(lo, truncation["min"])
+            hi = min(hi, truncation["max"])
+        total = self.probability_interval(name, lower, upper, lower_inclusive, upper_inclusive)
+        if lo >= hi or total <= 0:
+            cache[key] = []
+            return []
+        f_lo, f_hi = dist.cdf(lo), dist.cdf(hi)
+        cuts = [lo] + [float(dist.ppf(f_lo + (f_hi - f_lo) * j / cells)) for j in range(1, cells)] + [hi]
+        out = []
+        for a, b in zip(cuts[:-1], cuts[1:]):
+            if b <= a:
+                continue
+            mass = self.probability_interval(name, a, b, True, True)
+            if mass > 0:
+                out.append((mass, self.conditional_mean(name, a, b, True, True)))
+        scale = total / sum(m for m, _ in out) if out else 1.0
+        out = [(m * scale, v) for m, v in out]
+        cache[key] = out
+        return out
+
+    @staticmethod
+    def _frozen(family, params):
+        if family == "normal":
+            return stats.norm(loc=params["mean"], scale=params["sigma"])
+        if family == "exponential":
+            return stats.expon(scale=1.0 / params["rate"])
+        if family == "gamma":
+            return stats.gamma(a=params["shape"], scale=params["scale"])
+        if family == "beta":
+            return stats.beta(a=params["alpha"], b=params["beta"])
+        if family == "lognormal":
+            return stats.lognorm(s=params["sigma"], scale=np.exp(params["mean"]))
+        raise ValueError(f"continuous distribution required, got {family}")
+
     def conditional_mean(self, name, lower, upper, lower_inclusive=True, upper_inclusive=True):
         # Integración numérica costosa y determinista: se memoriza por (distribución, intervalo).
         key = ("m", name, float(lower), float(upper), bool(lower_inclusive), bool(upper_inclusive))

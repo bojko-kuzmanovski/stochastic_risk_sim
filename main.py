@@ -51,6 +51,10 @@ def parse_args():
     parser.add_argument("--memory", type=str, default="1",
                         help="Memory bounds k of coalition strategies, e.g. 1 or 1,2 (each 1-4); "
                              "predicates with max_memory use their own")
+    parser.add_argument("--quantiles", type=int, default=8,
+                        help="Equal-mass cells used when a sampled continuous value is used later in the automaton")
+    parser.add_argument("--no-mixed", action="store_true",
+                        help="Verify only deterministic coalition strategies (skip memoryless randomized strategies)")
     parser.add_argument("--event-latency", type=float, default=0.0,
                         help="Delay Δt of dynamic events emitted by automata (channel events use the channel latency)")
     parser.add_argument("--trace", type=str, default="",
@@ -71,6 +75,8 @@ def validate_args(args):
     if not args.memory or any(not (1 <= m <= 4) for m in args.memory):
         raise ValueError(f"--memory values must be between 1 and 4, got {args.memory}")
     args.trace = parse_components(args.trace)
+    if args.quantiles < 1:
+        raise ValueError(f"--quantiles must be at least 1, got {args.quantiles}")
     if args.event_latency < 0:
         raise ValueError(f"--event-latency must be non-negative, got {args.event_latency}")
     if args.threads > args.runs:
@@ -88,7 +94,8 @@ def load_configs(config_dir: Path, distributions_file: str) -> dict:
 
 def run_single_simulation(run_id: int, configs: dict, max_time: float, output_dir: Path, seed: int,
                           queue_batch: int, memory: list, keep_objects: bool = False,
-                          trace_components=frozenset(), trace_name: str = "run", event_latency: float = 0.0):
+                          trace_components=frozenset(), trace_name: str = "run", event_latency: float = 0.0,
+                          quantiles: int = 8, mixed_strategies: bool = True):
     tracer.configure(output_dir / "traces" / f"{trace_name}_run{run_id}.jsonl", trace_components, run_id)
     tracer.emit("des", "run_start", seed=seed, max_time=max_time, queue_batch=queue_batch, memory=memory)
     metrics = MetricsCollector(enabled=True)
@@ -124,7 +131,8 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
     tracer.clock = None
     t0 = time.time()
     verifier_automata = Automata(configs["automata"], distributions, MetricsCollector(enabled=False))
-    verifier = PATLVerifier(verifier_automata, distributions, configs=configs, default_memory=memory)
+    verifier = PATLVerifier(verifier_automata, distributions, configs=configs, default_memory=memory,
+                            quantiles=quantiles, mixed_strategies=mixed_strategies)
 
     patl_rows = []
     for batch in snapshot_manager.read_and_delete(batch_size=50):
@@ -138,7 +146,7 @@ def run_single_simulation(run_id: int, configs: dict, max_time: float, output_di
                 patl_rows.append([
                     run_id, snap["automaton_name"], snap["state"], snap["agent_id"],
                     r["predicate_id"], value, f"{r['bound']:.4f}", r["operator"], r["memory_k"],
-                    r["result"], r["reason"]
+                    r.get("strategy", ""), r["result"], r["reason"]
                 ])
     elapsed_patl = time.time() - t0
     snapshot_manager.clear_all_snapshots()
@@ -189,18 +197,22 @@ def main():
             last = run_single_simulation(run_id, configs, args.time, output_dir, seed_for(run_id),
                                          args.queue_batch, args.memory, keep_objects=(args.runs == 1),
                                          trace_components=args.trace, trace_name=base_name,
-                                         event_latency=args.event_latency)
+                                         event_latency=args.event_latency, quantiles=args.quantiles,
+                                         mixed_strategies=not args.no_mixed)
             record(last)
     else:
         with ProcessPoolExecutor(max_workers=args.threads) as pool:
             futures = [pool.submit(run_single_simulation, run_id, configs, args.time, output_dir,
                                    seed_for(run_id), args.queue_batch, args.memory,
-                                   False, args.trace, base_name, args.event_latency)
+                                   False, args.trace, base_name, args.event_latency,
+                                   args.quantiles, not args.no_mixed)
                        for run_id in range(1, args.runs + 1)]
             for future in as_completed(futures):
                 record(future.result())
 
     pbar.close()
+    # Con varios procesos las corridas terminan en cualquier orden: los CSV se ordenan por run_id.
+    writer.finalize()
 
     if args.runs == 1 and last is not None:
         metrics, distributions, environments, agents, automata, events, snapshot_manager = last["objects"]

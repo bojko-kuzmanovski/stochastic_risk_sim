@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 PATL_HEADER = ["run_id", "automaton_name", "trigger_state", "agent_id", "predicate_id",
-               "value", "bound", "operator", "memory_k", "result", "reason"]
+               "value", "bound", "operator", "memory_k", "strategy", "result", "reason"]
 
 
 class MetricsWriter:
@@ -37,6 +37,20 @@ class MetricsWriter:
         """Writes the summary and DES rows of one finished run."""
         _write_summary_csv(str(self._summary_path), result, configs)
         _write_des_csv(str(self._des_path), result["run_id"], result["metrics"])
+
+    def finalize(self):
+        """Ordena de forma estable las filas de los tres CSV por run_id, conservando el encabezado."""
+        for path in (self._summary_path, self._des_path, self._patl_path):
+            with open(path, newline="") as f:
+                rows = list(csv.reader(f))
+            if len(rows) <= 2:
+                continue
+            header, body = rows[0], rows[1:]
+            body.sort(key=lambda row: int(row[0]))
+            with open(path, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(header)
+                w.writerows(body)
 
     def write_patl_rows(self, rows: list):
         """Writes one row per verified predicate per snapshot."""

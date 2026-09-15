@@ -53,7 +53,10 @@
           "type": "string",
           "enum": [
             "reachability",
-            "invariance"
+            "invariance",
+            "until",
+            "release",
+            "next"
           ]
         },
         "max_depth": {
@@ -104,9 +107,49 @@
             ">="
           ],
           "default": ">="
+        },
+        "left": {
+          "$ref": "#/definitions/state_formula"
+        },
+        "right": {
+          "$ref": "#/definitions/state_formula"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "until",
+                  "release"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "left",
+              "right"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "next"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "right"
+            ]
+          }
+        }
+      ]
     },
     "agent_coalition_target": {
       "type": "object",
@@ -244,6 +287,116 @@
         }
       ],
       "additionalProperties": false
+    },
+    "state_formula": {
+      "description": "Fórmula de estado sin operadores de coalición: verdadero, pertenencia a los estados objetivo de la coalición, proposición atómica sobre (autómata, estados finales) de un grupo, negación, conjunción y disyunción.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "true"
+          ],
+          "properties": {
+            "true": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "target"
+          ],
+          "properties": {
+            "target": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "prop"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "prop": {
+              "type": "object",
+              "required": [
+                "automaton",
+                "states"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "automaton": {
+                  "type": "string"
+                },
+                "states": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "group": {
+                  "enum": [
+                    "coalition",
+                    "adversaries",
+                    "participants"
+                  ],
+                  "default": "coalition"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "properties": {
+            "not": {
+              "$ref": "#/definitions/state_formula"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "and"
+          ],
+          "properties": {
+            "and": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/state_formula"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "or"
+          ],
+          "properties": {
+            "or": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/state_formula"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

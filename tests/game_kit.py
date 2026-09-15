@@ -70,13 +70,14 @@ def predicate(coalition, adversaries=None, ptype="reachability", bound=0.5, op="
     return p
 
 
-def verifier(automata_defs, distributions=(UNIFORM,), memory=(1,)):
+def verifier(automata_defs, distributions=(UNIFORM,), memory=(1,), mixed=True, quantiles=8):
     dists = Distributions(list(distributions), None, seed=0)
     auts = Automata(list(automata_defs), dists, MetricsCollector(enabled=False))
-    return PATLVerifier(auts, dists, configs={"agents": [], "environments": []}, default_memory=list(memory)), dists
+    return PATLVerifier(auts, dists, configs={"agents": [], "environments": []}, default_memory=list(memory),
+                        quantiles=quantiles, mixed_strategies=mixed), dists
 
 
-def value(automata_defs, snap, pred, memory=1, distributions=(UNIFORM,)):
-    v, _ = verifier(automata_defs, distributions, [memory])
+def value(automata_defs, snap, pred, memory=1, distributions=(UNIFORM,), mixed=True, quantiles=8):
+    v, _ = verifier(automata_defs, distributions, [memory], mixed=mixed, quantiles=quantiles)
     row = v.verify(snap, [pred])[0]
     return row
