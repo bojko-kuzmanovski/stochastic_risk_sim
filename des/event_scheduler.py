@@ -1,13 +1,17 @@
 import heapq
 import itertools
 
+from core.events import validate_static_signals
 from core.utils.evaluator import resolve_value
+
+# Decimales a los que se redondea el tiempo al entrar al calendario: 0.1 + 0.2 y 0.3 son el mismo instante.
+TIME_DECIMALS = 9
 
 
 class EventCalendar:
     """
     Calendario global Q: cola de prioridad sobre (t, e) ordenada por t creciente.
-    A igual t se respeta el orden de inserción.
+    A igual t se respeta el orden de inserción. Los tiempos se redondean a TIME_DECIMALS decimales.
     """
 
     def __init__(self):
@@ -15,10 +19,15 @@ class EventCalendar:
         self._seq = itertools.count()
 
     def push(self, t, event):
-        heapq.heappush(self._heap, (t, next(self._seq), event))
+        heapq.heappush(self._heap, (round(float(t), TIME_DECIMALS), next(self._seq), event))
 
     def next_time(self):
         return self._heap[0][0] if self._heap else None
+
+    def pop(self):
+        """Extrae el primer evento en orden de calendario y devuelve (t, evento)."""
+        t, _, event = heapq.heappop(self._heap)
+        return t, event
 
     def pop_instant(self):
         """Extrae todos los eventos con el menor t y devuelve (t, eventos)."""
@@ -27,6 +36,13 @@ class EventCalendar:
         while self._heap and self._heap[0][0] == t:
             batch.append(heapq.heappop(self._heap)[2])
         return t, batch
+
+    def peek_instant(self):
+        """Eventos con el menor t, en orden de calendario, sin extraerlos."""
+        if not self._heap:
+            return []
+        t = self._heap[0][0]
+        return [e for _, _, e in sorted((x for x in self._heap if x[0] == t), key=lambda x: x[1])]
 
     def clear(self):
         self._heap.clear()
@@ -39,10 +55,14 @@ class EventScheduler:
     """
     Programa los eventos estáticos. Cada evento estático (signal, tipo, rho) genera un
     evento por agente del tipo, con primera activación en t0 ~ rho, y se reprograma en
-    T + dt, dt ~ rho, cada vez que se despacha.
+    T + dt, dt ~ rho, cada vez que se despacha. Al construirse valida que cada señal
+    sea un autómata asignado al agent_type destino.
     """
 
     def __init__(self, static_events, agents, distributions):
+        automata = getattr(agents, "automata", None)
+        validate_static_signals(static_events, agents.config_data,
+                                automata.by_name if automata is not None else None)
         self._events = static_events
         self._agents = agents
         self._distributions = distributions
@@ -52,7 +72,7 @@ class EventScheduler:
     def _sample_periodicity(self, event_def):
         pdef = event_def.get("periodicity_def")
         dt = resolve_value(pdef, self._distributions) if pdef else event_def["periodicity"]
-        if not isinstance(dt, (int, float)) or dt <= 0:
+        if isinstance(dt, bool) or not isinstance(dt, (int, float)) or dt <= 0:
             raise ValueError(f"periodicity must resolve to a positive number for signal "
                              f"'{event_def['signal']}', got {dt}")
         return float(dt)

@@ -4,8 +4,9 @@ import json
 from jsonschema import validate
 from typing import Any, Optional
 
-from core.utils.evaluator import resolve_value, call_method, resolve_ephemeral
+from core.utils.evaluator import resolve_value, call_method, resolve_ephemeral, unresolved_variables
 from core.events import Events
+from core.partition import check_automata
 from core.trace import tracer
 
 
@@ -27,6 +28,9 @@ class Automata:
             raise ValueError(
                 f"automaton_name must be unique. Duplicates: {list(set(duplicates))}"
             )
+
+        # Toda transición probabilística analizable debe cubrir la masa completa de su distribución.
+        check_automata(config_data, distributions)
 
         self.data = config_data
         self.by_name = {d["automaton_name"]: d for d in config_data}
@@ -58,6 +62,11 @@ class AutomatonSession:
 
     live=True: ejecución dentro del motor DES (muestrea, registra métricas y emite eventos).
     live=False: ejecución dentro del verificador PATL (no muestrea ni emite eventos).
+
+    Errores: una variable "$x" sin resolver usada como argumento, un operando no numérico, una división
+    entre cero, una excepción dentro de un método llamado o una comparación de orden entre tipos
+    incompatibles detienen la corrida en vivo y lanzan SessionError fuera de ella. Un None devuelto
+    por un método es el valor vacío y se guarda como tal.
     """
 
     def __init__(self, automata: Automata, automaton_def: dict, event: dict, live=True,
@@ -82,6 +91,9 @@ class AutomatonSession:
             os._exit(1)
         raise SessionError(message)
 
+    def _where(self):
+        return f"{self.automaton_name}::{self.current_state}"
+
     def _init_params(self):
         for k, vdef in self.automaton_def.get("params", {}).items():
             self.ctx[k] = self._resolve_value(vdef)
@@ -92,8 +104,15 @@ class AutomatonSession:
             return resolve_ephemeral(vdef["value"], self.ctx)
         # En el verificador un parámetro probabilístico no se muestrea: se usa su esperanza.
         if not self.live and vdef.get("type") == "probabilistic":
-            return self.automata.distributions.conditional_mean(
-                vdef.get("distribution"), float("-inf"), float("inf"))
+            name = vdef.get("distribution")
+            entry = self.automata.distributions.samplers.get(name)
+            if entry is None:
+                raise SessionError(f"{self._where()}: unknown distribution '{name}'")
+            if entry["family"] == "categorical":
+                raise SessionError(
+                    f"{self._where()}: probabilistic parameter with categorical distribution '{name}' "
+                    f"has no expected value; outside the DES it can only be used as a threshold value")
+            return self.automata.distributions.conditional_mean(name, float("-inf"), float("inf"))
         return resolve_value(vdef, self.automata.distributions)
 
     def _resolve(self, vdef: Any) -> Any:
@@ -103,6 +122,13 @@ class AutomatonSession:
             return self._resolve_value(vdef)
         return resolve_ephemeral(vdef, self.ctx)
 
+    def _resolve_arg(self, raw: Any, role: str) -> Any:
+        """Resuelve un argumento "$x"; una referencia sin resolver es un error de configuración."""
+        missing = unresolved_variables(raw, self.ctx)
+        if missing:
+            self._fatal(f"{self._where()}: unresolved variable(s) {missing} in {role} '{raw}'")
+        return resolve_ephemeral(raw, self.ctx)
+
     def _exec_logic(self, logic_def: dict) -> Any:
         target = logic_def["target"]
         method = logic_def["method"]
@@ -111,27 +137,29 @@ class AutomatonSession:
         if target == "system":
             try:
                 return call_method(target, method, [param_keys],
-                                 self.automata.agents, self.automata.environments,
-                                 resolve_fn=self._resolve)
+                                   self.automata.agents, self.automata.environments,
+                                   resolve_fn=self._resolve)
             except SessionError:
                 raise
             except Exception as e:
-                self._fatal(f"{self.automaton_name}::{self.current_state}: math_pipeline execution failed. "
+                self._fatal(f"{self._where()}: math_pipeline execution failed. "
                             f"Error: {type(e).__name__} - {e}; pipeline_def: {param_keys}")
 
-        resolved_keys = [resolve_ephemeral(k, self.ctx) for k in param_keys]
-        args = [self.ctx.get(k) if isinstance(k, str) and k.startswith("$") else k for k in resolved_keys]
+        args = [self._resolve_arg(k, f"argument of {target}.{method}") for k in param_keys]
         event_obj = self.event if target == "events" else None
-        result = call_method(target, method, args, self.automata.agents, self.automata.environments, event_obj)
+        try:
+            result = call_method(target, method, args, self.automata.agents, self.automata.environments, event_obj)
+        except SessionError:
+            raise
+        except Exception as e:
+            self._fatal(f"{self._where()}: Target: {target} | Method: {method} | Params/Args: {args} "
+                        f"raised {type(e).__name__}: {e}")
 
         if self.live and tracer.on("automata"):
             tracer.emit("automata", "call", agent=self.event.get("agent_id"), automaton=self.automaton_name,
                         state=self.current_state, target=target, method=method, args=args, result=result)
 
-        if result is None:
-            self._fatal(f"{self.automaton_name}::{self.current_state}: "
-                        f"Target: {target} | Method: {method} | Params/Args: {args} -> Resolved Value: {result}")
-
+        # None es el valor vacío: se guarda y los casos lo comparan con == None o != None.
         return result
 
     # ------------------------------------------------------------------
@@ -160,12 +188,14 @@ class AutomatonSession:
         tv_key, _ = self.threshold_value(transition)
         previous = self.ctx.get(tv_key, _MISSING)
         self.ctx[tv_key] = X
-        chosen = next((th for th in transition.get("thresholds", [])
-                       if self._check_case(th["threshold_case"])), None)
-        if previous is _MISSING:
-            self.ctx.pop(tv_key, None)
-        else:
-            self.ctx[tv_key] = previous
+        try:
+            chosen = next((th for th in transition.get("thresholds", [])
+                           if self._check_case(th["threshold_case"])), None)
+        finally:
+            if previous is _MISSING:
+                self.ctx.pop(tv_key, None)
+            else:
+                self.ctx[tv_key] = previous
         return chosen
 
     def apply_case(self, transition: dict, case: dict, X: Any) -> str:
@@ -194,7 +224,7 @@ class AutomatonSession:
         chosen = self.select_case(transition, X)
 
         if not chosen:
-            self._fatal(f"{self.automaton_name}::{self.current_state}: no threshold_case matched for value {X}")
+            self._fatal(f"{self._where()}: no threshold_case matched for value {X}")
 
         if self.live and tracer.on("automata"):
             tv_key, tv_def = self.threshold_value(transition)
@@ -205,6 +235,12 @@ class AutomatonSession:
                         case=transition["thresholds"].index(chosen), to=chosen["to"])
 
         return self.apply_case(transition, chosen, X)
+
+    _OPERATORS = {
+        "<": lambda a, b: a < b, "<=": lambda a, b: a <= b,
+        ">": lambda a, b: a > b, ">=": lambda a, b: a >= b,
+        "==": lambda a, b: a == b, "!=": lambda a, b: a != b,
+    }
 
     def _check_case(self, conditions: list) -> bool:
         for cond in conditions:
@@ -234,26 +270,19 @@ class AutomatonSession:
                     found = True
 
             if not found:
-                self._fatal(f"{self.automaton_name}::{self.current_state}: "
-                            f"undefined ephemeral variable '{raw_var}' in threshold_rule")
+                self._fatal(f"{self._where()}: undefined ephemeral variable '{raw_var}' in threshold_rule")
 
+            fn = self._OPERATORS.get(op)
+            if fn is None:
+                self._fatal(f"{self._where()}: unknown operator '{op}' in threshold_rule")
             try:
-                if op == "<" and not (actual < expected):
-                    return False
-                elif op == "<=" and not (actual <= expected):
-                    return False
-                elif op == ">" and not (actual > expected):
-                    return False
-                elif op == ">=" and not (actual >= expected):
-                    return False
-                elif op == "==" and not (actual == expected):
-                    return False
-                elif op == "!=" and not (actual != expected):
-                    return False
-                elif op not in ["<", "<=", ">", ">=", "==", "!="]:
+                if not fn(actual, expected):
                     return False
             except TypeError:
-                return False
+                # Una comparación de orden entre tipos incompatibles (por ejemplo con el valor vacío) no se
+                # interpreta como caso no cumplido: es un error de configuración.
+                self._fatal(f"{self._where()}: cannot evaluate {raw_var} {op} {expected!r} "
+                            f"with {raw_var} = {actual!r}")
 
         return True
 
@@ -275,13 +304,11 @@ class AutomatonSession:
                     continue
 
                 event_array = action_obj["event_emit"]
-                resolved = [resolve_ephemeral(k, self.ctx) for k in event_array]
+                resolved = [self._resolve_arg(k, "event_emit argument") for k in event_array]
 
-                signal = self.ctx.get(resolved[0]) if resolved[0].startswith("$") else resolved[0]
-                if signal is None: signal = "UNKNOWN_SIGNAL"
-
-                agent_id = self.ctx.get(resolved[1]) if resolved[1].startswith("$") else resolved[1]
-                if agent_id is None: agent_id = "UNKNOWN_AGENT"
+                signal, agent_id = resolved[0], resolved[1]
+                if signal is None or agent_id is None:
+                    self._fatal(f"{self._where()}: event_emit with empty signal or agent_id: {event_array}")
 
                 event_data = {
                     "event_category": "dynamic",
@@ -289,19 +316,26 @@ class AutomatonSession:
                     "agent_id": str(agent_id)
                 }
 
-                if len(resolved) > 2:
-                    env_id = self.ctx.get(resolved[2]) if resolved[2].startswith("$") else resolved[2]
-                    if env_id is not None: event_data["env_id"] = str(env_id)
-                if len(resolved) > 3:
-                    channel_id = self.ctx.get(resolved[3]) if resolved[3].startswith("$") else resolved[3]
-                    if channel_id is not None: event_data["channel_id"] = str(channel_id)
+                if len(resolved) > 2 and resolved[2] is not None:
+                    event_data["env_id"] = str(resolved[2])
+                if len(resolved) > 3 and resolved[3] is not None:
+                    event_data["channel_id"] = str(resolved[3])
 
                 try:
                     Events([event_data], self.automata.distributions)
                 except Exception as e:
-                    print(f"[FATAL] {self.automaton_name}::{self.current_state}: "
-                          f"event_emit failed validation: {e}", file=sys.stderr, flush=True)
-                    os._exit(1)
+                    self._fatal(f"{self._where()}: event_emit failed validation: {e}")
+
+                # Un evento dirigido a un agente inexistente o con una señal que el destinatario no implementa
+                # es un error de configuración.
+                recipient = self.automata.agents._find(event_data["agent_id"]) if self.automata.agents else None
+                if recipient is None:
+                    self._fatal(f"{self._where()}: event_emit addressed to nonexistent agent "
+                                f"'{event_data['agent_id']}' (signal '{event_data['signal']}')")
+                if (event_data["signal"] not in self.automata.by_name
+                        or event_data["signal"] not in recipient.get("automata", [])):
+                    self._fatal(f"{self._where()}: event_emit signal '{event_data['signal']}' is not an automaton "
+                                f"implemented by agent '{event_data['agent_id']}'")
 
                 tracer.emit("automata", "emit", agent=self.event.get("agent_id"), automaton=self.automaton_name,
                             state=self.current_state, event=event_data)

@@ -11,14 +11,23 @@ MAX_EVENTS_PER_INSTANT = 1_000_000
 
 class DiscreteEventSimulator:
     """
-    Motor DES con calendario global Q y reloj simulado T.
+    Motor DES con calendario global Q, reloj simulado T y cota K de eventos procesados por agente
+    en cada instante.
 
-    En cada iteración T salta al menor tiempo de Q, se despachan a sus colas Q_i todos los
-    eventos de ese instante (Paso 1), cada agente con eventos pendientes procesa hasta K de
-    ellos, una sesión atómica por evento (Paso 2), y los eventos estáticos se reprograman
-    (Paso 3). Los eventos dinámicos emitidos durante una sesión entran a Q en T + latencia.
-    La simulación termina cuando Q queda vacío o el siguiente evento excede T_max; después
-    se vacían las colas pendientes sin despachar eventos nuevos.
+    En cada iteración T salta al menor tiempo de Q y el contador de procesados de cada agente vuelve a 0:
+
+    1. Rezago: cada agente con eventos pendientes de instantes anteriores procesa hasta K de ellos,
+       en el orden en que su cola dejó de estar vacía.
+    2. Despacho en orden de calendario: los eventos con tiempo T se extraen uno por uno (a igual tiempo,
+       en orden de inserción). Cada evento se encola en Q_i y, si el agente i procesó menos de K eventos
+       en este instante, se procesa de inmediato (una sesión atómica); si no, espera en Q_i. Un evento
+       estático se reprograma en T + dt al despacharse. Un evento dirigido a un agente eliminado se
+       descarta y no se reprograma.
+
+    Los eventos dinámicos emitidos durante una sesión entran a Q en T + latencia; con latencia cero se
+    despachan en este mismo instante, después de los que ya estaban en Q con tiempo T. La simulación
+    termina cuando Q queda vacío o el siguiente evento excede T_max; después se vacían las colas
+    pendientes sin despachar eventos nuevos, K eventos por agente en cada vuelta.
     """
 
     def __init__(self, distributions, environments, automata, agents, events,
@@ -36,6 +45,9 @@ class DiscreteEventSimulator:
         self.T = 0.0
         self._dispatching = False
 
+    def _clock(self):
+        return self.T
+
     def _emit(self, event, delay=None, from_channel=False):
         if not self._dispatching:
             return
@@ -48,18 +60,21 @@ class DiscreteEventSimulator:
         if delay < 0:
             raise ValueError(f"event latency must be non-negative, got {delay}")
         self.calendar.push(self.T + delay, event)
-        tracer.emit("des", "schedule_dynamic", at=self.T + delay, agent=event.get("agent_id"),
+        tracer.emit("des", "schedule_dynamic", at=round(self.T + delay, 9), agent=event.get("agent_id"),
                     signal=event.get("signal"), channel=event.get("channel_id"))
 
     def _process_ready(self, ready):
         for agent_id in list(ready):
             self.agents.process_queue(agent_id, self.queue_batch)
             if self.agents.pending(agent_id) == 0:
-                del ready[agent_id]
+                ready.pop(agent_id, None)
 
     def run_simulation(self, max_time: float = 60.0):
         self.automata.set_event_sink(self._emit)
         self.environments.event_sink = self._emit
+        self.environments.clock = self._clock
+        if hasattr(self.snapshot_manager, "set_clock"):
+            self.snapshot_manager.set_clock(self._clock)
         self.agents.set_on_agent_added(lambda agent: self.event_scheduler.schedule_agent(agent, self.T))
 
         # Inicialización (T = 0)
@@ -67,34 +82,54 @@ class DiscreteEventSimulator:
         self.event_scheduler.start(self.calendar, 0.0)
         self._dispatching = True
 
+        K = self.queue_batch
+        # Agentes con Q_i no vacía, en el orden en que su cola dejó de estar vacía.
         ready = {}
-        same_instant = 0
-        last_T = None
 
         # Ejecución
         while self.calendar and self.calendar.next_time() <= max_time:
-            T, batch = self.calendar.pop_instant()
+            T = self.calendar.next_time()
             self.T = T
             tracer.clock = T
-            tracer.emit("des", "instant", dispatched=len(batch),
-                        events=[(e.get("agent_id"), e.get("signal"), e.get("event_category")) for e in batch],
-                        calendar_size=len(self.calendar))
+            if tracer.on("des"):
+                at_T = self.calendar.peek_instant()
+                tracer.emit("des", "instant", dispatched=len(at_T),
+                            events=[(e.get("agent_id"), e.get("signal"), e.get("event_category")) for e in at_T],
+                            calendar_size=len(self.calendar), backlog=list(ready))
 
-            same_instant = same_instant + len(batch) if T == last_T else len(batch)
-            last_T = T
-            if same_instant > MAX_EVENTS_PER_INSTANT:
-                print(f"[FATAL] DES: more than {MAX_EVENTS_PER_INSTANT} events dispatched at T={T}.",
-                      file=sys.stderr, flush=True)
-                sys.exit(1)
+            processed = {}
 
-            for event in batch:
+            # 1. Rezago de instantes anteriores, sujeto a K.
+            for agent_id in list(ready):
+                processed[agent_id] = self.agents.process_queue(agent_id, K)
+                if self.agents.pending(agent_id) == 0:
+                    ready.pop(agent_id, None)
+
+            # 2. Eventos del instante en orden de calendario.
+            same_instant = 0
+            while self.calendar and self.calendar.next_time() == T:
+                _, event = self.calendar.pop()
+                same_instant += 1
+                if same_instant > MAX_EVENTS_PER_INSTANT:
+                    print(f"[FATAL] DES: more than {MAX_EVENTS_PER_INSTANT} events dispatched at T={T}.",
+                          file=sys.stderr, flush=True)
+                    sys.exit(1)
+
                 agent_id = event.get("agent_id")
-                if self.agents.receive_event(agent_id, event):
-                    ready[agent_id] = None
-                    if event.get("event_category") == "static":
-                        self.event_scheduler.reschedule(event, T)
+                if not self.agents.receive_event(agent_id, event):
+                    ready.pop(agent_id, None)
+                    continue
+                if event.get("event_category") == "static":
+                    self.event_scheduler.reschedule(event, T)
+                tracer.emit("des", "dispatch", agent=agent_id, signal=event.get("signal"),
+                            category=event.get("event_category"))
 
-            self._process_ready(ready)
+                if processed.get(agent_id, 0) < K:
+                    processed[agent_id] = processed.get(agent_id, 0) + self.agents.process_queue(agent_id, 1)
+                if self.agents.pending(agent_id) > 0:
+                    ready[agent_id] = None
+                else:
+                    ready.pop(agent_id, None)
 
         # Finalización: cesa el despacho y se vacían las colas.
         self._dispatching = False
