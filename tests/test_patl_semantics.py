@@ -69,7 +69,7 @@ def test_alcanzabilidad_monotona_en_la_profundidad(p):
 # Dirección del operador y adversario que influye
 # ----------------------------------------------------------------------------------------------
 def adversarial_game():
-    # El adversario actúa antes que la coalición en cada ronda (orden por agent_id).
+    # En cada ronda el orden de activación es uniforme: el adversario actúa antes o después de la coalición con 1/2.
     hurt = automaton("hurt", ["DONE"], load("DONE", write("Coal_1", "flag", 1)))
     calm = automaton("calm", ["DONE"], load("DONE", write("Coal_1", "flag", 0)))
     attempt = automaton("attempt", ["WIN", "LOSE"],
@@ -340,8 +340,9 @@ def test_c5_casos_solapados_con_regla_del_primer_caso():
 # Segunda auditoría: estrategias aleatorizadas, cuantiles, U, R y X, orden uniforme, tipos de salida
 # ----------------------------------------------------------------------------------------------
 def test_pares_o_nones_requiere_aleatorizar():
-    # La coalición gana si su lado coincide con el del adversario, que elige al inicio de la ronda sin ver
-    # la realización de la mezcla. Determinista vale 0; aleatorizada 1/2 vale 1/2.
+    # guess_X gana si el lado escrito por el adversario es distinto de X. El adversario elige al inicio de la ronda
+    # sin ver la realización de la mezcla. Determinista vale 1/2 (el adversario escribe antes con 1/2 y bloquea);
+    # aleatorizada 1/2 entre ambos lados vale 3/4.
     def pick(label):
         return automaton(f"pick_{label}", ["DONE"], load("DONE", write("Coal_1", "side", label)))
 
@@ -357,7 +358,8 @@ def test_pares_o_nones_requiere_aleatorizar():
     # guess_X gana si el lado escrito es distinto de X; con orden uniforme el adversario escribe antes con 1/2.
     det = ok(value(auts, snap, pred, mixed=False))
     mix = ok(value(auts, snap, pred))
-    assert mix > det + 0.1
+    assert det == pytest.approx(0.5)
+    assert mix == pytest.approx(0.75, abs=1e-6)
 
 
 def test_cuantiles_propagan_el_valor_muestreado():

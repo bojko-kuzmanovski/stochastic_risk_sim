@@ -237,10 +237,15 @@ python3 -m pytest -q tests
 ```
 
 `tests/test_patl_semantics.py` checks the verifier against games whose value can be computed by hand
-(the 5/7 retention example, operator direction, memory k=2 against k=1, imperfect information of the
-coalition, an unrestricted adversary, exact Poisson support, reported errors) plus property-based checks
-(closed form 1-(1-p)^delta, duality, monotonicity in delta). `tests/test_des_engine.py` checks calendar
-ordering, reproducibility by seed and static activation times.
+(the 5/7 retention example, operator direction under uniform activation order, memory k=2 against k=1,
+randomized memoryless strategies, imperfect information of the coalition, an unrestricted adversary,
+quantile cells, bounded until/release/next, exact Poisson support, integer and categorical outputs,
+reported errors) plus property-based checks (closed form 1-(1-p)^delta, duality, monotonicity in delta,
+independence from agent names). `tests/test_des_engine.py` checks calendar ordering, reproducibility by
+seed, static activation times, channel latency, an end-to-end PATL run and that the engine contains no
+names from any configuration. `tests/test_des_audit.py` covers agent ids and removal, sampling and
+periodicity validation, explicit errors and the empty value, static events and emission, snapshots,
+channels, directed relations, the per-instant bound K, case coverage at load time and categorical parameters.
 
 ## Output & interpretation
 
